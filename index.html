@@ -1,0 +1,197 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Viraliza.ai</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      html {
+        scroll-behavior: smooth;
+      }
+      :root {
+        --color-primary: #02042B;
+        --color-secondary: #0B1747;
+        --color-light: #E2E8F0;
+        --color-gray-dark: #94A3B8;
+        --color-accent: #4F46E5;
+      }
+      .dark {
+        /* Default values are already set in root for the app's dark theme nature */
+      }
+      @keyframes pulse-blue {
+        0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+        70% { box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+      }
+      .pulse-blue { animation: pulse-blue 2s infinite; background-color: #3B82F6; }
+
+      @keyframes pulse-cyan {
+        0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.7); }
+        70% { box-shadow: 0 0 0 12px rgba(34, 211, 238, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+      }
+      .pulse-cyan { animation: pulse-cyan 2s infinite; background-color: #22D3EE; }
+
+      @keyframes pulse-green {
+        0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+        70% { box-shadow: 0 0 0 12px rgba(74, 222, 128, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+      }
+      .pulse-green { animation: pulse-green 2s infinite; background-color: #4ADE80; }
+
+      @keyframes pulse-white {
+        0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+      }
+      .pulse-white { animation: pulse-white 1.5s infinite; }
+
+      @keyframes animate-fade-in-right {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+      }
+      .animate-fade-in-right {
+          animation: animate-fade-in-right 0.5s ease-out forwards;
+      }
+
+      @keyframes animate-fade-in-up {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+      }
+
+      @keyframes blinking-cursor {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+      }
+
+      @keyframes pulse-badge {
+        0%, 100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+      }
+
+      @keyframes pulse-ring {
+        0%, 100% {
+          box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(79, 70, 229, 0);
+        }
+      }
+
+      @keyframes scroll {
+        from { transform: translateX(0); }
+        to { transform: translateX(-50%); }
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      #root {
+        animation: fadeIn 0.8s ease-in-out;
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      
+      @keyframes spin-3d {
+        from {
+          transform: rotateY(0deg);
+        }
+        to {
+          transform: rotateY(360deg);
+        }
+      }
+
+      @keyframes light-sweep {
+          0% { transform: translateX(-150%) skewX(-30deg); }
+          100% { transform: translateX(150%) skewX(-30deg); }
+      }
+      
+      @keyframes magnetic-ring-1 {
+        0% { transform: rotate3d(1, 1, 0, 0deg) scale(1.2); opacity: 0.4; }
+        50% { transform: rotate3d(1, 1, 0, 180deg) scale(1.25); opacity: 1; }
+        100% { transform: rotate3d(1, 1, 0, 360deg) scale(1.2); opacity: 0.4; }
+      }
+      @keyframes magnetic-ring-2 {
+        0% { transform: rotate3d(1, -1, 0, 0deg) scale(1.2); opacity: 1; }
+        50% { transform: rotate3d(1, -1, 0, -180deg) scale(1.25); opacity: 0.4; }
+        100% { transform: rotate3d(1, -1, 0, -360deg) scale(1.2); opacity: 1; }
+      }
+    </style>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              'primary': 'var(--color-primary)',
+              'secondary': 'var(--color-secondary)',
+              'accent': 'var(--color-accent)',
+              'light': 'var(--color-light)',
+              'gray-light': '#F0F0F0',
+              'gray-dark': 'var(--color-gray-dark)',
+              'success': '#00B87A',
+              'warning': '#FFAA00',
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            animation: {
+                'fade-in-right': 'animate-fade-in-right 0.5s ease-out forwards',
+                'fade-in-up': 'animate-fade-in-up 0.6s ease-out forwards',
+                'blinking-cursor': 'blinking-cursor 1s step-end infinite',
+                'scroll': 'scroll 40s linear infinite',
+                'scroll-testimonials': 'scroll 80s linear infinite',
+                'spin-slow': 'spin 8s linear infinite',
+                'pulse-badge': 'pulse-badge 2s ease-in-out infinite',
+                'pulse-ring': 'pulse-ring 2s infinite',
+                'spin-3d': 'spin-3d 15s linear infinite',
+                'light-sweep': 'light-sweep 4s ease-in-out infinite',
+                'magnetic-ring-1': 'magnetic-ring-1 8s linear infinite',
+                'magnetic-ring-2': 'magnetic-ring-2 10s linear infinite reverse',
+            }
+          },
+        },
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script type="importmap">
+{
+  "imports": {
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.5",
+    "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-primary text-light font-sans dark">
+    <div id="root"></div>
+  </body>
+</html>
