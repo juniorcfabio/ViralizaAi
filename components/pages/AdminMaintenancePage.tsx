@@ -224,7 +224,11 @@ const AdminMaintenancePage: React.FC = () => {
                     {/* Console Output */}
                     <div className="bg-black/50 p-4 rounded-lg font-mono text-xs text-green-400 h-64 overflow-y-auto border border-gray-700">
                         <p className="mb-2 text-gray-500">// Console de Diagnóstico v2.1.0</p>
-                        {isScanning && <p className="animate-pulse">>> Inicializando protocolos de teste...</p>}
+                       {isScanning && (
+  <p className="animate-pulse">
+    &gt;&gt; Inicializando protocolos de teste...
+  </p>
+)}
                         {diagnosticSteps.map(step => {
                             if (step.status === 'success') return (
                                 <p key={step.id} className="mb-1">
@@ -234,13 +238,18 @@ const AdminMaintenancePage: React.FC = () => {
                             if (step.status === 'failure') return (
                                 <p key={step.id} className="mb-1 text-red-400">
                                     <span className="text-red-500">[{new Date().toLocaleTimeString()}]</span> [ERRO] {step.label}: {step.message}
-                                    <br/><span className="pl-4 text-yellow-300">>> Executando script de auto-correção...</span>
+                                  <br />
+<span className="pl-4 text-yellow-300">
+  &gt;&gt; Executando script de auto-correção...
+</span>  
                                 </p>
                             );
                             return null;
                         })}
                         {!isScanning && diagnosticSteps.some(s => s.status === 'success') && (
-                            <p className="mt-4 text-white font-bold">>> VARREDURA CONCLUÍDA. SISTEMA OTIMIZADO.</p>
+                           <p className="mt-4 text-white font-bold">
+  &gt;&gt; VARREDURA CONCLUÍDA. SISTEMA OTIMIZADO.
+</p>
                         )}
                     </div>
                 </div>
