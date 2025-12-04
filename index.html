@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -50,26 +49,26 @@
 
       @keyframes animate-fade-in-right {
         from {
-            opacity: 0;
-            transform: translateX(20px);
+          opacity: 0;
+          transform: translateX(20px);
         }
         to {
-            opacity: 1;
-            transform: translateX(0);
+          opacity: 1;
+          transform: translateX(0);
         }
       }
       .animate-fade-in-right {
-          animation: animate-fade-in-right 0.5s ease-out forwards;
+        animation: animate-fade-in-right 0.5s ease-out forwards;
       }
 
       @keyframes animate-fade-in-up {
         from {
-            opacity: 0;
-            transform: translateY(10px);
+          opacity: 0;
+          transform: translateY(10px);
         }
         to {
-            opacity: 1;
-            transform: translateY(0);
+          opacity: 1;
+          transform: translateY(0);
         }
       }
 
@@ -79,12 +78,8 @@
       }
 
       @keyframes pulse-badge {
-        0%, 100% {
-          transform: scale(1);
-        }
-        50% {
-          transform: scale(1.05);
-        }
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
       }
 
       @keyframes pulse-ring {
@@ -113,21 +108,17 @@
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
       }
-      
+
       @keyframes spin-3d {
-        from {
-          transform: rotateY(0deg);
-        }
-        to {
-          transform: rotateY(360deg);
-        }
+        from { transform: rotateY(0deg); }
+        to { transform: rotateY(360deg); }
       }
 
       @keyframes light-sweep {
-          0% { transform: translateX(-150%) skewX(-30deg); }
-          100% { transform: translateX(150%) skewX(-30deg); }
+        0% { transform: translateX(-150%) skewX(-30deg); }
+        100% { transform: translateX(150%) skewX(-30deg); }
       }
-      
+
       @keyframes magnetic-ring-1 {
         0% { transform: rotate3d(1, 1, 0, 0deg) scale(1.2); opacity: 0.4; }
         50% { transform: rotate3d(1, 1, 0, 180deg) scale(1.25); opacity: 1; }
@@ -158,18 +149,18 @@
               sans: ['Inter', 'sans-serif'],
             },
             animation: {
-                'fade-in-right': 'animate-fade-in-right 0.5s ease-out forwards',
-                'fade-in-up': 'animate-fade-in-up 0.6s ease-out forwards',
-                'blinking-cursor': 'blinking-cursor 1s step-end infinite',
-                'scroll': 'scroll 40s linear infinite',
-                'scroll-testimonials': 'scroll 80s linear infinite',
-                'spin-slow': 'spin 8s linear infinite',
-                'pulse-badge': 'pulse-badge 2s ease-in-out infinite',
-                'pulse-ring': 'pulse-ring 2s infinite',
-                'spin-3d': 'spin-3d 15s linear infinite',
-                'light-sweep': 'light-sweep 4s ease-in-out infinite',
-                'magnetic-ring-1': 'magnetic-ring-1 8s linear infinite',
-                'magnetic-ring-2': 'magnetic-ring-2 10s linear infinite reverse',
+              'fade-in-right': 'animate-fade-in-right 0.5s ease-out forwards',
+              'fade-in-up': 'animate-fade-in-up 0.6s ease-out forwards',
+              'blinking-cursor': 'blinking-cursor 1s step-end infinite',
+              'scroll': 'scroll 40s linear infinite',
+              'scroll-testimonials': 'scroll 80s linear infinite',
+              'spin-slow': 'spin 8s linear infinite',
+              'pulse-badge': 'pulse-badge 2s ease-in-out infinite',
+              'pulse-ring': 'pulse-ring 2s infinite',
+              'spin-3d': 'spin-3d 15s linear infinite',
+              'light-sweep': 'light-sweep 4s ease-in-out infinite',
+              'magnetic-ring-1': 'magnetic-ring-1 8s linear infinite',
+              'magnetic-ring-2': 'magnetic-ring-2 10s linear infinite reverse',
             }
           },
         },
@@ -178,19 +169,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script type="importmap">
-{
-  "imports": {
-    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.5",
-    "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0"
-  }
-}
-</script>
-</head>
+
+
+    <!-- IMPORTANTE: carregar o app React/Vite -->
+    <script type="importmap">
+    {
+      "imports": {
+        "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.5",
+        "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
+        "react/": "https://aistudiocdn.com/react@^19.2.0/",
+        "react": "https://aistudiocdn.com/react@^19.2.0",
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+        "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0"
+      }
+    }
+    </script>
+    <script type="module" crossorigin src="/ViralizaAi/assets/index-BxeAul34.js"></script>
+  </head>
   <body class="bg-primary text-light font-sans dark">
     <div id="root"></div>
   </body>
