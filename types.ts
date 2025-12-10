@@ -1,4 +1,3 @@
-
 import type { ElementType } from 'react';
 
 export interface Plan {
@@ -78,17 +77,17 @@ export interface User {
 }
 
 // Updated feature keys to include the new niche dominance tools and viral prediction
-export type FeatureKey = 
-  | 'analytics' 
-  | 'affiliate' 
-  | 'autopilot' 
-  | 'advancedGrowth' 
-  | 'conversionRadar' 
-  | 'audioDetector' 
-  | 'competitorSpy' 
+export type FeatureKey =
+  | 'analytics'
+  | 'affiliate'
+  | 'autopilot'
+  | 'advancedGrowth'
+  | 'conversionRadar'
+  | 'audioDetector'
+  | 'competitorSpy'
   | 'trendPredictor'
-  | 'viralPrediction'; // New Feature
-
+  | 'viralPrediction'
+  | 'growthEngine'; // Novo add-on: Motor de Crescimento
 
 export interface StatCardData {
   title: string;
@@ -102,7 +101,6 @@ export interface Comment {
   id: number;
   author: string;
   avatar: string;
-
   text: string;
 }
 
@@ -121,35 +119,34 @@ export interface PostIdea {
 }
 
 export interface GrowthCampaign {
-    targetPersona: string;
-    strategy: string;
-    posts: PostIdea[];
+  targetPersona: string;
+  strategy: string;
+  posts: PostIdea[];
 }
 
 export interface EbookChapter {
-    title: string;
-    content: string;
-    image?: string; // Optional image for each chapter
+  title: string;
+  content: string;
+  image?: string; // Optional image for each chapter
 }
 
 export interface SalesFunnel {
-    leadMagnet: {
-        title: string;
-        description: string;
-        coverImage?: string; // URL for the generated cover
-        chapters?: EbookChapter[]; // Full content
-    };
-    landingPageCopy: {
-        headline: string;
-        body: string;
-        cta: string;
-    };
-    emailSequence: {
-        subject: string;
-        body: string;
-    }[];
+  leadMagnet: {
+    title: string;
+    description: string;
+    coverImage?: string; // URL for the generated cover
+    chapters?: EbookChapter[]; // Full content
+  };
+  landingPageCopy: {
+    headline: string;
+    body: string;
+    cta: string;
+  };
+  emailSequence: {
+    subject: string;
+    body: string;
+  }[];
 }
-
 
 export interface ViralityAnalysis {
   score: number;
@@ -172,35 +169,35 @@ export interface ChatMessage {
 
 export type CampaignStatus = 'Ativa' | 'Concluída' | 'Pausada' | 'Planejada';
 export interface Campaign {
-    id: string;
-    name: string;
-    status: CampaignStatus;
-    budget: number;
-    clicks: number;
-    conversions: number;
-    startDate?: string;
-    endDate?: string;
+  id: string;
+  name: string;
+  status: CampaignStatus;
+  budget: number;
+  clicks: number;
+  conversions: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 export type CouponStatus = 'Ativo' | 'Expirado' | 'Agendado';
 export interface Coupon {
-    id: string;
-    code: string;
-    discount: string;
-    status: CouponStatus;
-    uses: number;
-    startDate?: string;
-    endDate?: string;
+  id: string;
+  code: string;
+  discount: string;
+  status: CouponStatus;
+  uses: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 export type PostStatus = 'Agendado' | 'Publicado' | 'Falha';
 export interface ScheduledPost {
-    id: string;
-    title: string;
-    content: string;
-    platform: string;
-    scheduledAt: string;
-    status: PostStatus;
+  id: string;
+  title: string;
+  content: string;
+  platform: string;
+  scheduledAt: string;
+  status: PostStatus;
 }
 
 export type TransactionStatus = 'Pago' | 'Falhou' | 'Reembolsado' | 'Pendente';
@@ -218,152 +215,154 @@ export interface Transaction {
 export type BusinessReach = 'Local' | 'National' | 'Global';
 
 export interface LocationConfig {
-    reach: BusinessReach;
-    city?: string;
-    neighborhood?: string;
+  reach: BusinessReach;
+  city?: string;
+  neighborhood?: string;
 }
 
 export interface AdminPayoutConfig {
-    bankName: string;
-    accountType: 'Corrente' | 'Poupança';
-    agency: string;
-    accountNumber: string;
-    pixKey: string;
-    holderName: string;
-    document: string; // CPF or CNPJ
+  bankName: string;
+  accountType: 'Corrente' | 'Poupança';
+  agency: string;
+  accountNumber: string;
+  pixKey: string;
+  holderName: string;
+  document: string; // CPF or CNPJ
 }
 
 export interface ViralTrend {
-    title: string;
-    description: string;
-    type: 'Áudio' | 'Hashtag' | 'Desafio';
+  title: string;
+  description: string;
+  type: 'Áudio' | 'Hashtag' | 'Desafio';
 }
 
 export interface HashtagSuggestion {
-    local: string[];
-    national: string[];
-    global: string[];
+  local: string[];
+  national: string[];
+  global: string[];
 }
 
 export interface SystemIssue {
-    id: string;
-    description: string;
-    status: 'Detectado' | 'Corrigido';
-    severity: 'Baixa' | 'Média' | 'Alta';
-    solution: string | null;
-    isFixing: boolean;
+  id: string;
+  description: string;
+  status: 'Detectado' | 'Corrigido';
+  severity: 'Baixa' | 'Média' | 'Alta';
+  solution: string | null;
+  isFixing: boolean;
 }
 
 export interface InnovationIdea {
-    id: string;
-    title: string;
-    description: string;
-    category: 'Admin Tool' | 'User Feature' | 'Platform Upgrade';
-    impactScore: number;
+  id: string;
+  title: string;
+  description: string;
+  category: 'Admin Tool' | 'User Feature' | 'Platform Upgrade';
+  impactScore: number;
 }
 
 export interface QuantumLead {
-    id: string;
-    name: string;
-    profileUrl: string;
-    reason: string;
-    affinityScore: number;
+  id: string;
+  name: string;
+  profileUrl: string;
+  reason: string;
+  affinityScore: number;
 }
 
 export interface EngagementOpportunity {
-    id: string;
-    platform: string;
-    community: string; // e.g., #hashtag, group name, subreddit
-    topic: string;
-    suggestedAction: string; // e.g., 'Comment', 'Post'
-    contentSuggestion: string;
+  id: string;
+  platform: string;
+  community: string; // e.g., #hashtag, group name, subreddit
+  topic: string;
+  suggestedAction: string; // e.g., 'Comment', 'Post'
+  contentSuggestion: string;
 }
 
 export interface AutopilotActionLog {
-    id: string;
-    timestamp: string;
-    platform: string;
-    action: string;
-    content: string;
-    status: 'Executado' | 'Falhou';
-    link?: string;
+  id: string;
+  timestamp: string;
+  platform: string;
+  action: string;
+  content: string;
+  status: 'Executado' | 'Falhou';
+  link?: string;
 }
 
 export interface AdPartner {
-    id: string;
-    companyName: string;
-    role?: string; // Added: Job title or Slogan
-    logo: string; // Base64 or URL
-    websiteUrl: string;
-    phone?: string;
-    instagram?: string;
-    status: 'Active' | 'Inactive';
-    planType: '1_week' | '15_days' | '30_days' | 'Monthly'; // Duration plan
-    planStartDate?: string;
-    planEndDate?: string;
-    paymentMethod?: string;
-    paymentStatus?: 'Paid' | 'Pending';
-    joinedDate: string;
-    isMock?: boolean; // To differentiate real paid ads from simulation
-    userId?: string; // To link with the user who created it
+  id: string;
+  companyName: string;
+  role?: string; // Added: Job title or Slogan
+  logo: string; // Base64 or URL
+  websiteUrl: string;
+  phone?: string;
+  instagram?: string;
+  status: 'Active' | 'Inactive';
+  planType: '1_week' | '15_days' | '30_days' | 'Monthly'; // Duration plan
+  planStartDate?: string;
+  planEndDate?: string;
+  paymentMethod?: string;
+  paymentStatus?: 'Paid' | 'Pending';
+  joinedDate: string;
+  isMock?: boolean; // To differentiate real paid ads from simulation
+  userId?: string; // To link with the user who created it
 }
 
 export interface AdPricingConfig {
-    oneWeek: number;
-    fifteenDays: number;
-    thirtyDays: number;
+  oneWeek: number;
+  fifteenDays: number;
+  thirtyDays: number;
 }
 
 export interface SystemVersion {
-    version: string;
-    description: string;
-    releaseDate: string;
-    isMandatory: boolean;
+  version: string;
+  description: string;
+  releaseDate: string;
+  isMandatory: boolean;
 }
 
 // Theme Interfaces
 export interface ThemeColors {
-    primary: string;
-    secondary: string;
-    light: string;
-    grayDark: string;
-    accent: string;
+  primary: string;
+  secondary: string;
+  light: string;
+  grayDark: string;
+  accent: string;
 }
 
 export interface AppTheme {
-    id: string;
-    name: string;
-    colors: ThemeColors;
+  id: string;
+  name: string;
+  colors: ThemeColors;
 }
 
 export interface BioOptimization {
-    headline: string;
-    body: string;
-    cta: string;
-    linkText: string;
+  headline: string;
+  body: string;
+  cta: string;
+  linkText: string;
 }
 
 export interface EditorialDay {
-    day: string;
-    theme: string;
-    postIdea: string;
-    format: string;
+  day: string;
+  theme: string;
+  postIdea: string;
+  format: string;
 }
 
 export interface TrustedCompany {
-    id: string;
-    name: string;
-    url: string;
-    status: 'Active' | 'Inactive';
+  id: string;
+  name: string;
+  url: string;
+  status: 'Active' | 'Inactive';
 }
 
 export interface ViralPredictionResult {
-    score: number;
-    viralProbability: 'Baixa' | 'Média' | 'Alta' | 'Muito Alta';
-    analysis: {
-        copy: string;
-        visuals: string;
-        cta: string;
-    };
-    suggestions: string[];
+  score: number;
+  viralProbability: 'Baixa' | 'Média' | 'Alta' | 'Muito Alta';
+  analysis: {
+    copy: string;
+    visuals: string;
+    cta: string;
+  };
+  suggestions: string[];
+  // Versão reescrita ideal (10/10) da ideia/rascunho
+  idealContent: string;
 }

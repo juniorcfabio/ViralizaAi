@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import ApiConfigCard from '../ui/ApiConfigCard';
 
@@ -8,17 +7,35 @@ const PixIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...pro
 const PayPalIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16.5 7.5a1.5 1.5 0 0 1-1-2.6 3 3 0 0 0-4-3.3 2 2 0 0 0-2.3 1.2A2.5 2.5 0 0 0 5 6.5a1 1 0 0 0 0 2h14a1 1 0 0 0 0-2z"/><path d="m3.5 11.5 3 8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l3-8a1 1 0 0 0-1-1h-14a1 1 0 0 0-1 1z"/></svg>;
 const BitcoinIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11.7679 19.2321C14.2835 21.7477 18.2819 21.7477 20.7975 19.2321C23.3131 16.7165 23.3131 12.7181 20.7975 10.2025L13.7975 3.2025C11.2819 0.686906 7.28347 0.686906 4.76787 3.2025C2.25228 5.7181 2.25228 9.71653 4.76787 12.2321L11.7679 19.2321Z"/><path d="M15 5H9"/><path d="M12 2v20"/></svg>;
 
-const STORAGE_KEY = 'viraliza_payment_configs';
+// Base da API do backend NestJS
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 const AdminPaymentsPage: React.FC = () => {
-    const [configs, setConfigs] = useState<Record<string, any>>({});
+    const [configs, setConfigs] = useState<Record<string, any>>({
+        stripe: null,
+        paypal: null,
+        pix: null,
+        crypto: null
+    });
     const [notification, setNotification] = useState('');
 
     useEffect(() => {
-        const storedConfigs = localStorage.getItem(STORAGE_KEY);
-        if (storedConfigs) {
-            setConfigs(JSON.parse(storedConfigs));
-        }
+        const loadConfigs = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/admin/payment-configs`);
+                if (!res.ok) {
+                    throw new Error(`Erro ao carregar configs: ${res.status}`);
+                }
+                const data = await res.json();
+                setConfigs(data || {});
+            } catch (error) {
+                console.error('Erro ao carregar configs de pagamento:', error);
+                setNotification('Não foi possível carregar as configurações de pagamento do servidor.');
+                setTimeout(() => setNotification(''), 3000);
+            }
+        };
+
+        loadConfigs();
     }, []);
 
     const showNotification = (message: string) => {
@@ -26,11 +43,33 @@ const AdminPaymentsPage: React.FC = () => {
         setTimeout(() => setNotification(''), 3000);
     };
 
-    const handleSaveConfig = (key: string, data: any) => {
-        const newConfigs = { ...configs, [key]: data };
-        setConfigs(newConfigs);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newConfigs));
-        showNotification(`Configurações da ${key} salvas com sucesso!`);
+    const handleSaveConfig = async (key: string, data: any) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/payment-configs/${key}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    isActive: data.isActive ?? false,
+                    config: data
+                })
+            });
+
+            if (!res.ok) {
+                throw new Error(`Erro ao salvar config da ${key}: ${res.status}`);
+            }
+
+            const saved = await res.json();
+
+            const newConfigs = { ...configs, [key]: saved };
+            setConfigs(newConfigs);
+
+            showNotification(`Configurações da ${key} salvas com sucesso!`);
+        } catch (error) {
+            console.error(error);
+            showNotification(`Não foi possível salvar as configurações da ${key}.`);
+        }
     };
 
     return (

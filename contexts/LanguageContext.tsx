@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 
 type Language = 'pt' | 'en' | 'es';
@@ -12,7 +11,8 @@ interface LanguageContextType {
 const translations = {
     pt: {
         'hero.title': 'Transforme sua Presença Digital com Inteligência Artificial',
-        'hero.subtitle': 'Crescimento orgânico, marketing automatizado e vendas exponenciais. Deixe nossa IA trabalhar 24h por dia para viralizar sua marca.',
+        'hero.subtitle':
+            'Crescimento orgânico, marketing automatizado e vendas exponenciais. Deixe nossa IA trabalhar 24h por dia para viralizar sua marca.',
         'hero.cta': 'Começar Teste Grátis (24h)',
         'hero.generating': 'Gerando apresentação personalizada...',
         'nav.features': 'Funcionalidades',
@@ -29,7 +29,7 @@ const translations = {
         'plan.period.quarter': '/trimestre',
         'plan.period.semester': '/semestre',
         'plan.period.year': '/ano',
-        'plan.buy': 'Assinar Agora',
+        'plan.buy': 'Assine Agora',
         'plan.feature.conversion_tags': 'Radar de Hashtags de Conversão',
         'plan.feature.retention_audio': 'Detector de Áudios de Alta Retenção',
         'plan.feature.competitor_spy': 'Espião Tático de Concorrência',
@@ -42,7 +42,7 @@ const translations = {
         'ads.subtitle': 'Empresas que confiam e crescem com o Viraliza.ai',
         'ads.visit': 'Visitar Site',
         'ads.contact': 'Contato',
-        
+
         // Sidebar Client
         'sidebar.dashboard': 'Dashboard',
         'sidebar.social': 'Perfis de Marca',
@@ -54,6 +54,7 @@ const translations = {
         'sidebar.logout': 'Sair',
         'sidebar.change_photo': 'Trocar',
         'sidebar.advertise': 'Anuncie Aqui',
+        'sidebar.growthEngine': 'Motor de Crescimento',
 
         // Sidebar Admin
         'sidebar.admin_users': 'Usuários',
@@ -62,11 +63,12 @@ const translations = {
         'sidebar.admin_marketing': 'Marketing',
         'sidebar.admin_maintenance': 'Engenheiro de IA',
         'sidebar.admin_autopilot': 'Autopromoção IA',
-        'sidebar.admin_ads': 'Publicidade',
+        'sidebar.admin_ads': 'Publicidade'
     },
     en: {
         'hero.title': 'Transform Your Digital Presence with Artificial Intelligence',
-        'hero.subtitle': 'Organic growth, automated marketing, and exponential sales. Let our AI work 24/7 to make your brand go viral.',
+        'hero.subtitle':
+            'Organic growth, automated marketing, and exponential sales. Let our AI work 24/7 to make your brand go viral.',
         'hero.cta': 'Start Free Trial (24h)',
         'hero.generating': 'Generating personalized presentation...',
         'nav.features': 'Features',
@@ -108,6 +110,7 @@ const translations = {
         'sidebar.logout': 'Logout',
         'sidebar.change_photo': 'Change',
         'sidebar.advertise': 'Advertise Here',
+        'sidebar.growthEngine': 'Growth Engine',
 
         // Sidebar Admin
         'sidebar.admin_users': 'Users',
@@ -116,11 +119,12 @@ const translations = {
         'sidebar.admin_marketing': 'Marketing',
         'sidebar.admin_maintenance': 'AI Engineer',
         'sidebar.admin_autopilot': 'AI Autopilot',
-        'sidebar.admin_ads': 'Advertising',
+        'sidebar.admin_ads': 'Advertising'
     },
     es: {
         'hero.title': 'Transforma tu Presencia Digital con Inteligencia Artificial',
-        'hero.subtitle': 'Crecimiento orgánico, marketing automatizado y ventas exponenciales. Deja que nuestra IA trabaje 24/7 para viralizar tu marca.',
+        'hero.subtitle':
+            'Crecimiento orgánico, marketing automatizado y ventas exponenciales. Deja que nuestra IA trabaje 24/7 para viralizar tu marca.',
         'hero.cta': 'Comenzar Prueba Gratis (24h)',
         'hero.generating': 'Generando presentación personalizada...',
         'nav.features': 'Funcionalidades',
@@ -143,7 +147,7 @@ const translations = {
         'plan.feature.competitor_spy': 'Espía Táctico de Competencia',
         'plan.feature.future_trends': 'IA Predictiva de Tendencias (Futuro)',
         'feature.growth': 'Crecimiento Acelerado con IA',
-        'feature.content': 'Creación de Contenido Inteligente',
+        'feature.content': 'Creación de Conteúdo Inteligente',
         'feature.sales': 'Impulso de Ventas Directo',
         'footer.rights': 'Todos los derechos reservados.',
         'ads.title': 'Nuestros Socios Premium',
@@ -162,6 +166,7 @@ const translations = {
         'sidebar.logout': 'Salir',
         'sidebar.change_photo': 'Cambiar',
         'sidebar.advertise': 'Anunciar Aquí',
+        'sidebar.growthEngine': 'Motor de Crecimiento',
 
         // Sidebar Admin
         'sidebar.admin_users': 'Usuarios',
@@ -170,7 +175,7 @@ const translations = {
         'sidebar.admin_marketing': 'Marketing',
         'sidebar.admin_maintenance': 'Ingeniero IA',
         'sidebar.admin_autopilot': 'Autopiloto IA',
-        'sidebar.admin_ads': 'Publicidad',
+        'sidebar.admin_ads': 'Publicidad'
     }
 };
 

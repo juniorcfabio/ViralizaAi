@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,129 +5,280 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import Logo from './Logo';
 
 // Icons for navigation
-const LayoutGridIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>;
-const UsersIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-const BarChart3Icon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>;
-const CreditCardIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>;
-const SettingsIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"></circle></svg>;
-const LogOutIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
-const GiftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>;
-const RocketIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.3.09-3.1a2.47 2.47 0 0 0-3.46-.22c-.44.22-.66.66-.77 1.12z"/><path d="m12 15-3-3a2.47 2.47 0 0 0-3.5 0c-.44.44-.66 1.03-.77 1.57"/><path d="m9 12 3 3"/><path d="M11.6 7.8c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.3.09-3.1a2.47 2.47 0 0 0-3.46-.22c-.44.22-.66.66-.77 1.12z"/><path d="m19.5 4.5-3-3a2.47 2.47 0 0 0-3.5 0c-.44.44-.66 1.03-.77 1.57"/><path d="m16.5 7.5 3 3"/></svg>;
-const MegaphoneIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>;
+const LayoutGridIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="14" y="14" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+  </svg>
+);
 
+const UsersIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+
+const BarChart3Icon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M3 3v18h18" />
+    <path d="M18 17V9" />
+    <path d="M13 17V5" />
+    <path d="M8 17v-3" />
+  </svg>
+);
+
+const CreditCardIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+    <line x1="1" y1="10" x2="23" y2="10" />
+  </svg>
+);
+
+const SettingsIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const GiftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="20 12 20 22 4 22 4 12" />
+    <rect x="2" y="7" width="20" height="5" />
+    <line x1="12" y1="22" x2="12" y2="7" />
+    <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+    <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+  </svg>
+);
+
+const RocketIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.3.09-3.1a2.47 2.47 0 0 0-3.46-.22c-.44.22-.66.66-.77 1.12z" />
+    <path d="m12 15-3-3a2.47 2.47 0 0 0-3.5 0c-.44.44-.66 1.03-.77 1.57" />
+    <path d="m9 12 3 3" />
+    <path d="M11.6 7.8c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.3.09-3.1a2.47 2.47 0 0 0-3.46-.22c-.44.22-.66.66-.77 1.12z" />
+    <path d="m19.5 4.5-3-3a2.47 2.47 0 0 0-3.5 0c-.44.44-.66 1.03-.77 1.57" />
+    <path d="m16.5 7.5 3 3" />
+  </svg>
+);
+
+const MegaphoneIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="m3 11 18-5v12L3 14v-3z" />
+    <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+  </svg>
+);
 
 interface NavItem {
-    path: string;
-    labelKey: string;
-    icon: React.FC<React.SVGProps<SVGSVGElement>>;
-    end?: boolean;
+  path: string;
+  labelKey: string;
+  icon: React.FC<React.SVGProps<SVGSVGElement>>;
+  end?: boolean;
 }
 
 const navItems: NavItem[] = [
-    { path: '/dashboard', labelKey: 'sidebar.dashboard', icon: LayoutGridIcon, end: true },
-    { path: '/dashboard/social', labelKey: 'sidebar.social', icon: UsersIcon },
-    { path: '/dashboard/analytics', labelKey: 'sidebar.analytics', icon: BarChart3Icon },
-    { path: '/dashboard/advertise', labelKey: 'sidebar.advertise', icon: MegaphoneIcon },
-    { path: '/dashboard/billing', labelKey: 'sidebar.billing', icon: CreditCardIcon },
-    { path: '/dashboard/affiliate', labelKey: 'sidebar.affiliate', icon: GiftIcon },
-    { path: '/dashboard/autopilot', labelKey: 'sidebar.autopilot', icon: RocketIcon },
-    { path: '/dashboard/settings', labelKey: 'sidebar.settings', icon: SettingsIcon },
+  { path: '/dashboard', labelKey: 'sidebar.dashboard', icon: LayoutGridIcon, end: true },
+  { path: '/dashboard/social', labelKey: 'sidebar.social', icon: UsersIcon },
+  { path: '/dashboard/analytics', labelKey: 'sidebar.analytics', icon: BarChart3Icon },
+  { path: '/dashboard/growth-engine', labelKey: 'sidebar.growthEngine', icon: RocketIcon },
+  { path: '/dashboard/advertise', labelKey: 'sidebar.advertise', icon: MegaphoneIcon },
+  { path: '/dashboard/billing', labelKey: 'sidebar.billing', icon: CreditCardIcon },
+  { path: '/dashboard/affiliate', labelKey: 'sidebar.affiliate', icon: GiftIcon },
+  { path: '/dashboard/autopilot', labelKey: 'sidebar.autopilot', icon: RocketIcon },
+  { path: '/dashboard/settings', labelKey: 'sidebar.settings', icon: SettingsIcon }
 ];
 
 const ClientSidebar: React.FC = () => {
-    const { user, logout, updateUser } = useAuth();
-    const { t } = useLanguage();
-    const navigate = useNavigate();
-    const avatarInputRef = useRef<HTMLInputElement>(null);
-    const [notification, setNotification] = useState('');
+  const { user, logout, updateUser } = useAuth();
+  const { t } = useLanguage();
+  const navigate = useNavigate();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [notification, setNotification] = useState('');
 
-    const showNotification = (message: string) => {
-        setNotification(message);
-        setTimeout(() => setNotification(''), 2000);
-    };
+  const showNotification = (message: string) => {
+    setNotification(message);
+    setTimeout(() => setNotification(''), 2000);
+  };
 
-    const handleLogout = () => {
-        logout();
-        navigate('/');
-    };
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
-    const handleAvatarClick = () => {
-        avatarInputRef.current?.click();
-    };
+  const handleAvatarClick = () => {
+    avatarInputRef.current?.click();
+  };
 
-    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0] && user) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                updateUser(user.id, { avatar: reader.result as string });
-                showNotification('Foto atualizada!');
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-    
-    const navLinkClasses = ({ isActive }: { isActive: boolean }) =>
-        `flex items-center p-3 rounded-lg transition-colors space-x-3 ${
-            isActive 
-                ? 'bg-accent text-light shadow-lg shadow-accent/30' 
-                : 'hover:bg-primary text-gray-dark hover:text-light'
-        }`;
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && user) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateUser(user.id, { avatar: reader.result as string });
+        showNotification('Foto atualizada!');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-    return (
-        <aside className="w-64 bg-secondary p-6 hidden md:flex flex-col justify-between border-r border-primary">
-            <div>
-                <div className="mb-10">
-                    <Logo />
-                </div>
-                <nav className="space-y-2">
-                    {navItems.map(({ path, labelKey, icon: Icon, end }) => (
-                        <NavLink key={path} to={path} end={end} className={navLinkClasses}>
-                            <Icon className="w-5 h-5" />
-                            <span className="font-semibold">{t(labelKey)}</span>
-                        </NavLink>
-                    ))}
-                </nav>
+  const navLinkClasses = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center p-3 rounded-lg transition-colors space-x-3 ${
+      isActive
+        ? 'bg-accent text-light shadow-lg shadow-accent/30'
+        : 'hover:bg-primary text-gray-dark hover:text-light'
+    }`;
+
+  return (
+    <aside className="w-64 bg-secondary p-6 hidden md:flex flex-col justify-between border-r border-primary">
+      <div>
+        <div className="mb-10">
+          <Logo />
+        </div>
+        <nav className="space-y-2">
+          {navItems.map(({ path, labelKey, icon: Icon, end }) => (
+            <NavLink key={path} to={path} end={end} className={navLinkClasses}>
+              <Icon className="w-5 h-5" />
+              <span className="font-semibold">{t(labelKey)}</span>
+            </NavLink>
+          ))}
+        </nav>
+      </div>
+      <div className="border-t border-primary pt-4">
+        <div className="flex items-center gap-3 mb-4 relative">
+          <input
+            type="file"
+            ref={avatarInputRef}
+            onChange={handleAvatarChange}
+            className="hidden"
+            accept="image/*"
+          />
+          <button
+            onClick={handleAvatarClick}
+            className="w-10 h-10 rounded-full bg-accent flex items-center justify-center font-bold text-light ring-2 ring-primary overflow-hidden relative group cursor-pointer animate-pulse-ring"
+          >
+            {user?.avatar ? (
+              <img src={user.avatar} alt="User Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <span>{user?.name.charAt(0).toUpperCase()}</span>
+            )}
+            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center transition-all">
+              <span className="text-white text-xs opacity-0 group-hover:opacity-100">
+                {t('sidebar.change_photo')}
+              </span>
             </div>
-            <div className="border-t border-primary pt-4">
-                 <div className="flex items-center gap-3 mb-4 relative">
-                    <input
-                        type="file"
-                        ref={avatarInputRef}
-                        onChange={handleAvatarChange}
-                        className="hidden"
-                        accept="image/*"
-                    />
-                    <button onClick={handleAvatarClick} className="w-10 h-10 rounded-full bg-accent flex items-center justify-center font-bold text-light ring-2 ring-primary overflow-hidden relative group cursor-pointer animate-pulse-ring">
-                        {user?.avatar ? (
-                            <img src={user.avatar} alt="User Avatar" className="w-full h-full object-cover"/>
-                        ) : (
-                            <span>{user?.name.charAt(0).toUpperCase()}</span>
-                        )}
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center transition-all">
-                           <span className="text-white text-xs opacity-0 group-hover:opacity-100">{t('sidebar.change_photo')}</span>
-                        </div>
-                    </button>
-                    <div className="overflow-hidden">
-                        <p className="font-semibold text-sm truncate">{user?.name}</p>
-                        <p className="text-xs text-gray-dark truncate">{user?.email}</p>
-                    </div>
-                     {notification && (
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-green-500/20 text-green-300 text-xs px-2 py-1 rounded-full animate-fade-in-right whitespace-nowrap">
-                            {notification}
-                        </div>
-                    )}
-                </div>
-                <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 bg-primary text-gray-dark font-semibold py-2 px-4 rounded-full hover:bg-red-600/20 hover:text-red-400 transition-colors"
-                >
-                    <LogOutIcon className="w-4 h-4" />
-                    <span>{t('sidebar.logout')}</span>
-                </button>
+          </button>
+          <div className="overflow-hidden">
+            <p className="font-semibold text-sm truncate">{user?.name}</p>
+            <p className="text-xs text-gray-dark truncate">{user?.email}</p>
+          </div>
+          {notification && (
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-green-500/20 text-green-300 text-xs px-2 py-1 rounded-full animate-fade-in-right whitespace-nowrap">
+              {notification}
             </div>
-        </aside>
-    );
+          )}
+        </div>
+        <button
+          onClick={handleLogout}
+          className="w-full bg-red-600 text-light font-semibold py-2 px-4 rounded-full hover:bg-red-500 transition-colors"
+        >
+          {t('sidebar.logout')}
+        </button>
+      </div>
+    </aside>
+  );
 };
 
 export default ClientSidebar;
