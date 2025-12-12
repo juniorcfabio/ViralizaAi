@@ -356,10 +356,14 @@ const BillingPage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [notification, setNotification] = useState('');
     const [subscribingPlan, setSubscribingPlan] = useState<string | null>(null);
-    const [buyingGrowthEngine, setBuyingGrowthEngine] = useState<string | null>(null);
+    const [buyingGrowthEngine, setBuyingGrowthEngine] = useState<string | null>(
+        null
+    );
 
-    const availablePlans: Plan[] = [
+    // Planos padrão (usados se não houver nada salvo pelo admin)
+    const defaultPlans: Plan[] = [
         {
+            id: 'p1',
             name: t('plan.mensal'),
             price: '59.90',
             period: t('plan.period.month'),
@@ -371,6 +375,7 @@ const BillingPage: React.FC = () => {
             ]
         },
         {
+            id: 'p2',
             name: t('plan.trimestral'),
             price: '159.90',
             period: t('plan.period.quarter'),
@@ -382,6 +387,7 @@ const BillingPage: React.FC = () => {
             ]
         },
         {
+            id: 'p3',
             name: t('plan.semestral'),
             price: '259.90',
             period: t('plan.period.semester'),
@@ -394,6 +400,7 @@ const BillingPage: React.FC = () => {
             highlight: true
         },
         {
+            id: 'p4',
             name: t('plan.anual'),
             price: '399.90',
             period: t('plan.period.year'),
@@ -407,10 +414,76 @@ const BillingPage: React.FC = () => {
         }
     ];
 
+    const [availablePlans, setAvailablePlans] = useState<Plan[]>(defaultPlans);
+
+    // Carrega planos salvos no AdminSettings (localStorage: 'viraliza_plans')
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('viraliza_plans');
+            if (!raw) return;
+
+            const stored: Plan[] = JSON.parse(raw);
+
+            // mapa de metadados padrão por id (period, highlight)
+            const metaById: Record<
+                string,
+                { period?: string; highlight?: boolean }
+            > = {};
+            defaultPlans.forEach((p) => {
+                if (p.id) {
+                    metaById[p.id] = {
+                        period: p.period,
+                        highlight: p.highlight
+                    };
+                }
+            });
+
+            const mapped: Plan[] = stored.map((p, index) => {
+                const meta =
+                    (p.id && metaById[p.id]) || metaById[`p${index + 1}`] || {};
+                const period = meta.period || defaultPlans[index]?.period || '';
+                const highlight =
+                    typeof p.highlight === 'boolean'
+                        ? p.highlight
+                        : meta.highlight;
+
+                return {
+                    ...p,
+                    price:
+                        typeof p.price === 'number'
+                            ? p.price.toFixed(2)
+                            : p.price,
+                    period,
+                    features: Array.isArray(p.features)
+                        ? p.features
+                        : String(p.features || '')
+                              .split(',')
+                              .map((f) => f.trim())
+                              .filter(Boolean),
+                    highlight
+                };
+            });
+
+            if (mapped.length > 0) {
+                setAvailablePlans(mapped);
+            }
+        } catch (err) {
+            console.error('Erro ao carregar planos do admin:', err);
+            setAvailablePlans(defaultPlans);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [t]);
+
     const currentPlan = availablePlans.find((p) => p.name === user.plan);
     const paymentMethods = user.paymentMethods || [];
     const [billingHistory, setBillingHistory] = useState<
-        { id: string; date: string; description: string; amount: string; status: 'Pago' | 'Pendente' }[]
+        {
+            id: string;
+            date: string;
+            description: string;
+            amount: string;
+            status: 'Pago' | 'Pendente';
+        }[]
     >(user.billingHistory || []);
     const hasGrowthEngine = (user.addOns || []).includes('growthEngine');
 
@@ -475,14 +548,11 @@ const BillingPage: React.FC = () => {
 
     // Confirma pagamento quando volta do checkout com ?txId=... (em HashRouter)
     useEffect(() => {
-        // Exemplo de URL:
-        // http://localhost:5174/ViralizaAi/#/dashboard/billing?txId=123
-        // Aqui o ?txId está dentro do hash.
         const { hash } = window.location;
         const queryIndex = hash.indexOf('?');
         if (queryIndex === -1) return;
 
-        const queryString = hash.substring(queryIndex + 1); // "txId=..."
+        const queryString = hash.substring(queryIndex + 1);
         const params = new URLSearchParams(queryString);
         const txId = params.get('txId');
 
@@ -550,8 +620,7 @@ const BillingPage: React.FC = () => {
                     'Ocorreu um erro ao confirmar o pagamento. Se o problema persistir, contate o suporte.'
                 );
             } finally {
-                // Remove ?txId do hash para não repetir confirmação
-                const baseHash = hash.substring(0, queryIndex); // "#/dashboard/billing"
+                const baseHash = hash.substring(0, queryIndex);
                 window.location.hash = baseHash;
             }
         };
@@ -594,7 +663,11 @@ const BillingPage: React.FC = () => {
         setSubscribingPlan(plan.name);
 
         try {
-            const amount = parseFloat(plan.price.replace(',', '.'));
+            const normalizedPrice =
+                typeof plan.price === 'number'
+                    ? plan.price.toFixed(2)
+                    : String(plan.price);
+            const amount = parseFloat(normalizedPrice.replace(',', '.'));
             const appBaseUrl = buildAppBaseUrl();
 
             const response = await fetch(`${API_BASE_URL}/payments/checkout`, {
@@ -943,86 +1016,94 @@ const BillingPage: React.FC = () => {
             </div>
 
             <div id="plans-section" className="mt-12">
-    <h2 className="text-2xl font-bold text-center mb-8">
-        Nossos Planos
-    </h2>
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {availablePlans.map((plan) => (
-            <div
-                key={plan.name}
-                className={`bg-secondary p-6 rounded-lg border flex flex-col transition-transform hover:-translate-y-2 ${
-                    plan.highlight
-                        ? 'border-accent shadow-lg shadow-accent/20'
-                        : 'border-gray-700'
-                }`}
-            >
-                {plan.highlight && (
-                    <div className="bg-accent text-xs text-white px-2 py-1 rounded-full self-start mb-2 font-bold animate-pulse-badge">
-                        Recomendado
-                    </div>
-                )}
-                <h3 className="text-xl font-bold">{plan.name}</h3>
-                <p className="text-3xl font-bold mt-2">
-                    R$ {plan.price}
-                    <span className="text-base font-normal text-gray-dark">
-                        {plan.period}
-                    </span>
-                </p>
-                <ul className="mt-4 mb-6 space-y-2 text-sm text-gray-dark flex-grow">
-                    {(Array.isArray(plan.features)
-                        ? plan.features
-                        : (plan.features as any).split(',')).map(
-                        (feat: string, i: number) => (
-                            <li key={i} className="flex items-start">
-                                {[
-                                    t('plan.feature.conversion_tags'),
-                                    t('plan.feature.retention_audio'),
-                                    t('plan.feature.competitor_spy'),
-                                    t('plan.feature.future_trends')
-                                ].includes(feat) ? (
-                                    <span className="text-yellow-400 mr-2 mt-1">
-                                        ★
-                                    </span>
-                                ) : (
-                                    <span className="text-accent mr-2 mt-1">
-                                        ✓
-                                    </span>
-                                )}
-                                <span
-                                    className={
-                                        [
+                <h2 className="text-2xl font-bold text-center mb-8">
+                    Nossos Planos
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {availablePlans.map((plan) => (
+                        <div
+                            key={plan.name}
+                            className={`bg-secondary p-6 rounded-lg border flex flex-col transition-transform hover:-translate-y-2 ${
+                                plan.highlight
+                                    ? 'border-accent shadow-lg shadow-accent/20'
+                                    : 'border-gray-700'
+                            }`}
+                        >
+                            {plan.highlight && (
+                                <div className="bg-accent text-xs text-white px-2 py-1 rounded-full self-start mb-2 font-bold animate-pulse-badge">
+                                    Recomendado
+                                </div>
+                            )}
+                            <h3 className="text-xl font-bold">{plan.name}</h3>
+                            <p className="text-3xl font-bold mt-2">
+                                R$ {plan.price}
+                                <span className="text-base font-normal text-gray-dark">
+                                    {plan.period}
+                                </span>
+                            </p>
+                            <ul className="mt-4 mb-6 space-y-2 text-sm text-gray-dark flex-grow">
+                                {(Array.isArray(plan.features)
+                                    ? plan.features
+                                    : String(plan.features || '')
+                                          .split(',')
+                                          .map((f) => f.trim())
+                                          .filter(Boolean)
+                                ).map((feat: string, i: number) => (
+                                    <li key={i} className="flex items-start">
+                                        {[
                                             t('plan.feature.conversion_tags'),
                                             t('plan.feature.retention_audio'),
                                             t('plan.feature.competitor_spy'),
                                             t('plan.feature.future_trends')
-                                        ].includes(feat)
-                                            ? 'text-light font-semibold'
-                                            : ''
-                                    }
-                                >
-                                    {feat}
-                                </span>
-                            </li>
-                        )
-                    )}
-                </ul>
-                <button
-                    onClick={() => handleSubscribe(plan)}
-                    className="w-full py-2 rounded-full font-semibold transition-colors bg-accent text-light hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
-                    disabled={
-                        currentPlan?.name === plan.name || !!subscribingPlan
-                    }
-                >
-                    {subscribingPlan === plan.name
-                        ? 'Processando...'
-                        : currentPlan?.name === plan.name
-                        ? 'Plano Atual'
-                        : 'Assine Agora'}
-                </button>
+                                        ].includes(feat) ? (
+                                            <span className="text-yellow-400 mr-2 mt-1">
+                                                ★
+                                            </span>
+                                        ) : (
+                                            <span className="text-accent mr-2 mt-1">
+                                                ✓
+                                            </span>
+                                        )}
+                                        <span
+                                            className={
+                                                [
+                                                    t('plan.feature.conversion_tags'),
+                                                    t(
+                                                        'plan.feature.retention_audio'
+                                                    ),
+                                                    t(
+                                                        'plan.feature.competitor_spy'
+                                                    ),
+                                                    t(
+                                                        'plan.feature.future_trends'
+                                                    )
+                                                ].includes(feat)
+                                                    ? 'text-light font-semibold'
+                                                    : ''
+                                            }
+                                        >
+                                            {feat}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <button
+                                onClick={() => handleSubscribe(plan)}
+                                className="w-full py-2 rounded-full font-semibold transition-colors bg-accent text-light hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
+                                disabled={
+                                    currentPlan?.name === plan.name || !!subscribingPlan
+                                }
+                            >
+                                {subscribingPlan === plan.name
+                                    ? 'Processando...'
+                                    : currentPlan?.name === plan.name
+                                    ? 'Plano Atual'
+                                    : 'Assine Agora'}
+                            </button>
+                        </div>
+                    ))}
+                </div>
             </div>
-        ))}
-    </div>
-</div>
 
             {isModalOpen && (
                 <AddPaymentMethodModal

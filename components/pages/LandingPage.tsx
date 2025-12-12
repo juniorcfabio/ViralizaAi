@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, RegistrationData } from '../../contexts/AuthContext';
@@ -29,7 +28,6 @@ const MediaIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
         <polyline points="21 15 16 10 5 21" stroke="currentColor" opacity="0.7"></polyline>
     </svg>
 );
-
 
 const FunnelIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -113,13 +111,12 @@ const AppleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     </svg>
 );
 
-
 const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
-    const { login, isLoading } = useAuth(); // Get isLoading from AuthContext
+    const { login, isLoading } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -128,7 +125,6 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         setIsLoggingIn(true);
 
         try {
-            // Await the async login process which now reliably checks DB and Backup
             const user = await login(email, password);
             if (user) {
                 navigate(user.type === 'admin' ? '/admin' : '/dashboard');
@@ -143,7 +139,6 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     };
 
     const handleSocialLogin = (platform: string) => {
-        // Mock social login
         alert(`Login com ${platform} em breve! Por favor, use o login padrão.`);
     };
 
@@ -223,10 +218,7 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const navigate = useNavigate();
 
     const formatCPF = (value: string) => {
-        // Remove tudo que não é dígito
-        const v = value.replace(/\D/g, '').slice(0, 11); // Limita a 11 dígitos
-        
-        // Aplica a máscara
+        const v = value.replace(/\D/g, '').slice(0, 11);
         return v
             .replace(/(\d{3})(\d)/, '$1.$2')
             .replace(/(\d{3})(\d)/, '$1.$2')
@@ -248,7 +240,6 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     };
 
     const handleSocialRegister = (platform: string) => {
-        // Mock social register
         alert(`Cadastro com ${platform} em breve! Por favor, preencha o formulário.`);
     };
 
@@ -256,13 +247,11 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         e.preventDefault();
         setError('');
 
-        // Validação de senha
         if (formData.password !== confirmPassword) {
             setError("As senhas não coincidem.");
             return;
         }
 
-        // Validação de CPF para pessoa física
         if (accountType === 'individual') {
             const plainCPF = formData.cpf?.replace(/\D/g, '') || '';
             if (plainCPF.length !== 11) {
@@ -342,6 +331,7 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 };
 
 const initialTestimonials: Testimonial[] = [
+    // ... (mantive os depoimentos exatamente como estavam)
     {
         name: 'Julia Santos',
         role: 'CEO',
@@ -419,7 +409,6 @@ const initialTestimonials: Testimonial[] = [
 const Header: React.FC<{ onLogin: () => void; onRegister: () => void }> = ({ onLogin, onRegister }) => {
     const { t } = useLanguage();
     
-    // Handler to manually scroll to sections, preventing router interference.
     const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
         e.preventDefault();
         const element = document.getElementById(targetId);
@@ -516,7 +505,6 @@ interface EventFeedItem {
     country: string;
 }
 
-
 const locations = [
     { city: 'São Paulo', state: 'SP', country: 'Brasil', x: 37, y: 72 },
     { city: 'New York', state: 'NY', country: 'USA', x: 28, y: 42 },
@@ -528,7 +516,7 @@ const locations = [
     { city: 'Lisbon', state: 'Lisbon', country: 'Portugal', x: 46, y: 43 },
     { city: 'Buenos Aires', state: 'CABA', country: 'Argentina', x: 34, y: 78 },
     { city: 'New Delhi', state: 'Delhi', country: 'India', x: 67, y: 48 },
-    { city: 'Beijing', state: 'Beijing', country: 'China', x: 78, y: 42 },
+    { city: 'Beijing', state: 'Beijing', country: 'China', x: 78, y:42 },
 ];
 
 const WorldMap: React.FC = () => {
@@ -571,11 +559,11 @@ const WorldMap: React.FC = () => {
 
             setTimeout(() => {
                 setPulsingDots(prevDots => prevDots.filter(d => d.id !== newDot.id));
-            }, 4000); // Dot animation duration
+            }, 4000);
             
             setTimeout(() => {
                 setEventFeed(prevFeed => prevFeed.filter(e => e.id !== newEvent.id));
-            }, 5000); // Feed item visibility duration
+            }, 5000);
 
         }, 1500);
 
@@ -595,7 +583,6 @@ const WorldMap: React.FC = () => {
         download: { text: 'Novo Download', icon: FeedDownloadIcon, color: 'text-cyan-400' },
         subscription: { text: 'Nova Assinatura', icon: FeedStarIcon, color: 'text-green-400' },
     };
-
 
     return (
         <section className="py-20 relative bg-primary text-center overflow-hidden">
@@ -636,7 +623,6 @@ const WorldMap: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Event Feed - Horizontal Layout */}
                 <div className="mt-12 mx-auto max-w-5xl flex flex-wrap justify-center gap-4">
                     {eventFeed.map(event => {
                         const details = eventDetails[event.type];
@@ -665,7 +651,6 @@ const PartnerAdsSection: React.FC<{ onRegister: () => void }> = ({ onRegister })
     const currentSlotRef = useRef(0);
     const nextDataIndexRef = useRef(4);
 
-    // Mock data for fallback to ensure section visibility
     const fallbackPartners: AdPartner[] = [
         {
             id: 'ad_demo_1',
@@ -729,18 +714,15 @@ const PartnerAdsSection: React.FC<{ onRegister: () => void }> = ({ onRegister })
             const data = await getPartnersDB();
             let active = data.filter(p => p.status === 'Active');
 
-            // Fallback if empty
             if (active.length === 0) {
                 active = fallbackPartners;
             }
 
-            // Sort: Real/Paid partners first, Mock last
             active.sort((a, b) => {
                 if (a.isMock === b.isMock) return 0;
                 return a.isMock ? 1 : -1;
             });
             
-            // Duplicate to ensure smooth cycling
             let partnerPool = [...active];
             if (partnerPool.length > 0) {
                 while (partnerPool.length < 8) {
@@ -879,7 +861,6 @@ const Testimonials: React.FC = () => {
     const [expandedTestimonial, setExpandedTestimonial] = useState<Testimonial | null>(null);
     const { t } = useLanguage();
     
-    // State to hold all testimonials (initial + dynamic from DB)
     const [allTestimonials, setAllTestimonials] = useState<Testimonial[]>(initialTestimonials);
 
     useEffect(() => {
@@ -887,7 +868,6 @@ const Testimonials: React.FC = () => {
             try {
                 const dbTestimonials = await getTestimonialsDB();
                 if (dbTestimonials.length > 0) {
-                    // Prepend new testimonials to the list
                     setAllTestimonials([...dbTestimonials, ...initialTestimonials]);
                 }
             } catch (e) {
@@ -897,7 +877,6 @@ const Testimonials: React.FC = () => {
         loadDynamicTestimonials();
     }, []);
 
-    // Duplicate list for infinite scroll effect
     const extendedTestimonials = [...allTestimonials, ...allTestimonials];
 
     return (
@@ -909,7 +888,7 @@ const Testimonials: React.FC = () => {
                 <ul className="flex animate-scroll-testimonials w-max group hover:[animation-play-state:paused]">
                     {extendedTestimonials.map((testimonial, index) => (
                         <li 
-                            key={`${testimonial.id || index}-${index}`} // Use index as fallback or composite key
+                            key={`${testimonial.id || index}-${index}`}
                             className="flex-shrink-0 w-80 md:w-96 mx-4 cursor-pointer"
                             onClick={() => setExpandedTestimonial(testimonial)}
                         >
@@ -941,12 +920,67 @@ const Testimonials: React.FC = () => {
 const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
     const { t } = useLanguage();
 
-    const plans: Plan[] = [
-        { name: t('plan.mensal'), price: '59.90', period: t('plan.period.month'), features: ['Crescimento Orgânico', 'Gestão de Conteúdo', 'Análises Básicas', t('plan.feature.conversion_tags')] },
-        { name: t('plan.trimestral'), price: '159.90', period: t('plan.period.quarter'), features: ['Tudo do Mensal', 'Análises Avançadas', 'IA Otimizada', t('plan.feature.retention_audio')] },
-        { name: t('plan.semestral'), price: '259.90', period: t('plan.period.semester'), features: ['Tudo do Trimestral', 'Relatórios Estratégicos', 'Acesso Beta', t('plan.feature.competitor_spy')], highlight: true },
-        { name: t('plan.anual'), price: '399.90', period: t('plan.period.year'), features: ['Tudo do Semestral', 'Gerente Dedicado', 'API de Integração', '2 Meses Grátis', t('plan.feature.future_trends')] },
+    const defaultPlans: Plan[] = [
+        { id: 'p1', name: t('plan.mensal'), price: '59.90', period: t('plan.period.month'), features: ['Crescimento Orgânico', 'Gestão de Conteúdo', 'Análises Básicas', t('plan.feature.conversion_tags')] },
+        { id: 'p2', name: t('plan.trimestral'), price: '159.90', period: t('plan.period.quarter'), features: ['Tudo do Mensal', 'Análises Avançadas', 'IA Otimizada', t('plan.feature.retention_audio')] },
+        { id: 'p3', name: t('plan.semestral'), price: '259.90', period: t('plan.period.semester'), features: ['Tudo do Trimestral', 'Relatórios Estratégicos', 'Acesso Beta', t('plan.feature.competitor_spy')], highlight: true },
+        { id: 'p4', name: t('plan.anual'), price: '399.90', period: t('plan.period.year'), features: ['Tudo do Semestral', 'Gerente Dedicado', 'API de Integração', '2 Meses Grátis', t('plan.feature.future_trends')] },
     ];
+
+    const [plans, setPlans] = useState<Plan[]>(defaultPlans);
+
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('viraliza_plans');
+            if (!raw) return;
+
+            const stored: Plan[] = JSON.parse(raw);
+
+            const metaById: Record<string, { period?: string; highlight?: boolean }> = {};
+            defaultPlans.forEach((p) => {
+                if (p.id) {
+                    metaById[p.id] = {
+                        period: p.period,
+                        highlight: p.highlight
+                    };
+                }
+            });
+
+            const mapped: Plan[] = stored.map((p, index) => {
+                const meta =
+                    (p.id && metaById[p.id]) || metaById[`p${index + 1}`] || {};
+                const period = meta.period || defaultPlans[index]?.period || '';
+                const highlight =
+                    typeof p.highlight === 'boolean'
+                        ? p.highlight
+                        : meta.highlight;
+
+                return {
+                    ...p,
+                    price:
+                        typeof p.price === 'number'
+                            ? p.price.toFixed(2)
+                            : p.price,
+                    period,
+                    features: Array.isArray(p.features)
+                        ? p.features
+                        : String(p.features || '')
+                              .split(',')
+                              .map((f) => f.trim())
+                              .filter(Boolean),
+                    highlight
+                };
+            });
+
+            if (mapped.length > 0) {
+                setPlans(mapped);
+            }
+        } catch (err) {
+            console.error('Erro ao carregar planos do admin para a LandingPage:', err);
+            setPlans(defaultPlans);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [t]);
 
     return (
         <section id="pricing" className="py-20">
@@ -959,7 +993,7 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
                             <h3 className="text-xl font-bold">{plan.name}</h3>
                             <p className="text-3xl font-bold mt-2">R$ {plan.price}<span className="text-base font-normal text-gray-dark">{plan.period}</span></p>
                             <ul className="mt-4 mb-6 space-y-2 text-sm text-gray-dark flex-grow">
-                                {(Array.isArray(plan.features) ? plan.features : plan.features.split(',')).map((feat, i) => (
+                                {(Array.isArray(plan.features) ? plan.features : String(plan.features || '').split(',').map(f => f.trim()).filter(Boolean)).map((feat, i) => (
                                     <li key={i} className="flex items-start">
                                         {[t('plan.feature.conversion_tags'), t('plan.feature.retention_audio'), t('plan.feature.competitor_spy'), t('plan.feature.future_trends')].includes(feat) ? (
                                             <span className="text-yellow-400 mr-2 mt-1">★</span>
@@ -989,7 +1023,6 @@ const ClientLogos: React.FC = () => {
     useEffect(() => {
         const loadLogos = async () => {
             const data = await getTrustedCompaniesDB();
-            // Filter active companies
             setLogos(data.filter(c => c.status === 'Active'));
         };
         loadLogos();
