@@ -4,10 +4,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PaymentMethod, Plan } from '../../types';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-// Base da API do backend NestJS
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
-// Icons
 const CreditCardIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg
         {...props}
@@ -329,7 +327,7 @@ const AddPaymentMethodModal: React.FC<{
                 </button>
                 <h2 className="text-2xl font-bold mb-6 text-center">
                     {selectedMethod
-                        ? `Adicionar ${selectedMethod}`
+                        ? `Adicionar ${selectedMethod}` 
                         : 'Adicionar Método de Pagamento'}
                 </h2>
                 {selectedMethod && (
@@ -356,11 +354,8 @@ const BillingPage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [notification, setNotification] = useState('');
     const [subscribingPlan, setSubscribingPlan] = useState<string | null>(null);
-    const [buyingGrowthEngine, setBuyingGrowthEngine] = useState<string | null>(
-        null
-    );
+    const [buyingGrowthEngine, setBuyingGrowthEngine] = useState<string | null>(null);
 
-    // Planos padrão (usados se não houver nada salvo pelo admin)
     const defaultPlans: Plan[] = [
         {
             id: 'p1',
@@ -415,8 +410,8 @@ const BillingPage: React.FC = () => {
     ];
 
     const [availablePlans, setAvailablePlans] = useState<Plan[]>(defaultPlans);
+    const [plansSource, setPlansSource] = useState<'default' | 'admin'>('default');
 
-    // Carrega planos salvos no AdminSettings (localStorage: 'viraliza_plans')
     useEffect(() => {
         try {
             const raw = localStorage.getItem('viraliza_plans');
@@ -424,11 +419,7 @@ const BillingPage: React.FC = () => {
 
             const stored: Plan[] = JSON.parse(raw);
 
-            // mapa de metadados padrão por id (period, highlight)
-            const metaById: Record<
-                string,
-                { period?: string; highlight?: boolean }
-            > = {};
+            const metaById: Record<string, { period?: string; highlight?: boolean }> = {};
             defaultPlans.forEach((p) => {
                 if (p.id) {
                     metaById[p.id] = {
@@ -466,13 +457,37 @@ const BillingPage: React.FC = () => {
 
             if (mapped.length > 0) {
                 setAvailablePlans(mapped);
+                setPlansSource('admin');
             }
         } catch (err) {
             console.error('Erro ao carregar planos do admin:', err);
             setAvailablePlans(defaultPlans);
+            setPlansSource('default');
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [t]);
+
+    const defaultGrowthEnginePricing = {
+        quinzenal: 49.9,
+        mensal: 79.9,
+        anual: 199.9
+    };
+
+    const [growthEnginePricing, setGrowthEnginePricing] = useState(defaultGrowthEnginePricing);
+
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('viraliza_growth_engine_pricing_v1');
+            if (!raw) return;
+
+            const parsed = JSON.parse(raw) as Partial<typeof defaultGrowthEnginePricing>;
+            setGrowthEnginePricing({
+                quinzenal: parsed.quinzenal ?? defaultGrowthEnginePricing.quinzenal,
+                mensal: parsed.mensal ?? defaultGrowthEnginePricing.mensal,
+                anual: parsed.anual ?? defaultGrowthEnginePricing.anual
+            });
+        } catch {
+        }
+    }, []);
 
     const currentPlan = availablePlans.find((p) => p.name === user.plan);
     const paymentMethods = user.paymentMethods || [];
@@ -546,7 +561,6 @@ const BillingPage: React.FC = () => {
         return hasViralizaPath ? `${origin}/ViralizaAi` : origin;
     };
 
-    // Confirma pagamento quando volta do checkout com ?txId=... (em HashRouter)
     useEffect(() => {
         const { hash } = window.location;
         const queryIndex = hash.indexOf('?');
@@ -582,7 +596,7 @@ const BillingPage: React.FC = () => {
                     if (tx.itemType === 'plan') {
                         updateUser(user.id, { plan: tx.itemId });
                         showNotification(
-                            `Pagamento confirmado! Seu plano "${tx.itemId}" foi ativado.`
+                            `Pagamento confirmado! Seu plano "${tx.itemId}" foi ativado.` 
                         );
                     }
 
@@ -609,7 +623,7 @@ const BillingPage: React.FC = () => {
                             }
                             setGrowthEnginePlan(label);
                             showNotification(
-                                `Pagamento confirmado! ${tx.itemId} foi ativado para sua conta.`
+                                `Pagamento confirmado! ${tx.itemId} foi ativado para sua conta.` 
                             );
                         }
                     }
@@ -628,7 +642,6 @@ const BillingPage: React.FC = () => {
         confirmPayment();
     }, [user, updateUser]);
 
-    // Carrega histórico real de faturamento a partir do backend
     useEffect(() => {
         const loadHistory = async () => {
             try {
@@ -683,7 +696,7 @@ const BillingPage: React.FC = () => {
                     currency: 'BRL',
                     provider: 'stripe',
                     successUrl: `${appBaseUrl}/#/dashboard/billing`,
-                    cancelUrl: `${appBaseUrl}/#/dashboard/billing`
+                    cancelUrl: `${appBaseUrl}/#/dashboard/billing` 
                 })
             });
 
@@ -703,7 +716,7 @@ const BillingPage: React.FC = () => {
         } catch (error) {
             console.error(error);
             showNotification(
-                `Houve um erro ao iniciar o pagamento da assinatura. Tente novamente.`
+                `Houve um erro ao iniciar o pagamento da assinatura. Tente novamente.` 
             );
         } finally {
             setSubscribingPlan(null);
@@ -740,7 +753,7 @@ const BillingPage: React.FC = () => {
                     currency: 'BRL',
                     provider: 'stripe',
                     successUrl: `${appBaseUrl}/#/dashboard/billing`,
-                    cancelUrl: `${appBaseUrl}/#/dashboard/billing`
+                    cancelUrl: `${appBaseUrl}/#/dashboard/billing` 
                 })
             });
 
@@ -961,9 +974,9 @@ const BillingPage: React.FC = () => {
 
                 <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[
-                        { label: 'Quinzenal (15 dias)', price: 49.9 },
-                        { label: 'Mensal', price: 79.9 },
-                        { label: 'Anual', price: 199.9 }
+                        { label: 'Quinzenal (15 dias)', price: growthEnginePricing.quinzenal },
+                        { label: 'Mensal', price: growthEnginePricing.mensal },
+                        { label: 'Anual', price: growthEnginePricing.anual }
                     ].map((opt) => {
                         const isCurrent =
                             hasGrowthEngine && growthEnginePlan === opt.label;
@@ -1016,9 +1029,18 @@ const BillingPage: React.FC = () => {
             </div>
 
             <div id="plans-section" className="mt-12">
-                <h2 className="text-2xl font-bold text-center mb-8">
+                <h2 className="text-2xl font-bold text-center mb-3">
                     Nossos Planos
                 </h2>
+                {plansSource === 'default' ? (
+                    <p className="text-center text-gray-dark mb-8 text-sm">
+                        Planos padrão de demonstração. O administrador pode ajustar os valores no painel.
+                    </p>
+                ) : (
+                    <p className="text-center text-gray-dark mb-8 text-sm">
+                        Valores atuais definidos pelo administrador da plataforma.
+                    </p>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {availablePlans.map((plan) => (
                         <div

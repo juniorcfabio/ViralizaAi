@@ -19,7 +19,14 @@ interface GrowthEngineGlobalConfig {
   revenueSharePercent: number;
 }
 
+type GrowthEnginePricing = {
+  quinzenal: number;
+  mensal: number;
+  anual: number;
+};
+
 const STORAGE_KEY = 'viraliza_admin_growth_engine_config_v1';
+const PRICING_STORAGE_KEY = 'viraliza_growth_engine_pricing_v1';
 
 const defaultConfig: GrowthEngineGlobalConfig = {
   enabled: true,
@@ -49,9 +56,16 @@ const defaultConfig: GrowthEngineGlobalConfig = {
   }
 };
 
+const defaultPricing: GrowthEnginePricing = {
+  quinzenal: 49.9,
+  mensal: 79.9,
+  anual: 199.9
+};
+
 const AdminGrowthEngineConfigPage: React.FC = () => {
   const { platformUsers } = useAuth();
   const [config, setConfig] = useState<GrowthEngineGlobalConfig>(defaultConfig);
+  const [pricing, setPricing] = useState<GrowthEnginePricing>(defaultPricing);
   const [notification, setNotification] = useState('');
 
   useEffect(() => {
@@ -59,6 +73,19 @@ const AdminGrowthEngineConfigPage: React.FC = () => {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         setConfig({ ...defaultConfig, ...JSON.parse(stored) });
+      }
+    } catch {
+    }
+
+    try {
+      const storedPricing = localStorage.getItem(PRICING_STORAGE_KEY);
+      if (storedPricing) {
+        const parsed = JSON.parse(storedPricing) as Partial<GrowthEnginePricing>;
+        setPricing({
+          quinzenal: parsed.quinzenal ?? defaultPricing.quinzenal,
+          mensal: parsed.mensal ?? defaultPricing.mensal,
+          anual: parsed.anual ?? defaultPricing.anual
+        });
       }
     } catch {
     }
@@ -71,6 +98,7 @@ const AdminGrowthEngineConfigPage: React.FC = () => {
 
   const handleSave = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    localStorage.setItem(PRICING_STORAGE_KEY, JSON.stringify(pricing));
     showNotification('Configurações do Motor de Crescimento salvas com sucesso!');
   };
 
@@ -187,6 +215,66 @@ const AdminGrowthEngineConfigPage: React.FC = () => {
               Permitir modo DEMO (sem chave Gemini) com limites reduzidos.
             </span>
           </label>
+        </div>
+      </div>
+
+      <div className="bg-secondary p-6 rounded-lg border border-gray-800 mb-8">
+        <h3 className="text-xl font-bold mb-2">Preços do Motor de Crescimento</h3>
+        <p className="text-sm text-gray-dark mb-4">
+          Defina quanto será cobrado por período do add-on (valores em R$).
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm text-gray-dark mb-1">
+              Quinzenal (15 dias)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className="w-full bg-primary p-2 rounded border border-gray-700 text-sm"
+              value={pricing.quinzenal}
+              onChange={(e) =>
+                setPricing((prev) => ({
+                  ...prev,
+                  quinzenal: Number(e.target.value) || 0
+                }))
+              }
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-dark mb-1">Mensal</label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className="w-full bg-primary p-2 rounded border border-gray-700 text-sm"
+              value={pricing.mensal}
+              onChange={(e) =>
+                setPricing((prev) => ({
+                  ...prev,
+                  mensal: Number(e.target.value) || 0
+                }))
+              }
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-dark mb-1">Anual</label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className="w-full bg-primary p-2 rounded border border-gray-700 text-sm"
+              value={pricing.anual}
+              onChange={(e) =>
+                setPricing((prev) => ({
+                  ...prev,
+                  anual: Number(e.target.value) || 0
+                }))
+              }
+            />
+          </div>
         </div>
       </div>
 
