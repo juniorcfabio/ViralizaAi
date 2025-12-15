@@ -1,0 +1,124 @@
+html {
+  scroll-behavior: smooth;
+}
+:root {
+  --color-primary: #02042B;
+  --color-secondary: #0B1747;
+  --color-light: #E2E8F0;
+  --color-gray-dark: #94A3B8;
+  --color-accent: #4F46E5;
+}
+.dark {
+  /* Default values are already set in root for the app's dark theme nature */
+  color-scheme: dark;
+}
+@keyframes pulse-blue {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+  70% { box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+.pulse-blue { animation: pulse-blue 2s infinite; background-color: #3B82F6; }
+
+@keyframes pulse-cyan {
+  0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.7); }
+  70% { box-shadow: 0 0 0 12px rgba(34, 211, 238, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+}
+.pulse-cyan { animation: pulse-cyan 2s infinite; background-color: #22D3EE; }
+
+@keyframes pulse-green {
+  0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+  70% { box-shadow: 0 0 0 12px rgba(74, 222, 128, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+}
+.pulse-green { animation: pulse-green 2s infinite; background-color: #4ADE80; }
+
+@keyframes pulse-white {
+  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+.pulse-white { animation: pulse-white 1.5s infinite; }
+
+@keyframes animate-fade-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-fade-in-right {
+  animation: animate-fade-in-right 0.5s ease-out forwards;
+}
+
+@keyframes animate-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes blinking-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes pulse-badge {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes pulse-ring {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(79, 70, 229, 0);
+  }
+}
+
+@keyframes scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+#root {
+  animation: fadeIn 0.8s ease-in-out;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-3d {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
+}
+
+@keyframes light-sweep {
+  0% { transform: translateX(-150%) skewX(-30deg); }
+  100% { transform: translateX(150%) skewX(-30deg); }
+}
+
+@keyframes magnetic-ring-1 {
+  0% { transform: rotate3d(1, 1, 0, 0deg) scale(1.2); opacity: 0.4; }
+  50% { transform: rotate3d(1, 1, 0, 180deg) scale(1.25); opacity: 1; }
+  100% { transform: rotate3d(1, 1, 0, 360deg) scale(1.2); opacity: 0.4; }
+}
+@keyframes magnetic-ring-2 {
+  0% { transform: rotate3d(1, -1, 0, 0deg) scale(1.2); opacity: 1; }
+  50% { transform: rotate3d(1, -1, 0, -180deg) scale(1.25); opacity: 0.4; }
+  100% { transform: rotate3d(1, -1, 0, -360deg) scale(1.2); opacity: 1; }
+}

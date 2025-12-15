@@ -2,7 +2,12 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
 import FeatureLockedOverlay from '../ui/FeatureLockedOverlay';
-import { API_BASE_URL } from '../../src/config/api';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  ? import.meta.env.VITE_API_BASE_URL
+  : import.meta.env.DEV
+    ? 'http://localhost:3000'
+    : 'https://viralizaai-backend-production.up.railway.app';
 
 // Icons
 const GiftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
