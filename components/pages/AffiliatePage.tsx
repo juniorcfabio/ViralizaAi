@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
 import FeatureLockedOverlay from '../ui/FeatureLockedOverlay';
+import { API_BASE_URL } from '../../src/config/api';
 
 // Icons
 const GiftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -47,6 +48,10 @@ const AffiliatePage: React.FC = () => {
   const { user, activateAffiliate, platformUsers, hasAccess } = useAuth();
   const [linkCopied, setLinkCopied] = useState(false);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [totals, setTotals] = useState<{ pending: number; paid: number } | null>(null);
+  const [referredUserIds, setReferredUserIds] = useState<string[]>([]);
+  const [referredUsersFromApi, setReferredUsersFromApi] = useState<any[]>([]);
 
   if (!hasAccess('affiliate')) {
     return (
@@ -78,98 +83,151 @@ const AffiliatePage: React.FC = () => {
   }, [isAffiliate, user]);
 
   const referredUsers = useMemo(() => {
-    if (!isAffiliate || !user?.affiliateInfo?.referredUserIds) return [];
-    return platformUsers.filter((u) => user.affiliateInfo!.referredUserIds.includes(u.id));
-  }, [isAffiliate, user, platformUsers]);
+    if (!isAffiliate) return [];
+    if (Array.isArray(referredUsersFromApi) && referredUsersFromApi.length > 0) {
+      return referredUsersFromApi;
+    }
+    // fallback para versão antiga (quando backend ainda não retornava detalhes)
+    if (referredUserIds.length === 0) return [];
+    return platformUsers.filter((u) => referredUserIds.includes(u.id));
+  }, [isAffiliate, referredUsersFromApi, referredUserIds, platformUsers]);
+
+  const joinWithAnd = (items: string[]) => {
+    const cleaned = items
+      .map((x) => (typeof x === 'string' ? x.trim() : ''))
+      .filter(Boolean);
+    if (cleaned.length <= 1) return cleaned.join('');
+    return `${cleaned.slice(0, -1).join(', ')} e ${cleaned[cleaned.length - 1]}`;
+  };
 
   useEffect(() => {
-    if (!isAffiliate) {
-      setChartData([]);
+    if (!isAffiliate || !user?.affiliateInfo?.referralCode) {
+      setReferredUserIds([]);
       return;
     }
 
-    const planPrices: { [key: string]: number } = {
-      Anual: 399.9,
-      Semestral: 259.9,
-      Trimestral: 159.9,
-      Mensal: 59.9
+    const fetchReferredUsers = async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/affiliates/me/referred-users?affiliateCode=${encodeURIComponent(
+            user.affiliateInfo!.referralCode
+          )}`
+        );
+
+        if (!res.ok) {
+          return;
+        }
+
+        const data = await res.json();
+        const ids = Array.isArray(data?.referredUserIds) ? data.referredUserIds : [];
+        const detailed = Array.isArray(data?.referredUsers) ? data.referredUsers : [];
+
+        setReferredUserIds(ids);
+        setReferredUsersFromApi(detailed);
+      } catch (err) {
+        console.error('Erro ao carregar usuários indicados:', err);
+        setReferredUserIds([]);
+        setReferredUsersFromApi([]);
+      }
     };
-    const commissionRate =
-      parseFloat(localStorage.getItem('viraliza_affiliate_commission_rate') || '20') / 100;
 
-    // Se já existem indicados reais, usa dados reais
-    if (referredUsers.length > 0) {
-      const dataByMonth: {
-        [key: string]: { totalReferrals: number; convertedReferrals: number; monthlyEarnings: number };
-      } = {};
+    fetchReferredUsers();
+  }, [isAffiliate, user?.affiliateInfo?.referralCode]);
 
-      referredUsers.forEach((refUser) => {
-        const joinedDate = new Date(refUser.joinedDate);
-        const monthKey = `${joinedDate.getFullYear()}-${String(
-          joinedDate.getMonth() + 1
-        ).padStart(2, '0')}`;
+  useEffect(() => {
+    if (!isAffiliate || !user?.affiliateInfo?.referralCode) {
+      setChartData([]);
+      setTotals(null);
+      return;
+    }
 
-        if (!dataByMonth[monthKey]) {
-          dataByMonth[monthKey] = {
-            totalReferrals: 0,
-            convertedReferrals: 0,
-            monthlyEarnings: 0
-          };
+    const fetchCommissions = async () => {
+      try {
+        setIsLoading(true);
+        const res = await fetch(
+          `${API_BASE_URL}/affiliates/me/commissions?affiliateCode=${encodeURIComponent(
+            user.affiliateInfo!.referralCode
+          )}`
+        );
+
+        if (!res.ok) {
+          throw new Error(`Erro ao carregar comissões: ${res.status}`);
         }
 
-        dataByMonth[monthKey].totalReferrals += 1;
-        if (refUser.plan) {
-          dataByMonth[monthKey].convertedReferrals += 1;
-          const planPrice = planPrices[refUser.plan] || 0;
-          dataByMonth[monthKey].monthlyEarnings += planPrice * commissionRate;
-        }
-      });
-
-      const sortedMonths = Object.keys(dataByMonth).sort();
-      let cumulativeEarnings = 0;
-      const formattedData = sortedMonths.map((monthKey) => {
-        const monthData = dataByMonth[monthKey];
-        cumulativeEarnings += monthData.monthlyEarnings;
-        const [year, month] = monthKey.split('-');
-        const monthName = new Date(Number(year), Number(month) - 1).toLocaleString('pt-BR', {
-          month: 'short'
+        const data = await res.json();
+        const commissions = Array.isArray(data.commissions) ? data.commissions : [];
+        const totalsFromApi = data.totals || { pending: 0, paid: 0 };
+        setTotals({
+          pending: Number(totalsFromApi.pending || 0),
+          paid: Number(totalsFromApi.paid || 0),
         });
 
-        return {
-          name: monthName,
-          'Total Indicados': monthData.totalReferrals,
-          Convertidos: monthData.convertedReferrals,
-          'Ganhos Mensais': parseFloat(monthData.monthlyEarnings.toFixed(2)),
-          'Ganhos Acumulados': parseFloat(cumulativeEarnings.toFixed(2))
-        };
-      });
+        // Agrupar com base na data da comissão
+        const byMonth: Record<
+          string,
+          { totalReferrals: number; convertedReferrals: number; monthlyEarnings: number }
+        > = {};
 
-      setChartData(formattedData);
-      return;
-    }
+        commissions.forEach((c: any) => {
+          const createdAt = new Date(c.createdAt || c.updatedAt || new Date());
+          const monthKey = `${createdAt.getFullYear()}-${String(
+            createdAt.getMonth() + 1
+          ).padStart(2, '0')}`;
 
-    // Nenhum indicado ainda → gera cenário DEMO inteligente
-    const baseMonths = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
-    let cumulative = 0;
-    const demoData = baseMonths.map((label, index) => {
-      // Crescimento leve mês a mês
-      const totalReferrals = 2 + index; // 2,3,4,5...
-      const converted = 1 + Math.floor(index / 2); // 1,1,2,2,3,3...
-      const avgTicket = planPrices.Trimestral; // usa um plano médio
-      const monthlyEarnings = converted * avgTicket * commissionRate;
-      cumulative += monthlyEarnings;
+          if (!byMonth[monthKey]) {
+            byMonth[monthKey] = {
+              totalReferrals: 0,
+              convertedReferrals: 0,
+              monthlyEarnings: 0,
+            };
+          }
 
-      return {
-        name: label,
-        'Total Indicados': totalReferrals,
-        Convertidos: converted,
-        'Ganhos Mensais': parseFloat(monthlyEarnings.toFixed(2)),
-        'Ganhos Acumulados': parseFloat(cumulative.toFixed(2))
-      };
-    });
+          byMonth[monthKey].totalReferrals += 1;
+          byMonth[monthKey].convertedReferrals += 1;
 
-    setChartData(demoData);
-  }, [isAffiliate, referredUsers]);
+          const amount =
+            typeof c.amount === 'string' ? parseFloat(c.amount) : Number(c.amount || 0);
+          if (!Number.isNaN(amount)) {
+            byMonth[monthKey].monthlyEarnings += amount;
+          }
+        });
+
+        const sortedMonths = Object.keys(byMonth).sort();
+        let cumulative = 0;
+        const formatted = sortedMonths.map((monthKey) => {
+          const monthData = byMonth[monthKey];
+          cumulative += monthData.monthlyEarnings;
+          const [year, month] = monthKey.split('-');
+          const monthName = new Date(Number(year), Number(month) - 1).toLocaleString('pt-BR', {
+            month: 'short',
+          });
+
+          return {
+            name: monthName,
+            'Total Indicados': monthData.totalReferrals,
+            Convertidos: monthData.convertedReferrals,
+            'Ganhos Mensais': Number(monthData.monthlyEarnings.toFixed(2)),
+            'Ganhos Acumulados': Number(cumulative.toFixed(2)),
+          };
+        });
+
+        if (formatted.length === 0) {
+          setChartData([]);
+          return;
+        }
+
+        setChartData(formatted);
+      } catch (err) {
+        console.error(err);
+        setChartData([]);
+        setTotals(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCommissions();
+  }, [isAffiliate, user]);
 
   const handleActivate = () => {
     if (user) {
@@ -193,6 +251,12 @@ const AffiliatePage: React.FC = () => {
         <p className="text-gray-dark">
           Ganhe comissões indicando novos clientes para a Viraliza.ai.
         </p>
+        {isAffiliate && totals && (
+          <p className="text-gray-400 text-sm mt-2">
+            Ganhos pendentes: <span className="text-green-400 font-semibold">R$ {totals.pending.toFixed(2)}</span> 
+            Ganhos pagos: <span className="text-blue-400 font-semibold">R$ {totals.paid.toFixed(2)}</span>
+          </p>
+        )}
       </header>
 
       {!isAffiliate ? (
@@ -318,42 +382,152 @@ const AffiliatePage: React.FC = () => {
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-gray-dark uppercase bg-primary">
                   <tr>
-                    <th className="p-3">Nome</th>
-                    <th className="p-3">Plano Assinado</th>
-                    <th className="p-3">Data de Inscrição</th>
+                    <th className="p-3">Usuário</th>
+                    <th className="p-3">Compras</th>
+                    <th className="p-3">Primeira Conversão</th>
+                    <th className="p-3">Última Conversão</th>
                     <th className="p-3">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {referredUsers.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="text-center p-6 text-gray-dark">
+                      <td colSpan={5} className="text-center p-6 text-gray-dark">
                         Nenhum usuário indicado ainda. Compartilhe seu link!
                       </td>
                     </tr>
                   )}
-                  {referredUsers.map((refUser) => (
-                    <tr key={refUser.id} className="border-t border-primary">
-                      <td className="p-3 font-medium">{refUser.name}</td>
-                      <td className="p-3">
-                        {refUser.plan || 'Aguardando Assinatura'}
-                      </td>
-                      <td className="p-3">
-                        {new Date(refUser.joinedDate).toLocaleDateString('pt-BR')}
-                      </td>
-                      <td className="p-3">
-                        <span
-                          className={`px-2 py-1 text-xs rounded-full ${
-                            refUser.plan
-                              ? 'bg-green-500/20 text-green-300'
-                              : 'bg-yellow-500/20 text-yellow-300'
-                          }`}
-                        >
-                          {refUser.plan ? 'Assinante' : 'Pendente'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {referredUsers.map((refUser: any) => {
+                    const id = refUser.referredUserId || refUser.id;
+                    const displayName =
+                      (typeof refUser.referredUserName === 'string' && refUser.referredUserName) ||
+                      (typeof refUser.name === 'string' && refUser.name) ||
+                      null;
+                    const displayEmail =
+                      (typeof refUser.referredUserEmail === 'string' && refUser.referredUserEmail) ||
+                      (typeof refUser.email === 'string' && refUser.email) ||
+                      null;
+                    const purchases = Number(refUser.purchases || 0);
+                    const firstSeenAt = refUser.firstSeenAt || refUser.joinedDate;
+                    const lastSeenAt = refUser.lastSeenAt || refUser.joinedDate;
+
+                    const hasPlan = Boolean(refUser.hasPlan || refUser.plan);
+                    const hasGrowthEngine = Boolean(refUser.hasGrowthEngine);
+                    const hasAds = Boolean(refUser.hasAds);
+
+                    const purchasedPlans: string[] = Array.isArray(refUser.purchasedPlans)
+                      ? refUser.purchasedPlans
+                      : [];
+                    const purchasedAddons: string[] = Array.isArray(refUser.purchasedAddons)
+                      ? refUser.purchasedAddons
+                      : [];
+                    const purchasedItems: { itemType?: string; itemId?: string }[] =
+                      Array.isArray(refUser.purchasedItems) ? refUser.purchasedItems : [];
+
+                    const isPaidLike =
+                      purchases > 0 || hasPlan || hasGrowthEngine || hasAds;
+
+                    const statusLabel = isPaidLike ? 'Pago' : 'Pendente';
+
+                    return (
+                      <tr key={id} className="border-t border-primary">
+                        <td className="p-3">
+                          <div className="font-medium">{displayName || id}</div>
+                          {displayEmail && (
+                            <div className="text-xs text-gray-dark">{displayEmail}</div>
+                          )}
+                          {!displayName && !displayEmail && (
+                            <div className="text-xs text-gray-dark font-mono">{id}</div>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-2 items-center">
+                            {purchasedPlans.length > 0 ? (
+                              <span className="text-gray-300">
+                                {purchasedPlans.length}{' '}
+                                {purchasedPlans.length === 1 ? 'Plano' : 'Planos'}{' '}
+                                {joinWithAnd(purchasedPlans)}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300">{purchases}</span>
+                            )}
+                            {purchasedAddons.length > 0 && (
+                              <div className="flex flex-wrap gap-2 items-center">
+                                {purchasedAddons.map((addonName) => (
+                                  <span
+                                    key={`addon-${id}-${addonName}`}
+                                    className="px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-300"
+                                    title={addonName}
+                                  >
+                                    {addonName}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {purchasedItems.length > 0 && purchasedPlans.length === 0 && purchasedAddons.length === 0 && (
+                              <div className="flex flex-wrap gap-2 items-center">
+                                {purchasedItems.map((it, idx) => {
+                                  const label = it?.itemId || `${it?.itemType || 'item'} #${idx + 1}`;
+                                  const type = it?.itemType;
+                                  const cls =
+                                    type === 'plan'
+                                      ? 'bg-green-500/20 text-green-300'
+                                      : type === 'addon'
+                                      ? 'bg-blue-500/20 text-blue-300'
+                                      : 'bg-gray-500/20 text-gray-300';
+                                  return (
+                                    <span
+                                      key={`item-${id}-${idx}`}
+                                      className={`px-2 py-1 text-xs rounded-full ${cls}`}
+                                      title={label}
+                                    >
+                                      {label}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {hasPlan && (
+                              <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-300">
+                                Plano
+                              </span>
+                            )}
+                            {hasGrowthEngine && (
+                              <span className="px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-300">
+                                Growth Engine
+                              </span>
+                            )}
+                            {hasAds && (
+                              <span className="px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-300">
+                                Ads
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          {firstSeenAt
+                            ? new Date(firstSeenAt).toLocaleDateString('pt-BR')
+                            : '-'}
+                        </td>
+                        <td className="p-3">
+                          {lastSeenAt
+                            ? new Date(lastSeenAt).toLocaleDateString('pt-BR')
+                            : '-'}
+                        </td>
+                        <td className="p-3">
+                          <span
+                            className={`px-2 py-1 text-xs rounded-full ${
+                              statusLabel === 'Pago'
+                                ? 'bg-green-500/20 text-green-300'
+                                : 'bg-yellow-500/20 text-yellow-300'
+                            }`}
+                          >
+                            {statusLabel}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
