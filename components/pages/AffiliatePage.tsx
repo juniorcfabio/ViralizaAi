@@ -3,11 +3,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { useAuth } from '../../contexts/AuthContext';
 import FeatureLockedOverlay from '../ui/FeatureLockedOverlay';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
-  ? import.meta.env.VITE_API_BASE_URL
-  : import.meta.env.DEV
-    ? 'http://localhost:3000'
-    : 'https://viralizaai-backend-production.up.railway.app';
+import { API_BASE_URL, getAuthHeaders } from '../../src/config/api';
 
 // Icons
 const GiftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -116,7 +112,12 @@ const AffiliatePage: React.FC = () => {
         const res = await fetch(
           `${API_BASE_URL}/affiliates/me/referred-users?affiliateCode=${encodeURIComponent(
             user.affiliateInfo!.referralCode
-          )}`
+          )}`,
+          {
+            headers: {
+              ...getAuthHeaders(),
+            },
+          }
         );
 
         if (!res.ok) {
@@ -152,7 +153,12 @@ const AffiliatePage: React.FC = () => {
         const res = await fetch(
           `${API_BASE_URL}/affiliates/me/commissions?affiliateCode=${encodeURIComponent(
             user.affiliateInfo!.referralCode
-          )}`
+          )}`,
+          {
+            headers: {
+              ...getAuthHeaders(),
+            },
+          }
         );
 
         if (!res.ok) {

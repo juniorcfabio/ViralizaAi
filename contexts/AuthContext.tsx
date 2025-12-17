@@ -1,12 +1,12 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, Plan, BillingRecord, FeatureKey } from '../types';
+import { API_BASE_URL, clearAuthToken, setAuthToken } from '../src/config/api';
 import {
   initDB,
   getAllUsersDB,
   addUserDB,
   updateUserDB,
-  deleteUsersDB,
-  verifyCredentialsDB
+  deleteUsersDB
 } from '../services/dbService';
 
 export type RegistrationData = Omit<User, 'id' | 'type' | 'status' | 'joinedDate'>;
@@ -24,12 +24,13 @@ interface AuthContextType {
   isLoading: boolean;
   isSubscriptionActive: () => boolean;
   hasAccess: (feature: FeatureKey) => boolean;
-  login: (email: string, password: string) => Promise<User | null>;
+  login: (cpf: string, password: string) => Promise<User | { error: string }>;
   register: (data: RegistrationData) => Promise<RegistrationResult>;
   logout: () => void;
   addUser: (data: AdminUserData) => Promise<User | null>;
   updateUser: (userId: string, data: Partial<User>) => Promise<void>;
   deleteUsers: (userIds: string[]) => Promise<void>;
+
   activateAffiliate: (userId: string) => Promise<void>;
   subscribeUserToPlan: (userId: string, plan: Plan) => Promise<boolean>;
   purchaseAddOn: (userId: string, feature: FeatureKey, price: number) => Promise<boolean>;
@@ -192,6 +193,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const loadData = async () => {
       try {
+        setIsLoading(true);
         await initDB(); // Auto-restore do banco
         const users = await getAllUsersDB();
         setPlatformUsers(users);
@@ -222,42 +224,112 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [user]);
 
   const register = async (data: RegistrationData): Promise<RegistrationResult> => {
-    // Query DB diretamente para evitar estado obsoleto
-    const freshUsers = await getAllUsersDB();
-    const emailToCheck = data.email.trim().toLowerCase();
+    try {
+      const referralCode = sessionStorage.getItem('referralCode');
+      const payload: any = {
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        cpf: data.cpf ? String(data.cpf).replace(/\D/g, '') : undefined,
+      };
 
-    if (freshUsers.some((u) => u.email.trim().toLowerCase() === emailToCheck)) {
-      return { success: false, message: 'Este e-mail já está cadastrado.' };
+      if (referralCode) {
+        payload.referredBy = referralCode;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseJson = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const message =
+          (responseJson && (responseJson.message || responseJson.error)) ||
+          `Erro ao cadastrar: ${res.status}`;
+        return { success: false, message };
+      }
+
+      sessionStorage.removeItem('referralCode');
+      return { success: true };
+    } catch (error) {
+      console.error('Erro no cadastro:', error);
+      return { success: false, message: 'Erro ao cadastrar. Tente novamente.' };
     }
+  };
 
-    const referralCode = sessionStorage.getItem('referralCode');
+  const login = async (cpf: string, password: string): Promise<User | { error: string }> => {
+    const cleanCpf = String(cpf).replace(/\D/g, '');
 
-    const newUser: User = {
-      ...data,
-      email: emailToCheck,
-      password: data.password,
-      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type: 'client',
-      status: 'Ativo',
-      joinedDate: new Date().toISOString().split('T')[0],
-      trialStartDate: new Date().toISOString(),
-      socialAccounts: [],
-      paymentMethods: [],
-      billingHistory: [],
-      plan: undefined,
-      trialFollowers: 0,
-      trialSales: 0,
-      referredBy: referralCode || undefined
-    };
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ cpf: cleanCpf, password }),
+      });
 
-    // Salva em IndexedDB e LocalStorage
-    await addUserDB(newUser);
+      const data = await res.json().catch(() => null);
 
-    setPlatformUsers((prev) => [...prev, newUser]);
-    setUser(newUser);
-    sessionStorage.removeItem('referralCode');
+      if (!res.ok) {
+        const message =
+          (data && (data.message || data.error)) ||
+          `Erro ao logar: ${res.status}`;
+        return { error: message };
+      }
 
-    return { success: true, user: newUser };
+      if (data?.token) {
+        setAuthToken(data.token);
+      }
+
+      if (data?.user) {
+        const backendUser = data.user as any;
+        const joinedDate = backendUser.createdAt
+          ? String(backendUser.createdAt).split('T')[0]
+          : new Date().toISOString().split('T')[0];
+
+        const mappedUser: User = {
+          id: String(backendUser.id),
+          name: String(backendUser.name || ''),
+          email: String(backendUser.email || ''),
+          cpf: backendUser.cpf ? String(backendUser.cpf) : undefined,
+          type: backendUser.role === 'admin' ? 'admin' : 'client',
+          status: 'Ativo',
+          joinedDate,
+          socialAccounts: backendUser.socialAccounts || [],
+          paymentMethods: backendUser.paymentMethods || [],
+          billingHistory: backendUser.billingHistory || [],
+          plan: backendUser.plan,
+          subscriptionEndDate: backendUser.subscriptionEndDate,
+          trialStartDate: backendUser.trialStartDate,
+          trialFollowers: backendUser.trialFollowers,
+          trialSales: backendUser.trialSales,
+          affiliateInfo: backendUser.affiliateInfo,
+          referredBy: backendUser.referredBy,
+          addOns: backendUser.addOns,
+        };
+
+        setUser(mappedUser);
+        return mappedUser;
+      }
+
+      return { error: 'Erro ao logar' };
+    } catch (error) {
+      console.error('Erro ao logar:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      return { error: message || 'Erro ao logar. Tente novamente.' };
+    }
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem(ACTIVE_USER_STORAGE_KEY);
+    clearAuthToken();
   };
 
   const addUser = async (data: AdminUserData): Promise<User | null> => {
@@ -303,26 +375,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     if (user && userIds.includes(user.id)) {
       setUser(null);
+      localStorage.removeItem(ACTIVE_USER_STORAGE_KEY);
+      clearAuthToken();
     }
-  };
-
-  const login = async (email: string, password: string): Promise<User | null> => {
-    const cleanEmail = email.trim().toLowerCase();
-
-    // Não confiar em platformUsers (pode estar vazio), buscar direto no DB
-    const foundUser = await verifyCredentialsDB(cleanEmail, password);
-
-    if (foundUser) {
-      setUser(foundUser);
-      return foundUser;
-    }
-
-    return null;
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem(ACTIVE_USER_STORAGE_KEY);
   };
 
   const activateAffiliate = async (userId: string) => {
@@ -392,10 +447,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             ...affiliate.affiliateInfo,
             earnings: (affiliate.affiliateInfo.earnings || 0) + commission,
             referredUserIds: [
-              ...(new Set([
-                ...(affiliate.affiliateInfo.referredUserIds || []),
-                userId
-              ])) as string[]
+              ...Array.from(
+                new Set([...(affiliate.affiliateInfo.referredUserIds || []), userId])
+              )
             ]
           }
         });

@@ -4,8 +4,7 @@ import { AdPartner, AdPricingConfig } from '../../types';
 import { getAdPricingConfig } from '../../services/dbService';
 import { useNavigate } from 'react-router-dom';
 
-// Base da API do backend NestJS
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+import { API_BASE_URL, getAuthHeaders } from '../../src/config/api';
 
 const buildAppBaseUrl = () => {
     // Mesma ideia do BillingPage: base do app para montar URLs de retorno
@@ -96,7 +95,8 @@ const AdvertisePage: React.FC = () => {
             const response = await fetch(`${API_BASE_URL}/payments/checkout`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...getAuthHeaders(),
                 },
                 body: JSON.stringify({
                     userId: user.id,

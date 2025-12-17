@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PaymentMethod, Plan } from '../../types';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+import { API_BASE_URL, getAuthHeaders } from '../../src/config/api';
 
 const CreditCardIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg
@@ -73,7 +73,7 @@ const PixIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
         strokeLinecap="round"
         strokeLinejoin="round"
     >
-        <path d="M7.83 7.83 11 4h2l3.17 3.17" />
+        <path d="M7.83 7.83 11 4h2l3.17 3.17-2.34 2.34-3.17-3.17" />
         <path d="m16.17 7.83 3.17 3.17-2.34 2.34-3.17-3.17" />
         <path d="m4 11 3.17 3.17-3.17 3.17-2.34-2.34" />
         <path d="m7.83 16.17 3.17 3.17h2l3.17-3.17-2.34-2.34-3.17 3.17-3.17-3.17Z" />
@@ -577,9 +577,13 @@ const BillingPage: React.FC = () => {
                 const res = await fetch(`${API_BASE_URL}/payments/confirm`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        ...getAuthHeaders(),
                     },
-                    body: JSON.stringify({ txId })
+                    body: JSON.stringify({
+                        userId: user.id,
+                        transactionId: txId
+                    })
                 });
 
                 if (!res.ok) {
@@ -645,7 +649,11 @@ const BillingPage: React.FC = () => {
     useEffect(() => {
         const loadHistory = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/payments/list`);
+                const res = await fetch(`${API_BASE_URL}/payments/list`, {
+                    headers: {
+                        ...getAuthHeaders(),
+                    }
+                });
                 if (!res.ok) return;
 
                 const txs = await res.json();
@@ -686,7 +694,8 @@ const BillingPage: React.FC = () => {
             const response = await fetch(`${API_BASE_URL}/payments/checkout`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...getAuthHeaders(),
                 },
                 body: JSON.stringify({
                     userId: user.id,
@@ -743,7 +752,8 @@ const BillingPage: React.FC = () => {
             const response = await fetch(`${API_BASE_URL}/payments/checkout`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...getAuthHeaders(),
                 },
                 body: JSON.stringify({
                     userId: user.id,

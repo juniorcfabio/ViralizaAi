@@ -28,6 +28,7 @@ import AdvertisePage from './components/pages/AdvertisePage';
 import { getSystemVersion } from './services/dbService';
 import UserGrowthEnginePage from './components/pages/UserGrowthEnginePage';
 import AdminGrowthEngineConfigPage from './components/pages/AdminGrowthEngineConfigPage';
+import ResetPasswordPage from './components/pages/ResetPasswordPage';
 
 const UpdateModal: React.FC = () => {
     const [hasUpdate, setHasUpdate] = useState(false);
@@ -88,6 +89,7 @@ const AppRoutes: React.FC = () => {
     return (
         <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* Client Routes */}
             <Route
@@ -130,6 +132,23 @@ const AppRoutes: React.FC = () => {
 };
 
 const App: React.FC = () => {
+    useEffect(() => {
+        try {
+            // Suporte a links sem hash (ex.: tracking do e-mail remove o fragment '#').
+            // Se chegar em /reset-password?token=..., reescreve para HashRouter.
+            if (
+                typeof window !== 'undefined' &&
+                window.location.pathname.endsWith('/reset-password') &&
+                !window.location.hash
+            ) {
+                const search = window.location.search || '';
+                window.location.hash = `#/reset-password${search}`;
+            }
+        } catch {
+            // noop
+        }
+    }, []);
+
     return (
         <AuthProvider>
             <LanguageProvider>

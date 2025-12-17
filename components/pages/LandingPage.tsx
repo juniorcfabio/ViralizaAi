@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth, RegistrationData } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Plan, Testimonial, AdPartner, TrustedCompany } from '../../types';
+import { API_BASE_URL } from '../../src/config/api';
 import Logo from '../ui/Logo';
 import AIPersona from '../ui/AIPersona';
 import InteractiveAIPersona from '../ui/InteractiveAIPersona';
@@ -108,20 +109,63 @@ const AppleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 );
 
 const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-    const [email, setEmail] = useState('');
+    const [cpf, setCpf] = useState('');
     const [password, setPassword] = useState('');
+    const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [forgotMessage, setForgotMessage] = useState('');
     const [error, setError] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
+
     const { login, isLoading } = useAuth();
     const navigate = useNavigate();
+
+    const handleForgotPassword = async () => {
+        setError('');
+        setForgotMessage('');
+
+        const email = forgotEmail.trim().toLowerCase();
+        if (!email) {
+            setError('Informe seu e-mail para receber o link de redefinição.');
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email }),
+            });
+
+            const data = await res.json().catch(() => null);
+            const message = (data && (data.message || data.error)) || 'Se o e-mail existir, enviaremos um link para redefinir a senha.';
+
+            if (!res.ok) {
+                setError(String(message));
+                return;
+            }
+
+            setForgotMessage(String(message));
+        } catch (err) {
+            setError('Erro ao solicitar redefinição de senha. Tente novamente.');
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+
         setIsLoggingIn(true);
 
         try {
-            const user = await login(email, password);
+            const user = await login(cpf, password);
+            if (user && typeof user === 'object' && 'error' in user) {
+                setError((user as any).error || 'Erro ao processar login. Tente novamente.');
+                return;
+            }
+
             if (user) {
                 navigate(user.type === 'admin' ? '/admin' : '/dashboard');
             } else {
@@ -161,16 +205,16 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         <div className="w-full border-t border-gray-700"></div>
                     </div>
                     <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-secondary text-gray-500">Ou entre com e-mail</span>
+                        <span className="px-2 bg-secondary text-gray-500">Ou entre com CPF</span>
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <input 
-                        type="email" 
-                        placeholder="E-mail" 
-                        value={email} 
-                        onChange={e => setEmail(e.target.value)} 
+                        type="text" 
+                        placeholder="CPF (somente números)" 
+                        value={cpf} 
+                        onChange={e => setCpf(e.target.value)} 
                         required 
                         className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent"
                         disabled={isLoading || isLoggingIn}
@@ -193,6 +237,45 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     >
                         {isLoggingIn ? 'Verificando...' : (isLoading ? 'Carregando...' : 'Entrar')}
                     </button>
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setIsForgotPasswordOpen((v) => !v);
+                            setForgotMessage('');
+                            setError('');
+                        }}
+                        className="w-full text-sm text-gray-dark hover:text-light"
+                        disabled={isLoggingIn || isLoading}
+                    >
+                        Esqueci minha senha
+                    </button>
+
+                    {isForgotPasswordOpen && (
+                        <div className="space-y-3 pt-2">
+                            <input
+                                type="email"
+                                placeholder="Seu e-mail"
+                                value={forgotEmail}
+                                onChange={(e) => setForgotEmail(e.target.value)}
+                                className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent"
+                                disabled={isLoggingIn || isLoading}
+                            />
+
+                            {forgotMessage && (
+                                <p className="text-green-500 text-sm text-center">{forgotMessage}</p>
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={handleForgotPassword}
+                                className="w-full bg-primary text-light font-semibold py-3 rounded-full hover:bg-gray-700 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                                disabled={isLoggingIn || isLoading}
+                            >
+                                Enviar link de redefinição
+                            </button>
+                        </div>
+                    )}
                 </form>
             </div>
         </div>
@@ -210,8 +293,8 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [accountType, setAccountType] = useState<'individual' | 'business'>('business');
     const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
     const { register } = useAuth();
-    const navigate = useNavigate();
 
     const formatCPF = (value: string) => {
         const v = value.replace(/\D/g, '').slice(0, 11);
@@ -265,7 +348,7 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
         const result = await register(dataToRegister);
         if (result.success) {
-            navigate('/dashboard');
+            setSuccessMessage('Cadastro realizado! Verifique seu e-mail para confirmar a conta e depois faça login.');
         } else {
             setError(result.message || 'Ocorreu um erro no cadastro.');
         }
@@ -318,6 +401,7 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     
                     <input type="password" name="confirmPassword" placeholder="Confirmar Senha" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent" />
                     
+                    {successMessage && <p className="text-green-500 text-sm text-center">{successMessage}</p>}
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                     <button type="submit" className="w-full bg-accent text-light font-semibold py-3 mt-2 rounded-full hover:bg-blue-500 transition-colors">Cadastrar e Iniciar Teste</button>
                 </form>
@@ -1012,7 +1096,7 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
                                     </li>
                                 ))}
                             </ul>
-                            <button onClick={onRegister} className="w-full py-2 rounded-full font-semibold transition-colors bg-accent text-light hover:bg-blue-500">
+                            <button onClick={onRegister} className="w-full bg-accent text-light font-semibold py-3 mt-2 rounded-full hover:bg-blue-500 transition-colors">
                                 {t('plan.buy')}
                             </button>
                         </div>
@@ -1080,10 +1164,16 @@ const LandingPage: React.FC = () => {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
     const [isRegisterOpen, setIsRegisterOpen] = useState(false);
     const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
+    const [bannerMessage, setBannerMessage] = useState('');
 
     useEffect(() => {
         const href = window.location.href;
         let refCode = null;
+
+        // email verification redirect: https://viralizaai.vercel.app/#/?emailVerified=1
+        if (href.includes('emailVerified=1')) {
+            setBannerMessage('E-mail confirmado! Agora você pode fazer login.');
+        }
 
         if (href.includes('ref=')) {
             const urlParams = new URLSearchParams(href.split('?')[1]);
@@ -1113,6 +1203,13 @@ const LandingPage: React.FC = () => {
         <div className="bg-primary min-h-screen">
             <Header onLogin={() => setIsLoginOpen(true)} onRegister={() => setIsRegisterOpen(true)} />
             <main>
+                {bannerMessage && (
+                    <div className="container mx-auto px-6 pt-6">
+                        <div className="bg-green-500 bg-opacity-20 text-green-300 p-3 rounded-lg text-center">
+                            {bannerMessage}
+                        </div>
+                    </div>
+                )}
                 <Hero onRegister={() => setIsRegisterOpen(true)} onPersonaClick={() => setIsPersonaModalOpen(true)} />
                 <Features />
                 <WorldMap />
