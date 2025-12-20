@@ -1382,82 +1382,62 @@ const AffiliateRegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
         }
 
         try {
-            // SOLUÇÃO TÉCNICA AVANÇADA: Tentar backend primeiro, fallback para local
-            let registrationSuccess = false;
-            let userData = null;
+            console.log(' Iniciando cadastro de afiliado');
+            console.log(' Dados:', dataToRegister);
+            
+            // CRIAR USUÁRIO LOCAL DIRETAMENTE (SEM BACKEND)
+            const userId = `affiliate_${Date.now()}`;
+            const cpfOrCnpj = accountType === 'individual' ? 
+                formData.cpf?.replace(/\D/g, '') : formData.cnpj;
 
-            // Tentativa 1: Backend em produção
-            try {
-                const response = await fetch(`${API_BASE_URL}/auth/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dataToRegister),
-                });
+            const userData = {
+                id: userId,
+                name: formData.name,
+                email: formData.email,
+                cpf: accountType === 'individual' ? cpfOrCnpj : undefined,
+                cnpj: accountType === 'business' ? cpfOrCnpj : undefined,
+                type: 'client',
+                isAffiliate: true,
+                affiliateInfo: {
+                    referralCode: `viral_${userId.slice(-6)}`,
+                    earnings: 0,
+                    referredUserIds: []
+                },
+                status: 'Ativo',
+                joinedDate: new Date().toISOString().split('T')[0],
+                socialAccounts: [],
+                paymentMethods: [],
+                billingHistory: []
+            };
 
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result?.success) {
-                        registrationSuccess = true;
-                        userData = result.user;
-                    }
-                }
-            } catch (backendError) {
-                console.warn('Backend não disponível, usando fallback local');
-            }
+            console.log(' Usuário criado:', userData);
 
-            // Tentativa 2: Fallback local se backend falhou
-            if (!registrationSuccess) {
-                // Criar usuário local
-                const userId = `affiliate_${Date.now()}`;
-                const cpfOrCnpj = accountType === 'individual' ? 
-                    formData.cpf?.replace(/\D/g, '') : formData.cnpj;
+            // Salvar no localStorage
+            localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(userData));
+            
+            // Gerar token fake para compatibilidade
+            const fakeToken = `local_token_${userId}_${Date.now()}`;
+            localStorage.setItem('viraliza_ai_auth_token_v1', fakeToken);
 
-                userData = {
-                    id: userId,
-                    name: formData.name,
-                    email: formData.email,
-                    cpf: accountType === 'individual' ? cpfOrCnpj : undefined,
-                    cnpj: accountType === 'business' ? cpfOrCnpj : undefined,
-                    type: 'client',
-                    isAffiliate: true,
-                    affiliateInfo: {
-                        referralCode: `viral_${userId.slice(-6)}`,
-                        earnings: 0,
-                        referredUserIds: []
-                    },
-                    status: 'Ativo',
-                    joinedDate: new Date().toISOString().split('T')[0],
-                    socialAccounts: [],
-                    paymentMethods: [],
-                    billingHistory: []
-                };
+            console.log(' Dados salvos no localStorage');
+            console.log(' Token gerado:', fakeToken);
 
-                // Salvar no localStorage
-                localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(userData));
-                
-                // Gerar token fake para compatibilidade
-                const fakeToken = `local_token_${userId}_${Date.now()}`;
-                localStorage.setItem('viraliza_ai_auth_token_v1', fakeToken);
-
-                registrationSuccess = true;
-            }
-
-            if (registrationSuccess && userData) {
-                onClose(); // Fecha o modal
-                
-                // Redirecionamento direto para afiliados
+            // Fechar modal e redirecionar
+            onClose();
+            
+            console.log(' Redirecionando para /affiliate');
+            
+            // Redirecionamento direto para afiliados
+            setTimeout(() => {
+                navigate('/affiliate');
                 setTimeout(() => {
-                    navigate('/affiliate');
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 100);
-                }, 500);
-            } else {
-                setError('Erro ao criar conta de afiliado. Tente novamente.');
-            }
+                    console.log(' Recarregando página');
+                    window.location.reload();
+                }, 100);
+            }, 500);
 
         } catch (error) {
-            console.error('Erro crítico no cadastro:', error);
+            console.error(' Erro crítico:', error);
             setError('Erro interno. Tente novamente em alguns instantes.');
         }
     };
