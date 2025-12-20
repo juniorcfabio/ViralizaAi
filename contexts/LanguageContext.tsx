@@ -185,23 +185,13 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     const [language, setLanguage] = useState<Language>('pt'); // Forçar português
 
     useEffect(() => {
-        const browserLang = navigator.language.split('-')[0];
-        console.log(' Idioma detectado:', browserLang);
-        console.log(' Forçando idioma para português');
-        setLanguage('pt'); // Sempre português
-        console.log(' Idioma definido como: pt');
+        // Sempre usar português
+        setLanguage('pt');
     }, []);
 
     const t = (key: string) => {
         // @ts-ignore
         const translation = translations[language][key] || key;
-        if (key === 'nav.pricing') {
-            console.log('🔍 Traduzindo nav.pricing:', { language, key, translation });
-            console.log('🔍 Tipo da tradução:', typeof translation);
-            console.log('🔍 Valor exato:', JSON.stringify(translation));
-            // Forçar retorno correto para nav.pricing
-            return 'Ver Planos';
-        }
         return translation;
     };
 
