@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
 import FeatureLockedOverlay from '../ui/FeatureLockedOverlay';
+import { WithdrawalRequest } from '../../types';
 
 import { API_BASE_URL, getAuthHeaders } from '../../src/config/api';
 
@@ -66,6 +67,42 @@ const BankIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
+const DollarSignIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="12" x2="12" y1="2" y2="22" />
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+  </svg>
+);
+
+const ClockIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12,6 12,12 16,14" />
+  </svg>
+);
+
 const BankAccountSection: React.FC<{ user: any }> = ({ user }) => {
   const { updateUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -78,6 +115,18 @@ const BankAccountSection: React.FC<{ user: any }> = ({ user }) => {
     pixKeyType: user?.bankAccount?.pixKeyType || 'cpf'
   });
   const [isSaving, setIsSaving] = useState(false);
+
+  // Atualizar bankData quando user.bankAccount mudar
+  useEffect(() => {
+    setBankData({
+      bank: user?.bankAccount?.bank || '',
+      agency: user?.bankAccount?.agency || '',
+      account: user?.bankAccount?.account || '',
+      accountType: user?.bankAccount?.accountType || 'corrente',
+      pixKey: user?.bankAccount?.pixKey || '',
+      pixKeyType: user?.bankAccount?.pixKeyType || 'cpf'
+    });
+  }, [user?.bankAccount]);
 
   const handleSave = async () => {
     try {
@@ -258,11 +307,6 @@ const BankAccountSection: React.FC<{ user: any }> = ({ user }) => {
               <option value="telefone">Telefone</option>
               <option value="aleatoria">Chave Aleatória</option>
             </select>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 };
 
 const AffiliatePage: React.FC = () => {

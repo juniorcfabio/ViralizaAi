@@ -44,6 +44,24 @@ export interface BillingRecord {
   description: string;
 }
 
+export interface WithdrawalRequest {
+  id: string;
+  amount: number;
+  requestDate: string; // ISO string
+  expectedPaymentDate: string; // ISO string (3 business days)
+  status: 'pending' | 'processing' | 'completed' | 'cancelled';
+  affiliateId: string;
+  affiliateName: string;
+  bankAccount: {
+    bank: string;
+    agency: string;
+    account: string;
+    accountType: 'corrente' | 'poupanca';
+    pixKey: string;
+    pixKeyType: 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
+  };
+}
+
 export interface User {
   id: string;
   name: string; // Can be full name or company name
@@ -68,6 +86,15 @@ export interface User {
     referralCode: string;
     earnings: number;
     referredUserIds: string[]; // Store IDs of referred users
+    withdrawalRequests?: WithdrawalRequest[];
+  };
+  bankAccount?: {
+    bank: string;
+    agency: string;
+    account: string;
+    accountType: 'corrente' | 'poupanca';
+    pixKey: string;
+    pixKeyType: 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
   };
   referredBy?: string; // The referral code of the affiliate who referred this user
   avatar?: string;
