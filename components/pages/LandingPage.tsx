@@ -1427,14 +1427,14 @@ const AffiliateRegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
             
             console.log(' Redirecionando para /affiliate');
             
-            // Redirecionamento direto para afiliados
+            // Redirecionamento usando hash routing
             setTimeout(() => {
-                navigate('/affiliate');
+                window.location.hash = '#/affiliate';
                 setTimeout(() => {
                     console.log(' Recarregando página');
                     window.location.reload();
-                }, 100);
-            }, 500);
+                }, 200);
+            }, 300);
 
         } catch (error) {
             console.error(' Erro crítico:', error);

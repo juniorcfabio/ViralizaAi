@@ -188,6 +188,14 @@ const ClientSidebar: React.FC = () => {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [notification, setNotification] = useState('');
 
+  // Verificar se é usuário apenas afiliado (sem plano)
+  const isAffiliateOnly = user?.isAffiliate && !user?.plan && !user?.subscriptionEndDate;
+
+  // Filtrar navegação para afiliados
+  const filteredNavItems = isAffiliateOnly 
+    ? navItems.filter(item => item.path === '/dashboard/affiliate')
+    : navItems;
+
   const showNotification = (message: string) => {
     setNotification(message);
     setTimeout(() => setNotification(''), 2000);
@@ -228,13 +236,23 @@ const ClientSidebar: React.FC = () => {
           <Logo />
         </div>
         <nav className="space-y-2">
-          {navItems.map(({ path, labelKey, icon: Icon, end }) => (
+          {filteredNavItems.map(({ path, labelKey, icon: Icon, end }) => (
             <NavLink key={path} to={path} end={end} className={navLinkClasses}>
               <Icon className="w-5 h-5" />
               <span className="font-semibold">{t(labelKey)}</span>
             </NavLink>
           ))}
         </nav>
+        
+        {/* Aviso para usuários apenas afiliados */}
+        {isAffiliateOnly && (
+          <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+            <p className="text-xs text-yellow-300 text-center">
+              💎 <strong>Conta Afiliado</strong><br/>
+              Para acessar outras ferramentas, adquira um plano.
+            </p>
+          </div>
+        )}
       </div>
       <div className="border-t border-primary pt-4">
         <div className="flex items-center gap-3 mb-4 relative">

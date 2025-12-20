@@ -96,8 +96,8 @@ const AppRoutes: React.FC = () => {
                 path="/dashboard"
                 element={
                     user?.type === 'client' ? (
-                        user?.isAffiliate && !user?.plan ? (
-                            <Navigate to="/affiliate" />
+                        user?.isAffiliate && !user?.plan && !user?.subscriptionEndDate ? (
+                            <Navigate to="/affiliate" replace />
                         ) : (
                             <ClientLayout />
                         )
@@ -106,15 +106,87 @@ const AppRoutes: React.FC = () => {
                     )
                 }
             >
-                <Route index element={<DashboardPage />} />
-                <Route path="social" element={<SocialAccountsPage />} />
-                <Route path="analytics" element={<AnalyticsPage />} />
-                <Route path="billing" element={<BillingPage />} />
+                <Route
+                    index
+                    element={
+                        user?.isAffiliate && !user?.plan && !user?.subscriptionEndDate ? (
+                            <Navigate to="/affiliate" replace />
+                        ) : (
+                            <DashboardPage />
+                        )
+                    }
+                />
+                <Route
+                    path="social"
+                    element={
+                        user?.isAffiliate && !user?.plan && !user?.subscriptionEndDate ? (
+                            <Navigate to="/affiliate" replace />
+                        ) : (
+                            <SocialAccountsPage />
+                        )
+                    }
+                />
+                <Route
+                    path="analytics"
+                    element={
+                        user?.isAffiliate && !user?.plan && !user?.subscriptionEndDate ? (
+                            <Navigate to="/affiliate" replace />
+                        ) : (
+                            <AnalyticsPage />
+                        )
+                    }
+                />
+                <Route
+                    path="billing"
+                    element={
+                        user?.isAffiliate && !user?.plan && !user?.subscriptionEndDate ? (
+                            <Navigate to="/affiliate" replace />
+                        ) : (
+                            <BillingPage />
+                        )
+                    }
+                />
                 <Route path="affiliate" element={<AffiliatePage />} />
-                <Route path="settings" element={<SettingsPage />} />
-                <Route path="growth-engine" element={<UserGrowthEnginePage />} />
-                <Route path="autopilot" element={<ViralizaAutopilotPage />} />
-                <Route path="advertise" element={<AdvertisePage />} />
+                <Route
+                    path="settings"
+                    element={
+                        user?.isAffiliate && !user?.plan && !user?.subscriptionEndDate ? (
+                            <Navigate to="/affiliate" replace />
+                        ) : (
+                            <SettingsPage />
+                        )
+                    }
+                />
+                <Route
+                    path="growth-engine"
+                    element={
+                        user?.isAffiliate && !user?.plan && !user?.subscriptionEndDate ? (
+                            <Navigate to="/affiliate" replace />
+                        ) : (
+                            <UserGrowthEnginePage />
+                        )
+                    }
+                />
+                <Route
+                    path="autopilot"
+                    element={
+                        user?.isAffiliate && !user?.plan && !user?.subscriptionEndDate ? (
+                            <Navigate to="/affiliate" replace />
+                        ) : (
+                            <ViralizaAutopilotPage />
+                        )
+                    }
+                />
+                <Route
+                    path="advertise"
+                    element={
+                        user?.isAffiliate && !user?.plan && !user?.subscriptionEndDate ? (
+                            <Navigate to="/affiliate" replace />
+                        ) : (
+                            <AdvertisePage />
+                        )
+                    }
+                />
             </Route>
 
             {/* Affiliate-only Route */}
