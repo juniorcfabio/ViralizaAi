@@ -96,6 +96,26 @@ const BriefcaseIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
         <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
     </svg>
 );
+const BankIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg
+        {...props}
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+    >
+        <path d="M3 21h18"/>
+        <path d="M5 21V7l8-4v18"/>
+        <path d="M19 21V11l-6-4"/>
+        <path d="M9 9v12"/>
+        <path d="M15 11v10"/>
+    </svg>
+);
 
 const mockNotifications = [
     { id: 1, text: 'Novo usuário "Empresa Beta" cadastrado.', time: '5 min atrás' },
@@ -193,6 +213,10 @@ const AdminSidebar: React.FC = () => {
                     </NavLink>
                     <NavLink to="/admin/payments" className={navLinkClasses}>
                         <span>{t('sidebar.admin_payments')}</span>
+                    </NavLink>
+                    <NavLink to="/admin/bank-config" className={navLinkClasses}>
+                        <BankIcon className="w-5 h-5" />
+                        <span>Configuração Bancária</span>
                     </NavLink>
                     <NavLink to="/admin/marketing" className={navLinkClasses}>
                         <span>{t('sidebar.admin_marketing')}</span>

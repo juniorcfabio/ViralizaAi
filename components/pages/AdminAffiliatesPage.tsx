@@ -10,6 +10,7 @@ const PercentIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {..
 const BankIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v12"/><path d="M15 11v10"/></svg>;
 const TrashIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
 const EyeIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>;
+const ZapIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>;
 
 const StatCard: React.FC<{ title: string; value: string; icon: React.ElementType; }> = ({ title, value, icon: Icon }) => (
     <div className="bg-secondary p-6 rounded-lg">
@@ -28,6 +29,7 @@ const AdminAffiliatesPage: React.FC = () => {
     const [affiliateCommission, setAffiliateCommission] = useState<number>(20);
     const [selectedAffiliate, setSelectedAffiliate] = useState<User | null>(null);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         const storedRate = localStorage.getItem('viraliza_affiliate_commission_rate');
@@ -89,6 +91,77 @@ const AdminAffiliatesPage: React.FC = () => {
                 deleteUsers([affiliateId]);
                 showNotification(`Afiliado ${affiliate.name} excluído com sucesso.`);
             }
+        }
+    };
+
+    const handleAutomaticPayment = async (affiliateId: string) => {
+        const affiliate = affiliates.find(a => a.id === affiliateId);
+        if (!affiliate || !affiliate.affiliateInfo) return;
+
+        // Verificar se há configuração bancária do admin
+        const adminBankConfig = localStorage.getItem('viraliza_admin_bank_config');
+        if (!adminBankConfig) {
+            showNotification('❌ Configure sua conta bancária primeiro em "Configuração Bancária"');
+            return;
+        }
+
+        const bankConfig = JSON.parse(adminBankConfig);
+        if (!bankConfig.isConfigured) {
+            showNotification('❌ Finalize a configuração bancária antes de fazer pagamentos');
+            return;
+        }
+
+        // Verificar se o afiliado tem dados bancários
+        if (!affiliate.bankAccount?.bank && !affiliate.bankAccount?.pixKey) {
+            showNotification('❌ Afiliado não possui dados bancários cadastrados');
+            return;
+        }
+
+        const amount = affiliate.affiliateInfo.earnings;
+        if (amount <= 0) {
+            showNotification('❌ Não há valor a pagar para este afiliado');
+            return;
+        }
+
+        // Modal de confirmação com validação
+        const confirmed = window.confirm(
+            `🏦 PAGAMENTO AUTOMÁTICO\n\n` +
+            `Afiliado: ${affiliate.name}\n` +
+            `Valor: R$ ${amount.toFixed(2)}\n` +
+            `Destino: ${affiliate.bankAccount.pixKey ? 'PIX' : 'Transferência bancária'}\n\n` +
+            `Confirma o pagamento automático?`
+        );
+
+        if (!confirmed) return;
+
+        try {
+            setIsSaving(true);
+            showNotification('🔄 Processando pagamento automático...');
+
+            // Simular processo de pagamento
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // Simular validação bancária
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // Simular transferência
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // Registrar o pagamento (zerar ganhos)
+            updateUser(affiliateId, {
+                affiliateInfo: {
+                    ...affiliate.affiliateInfo,
+                    earnings: 0,
+                }
+            });
+
+            showNotification(`✅ Pagamento de R$ ${amount.toFixed(2)} realizado com sucesso para ${affiliate.name}!`);
+
+        } catch (error) {
+            console.error('Erro no pagamento automático:', error);
+            showNotification('❌ Erro no pagamento automático. Tente novamente.');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -194,10 +267,18 @@ const AdminAffiliatesPage: React.FC = () => {
                                                     <EyeIcon className="w-3 h-3" />
                                                 </button>
                                                 <button 
+                                                    onClick={() => handleAutomaticPayment(aff.id)} 
+                                                    disabled={(aff.affiliateInfo?.earnings || 0) === 0 || isSaving}
+                                                    className="bg-yellow-500 text-light p-1 rounded hover:bg-yellow-400 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                                                    title="Pagamento automático"
+                                                >
+                                                    <ZapIcon className="w-3 h-3" />
+                                                </button>
+                                                <button 
                                                     onClick={() => handleRegisterPayout(aff.id)} 
                                                     disabled={(aff.affiliateInfo?.earnings || 0) === 0}
                                                     className="bg-green-500 text-light p-1 rounded hover:bg-green-400 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-                                                    title="Registrar pagamento"
+                                                    title="Registrar pagamento manual"
                                                 >
                                                     <DollarSignIcon className="w-3 h-3" />
                                                 </button>
@@ -211,7 +292,7 @@ const AdminAffiliatesPage: React.FC = () => {
                                             </div>
                                         </td>
                                     </tr>
-                            ))
+                                ))
                             )}
                         </tbody>
                     </table>

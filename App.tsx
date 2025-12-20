@@ -28,6 +28,7 @@ import AdvertisePage from './components/pages/AdvertisePage';
 import { getSystemVersion } from './services/dbService';
 import UserGrowthEnginePage from './components/pages/UserGrowthEnginePage';
 import AdminGrowthEngineConfigPage from './components/pages/AdminGrowthEngineConfigPage';
+import AdminBankConfigPage from './components/pages/AdminBankConfigPage';
 import ResetPasswordPage from './components/pages/ResetPasswordPage';
 
 const UpdateModal: React.FC = () => {
@@ -213,6 +214,7 @@ const AppRoutes: React.FC = () => {
                 <Route index element={<AdminDashboardPage />} />
                 <Route path="financial" element={<AdminFinancialPage />} />
                 <Route path="payments" element={<AdminPaymentsPage />} />
+                <Route path="bank-config" element={<AdminBankConfigPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
                 <Route path="marketing" element={<AdminMarketingPage />} />
                 <Route path="affiliates" element={<AdminAffiliatesPage />} />
