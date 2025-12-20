@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
 import FeatureLockedOverlay from '../ui/FeatureLockedOverlay';
-import { updateUserDB } from '../../services/dbService';
 
 import { API_BASE_URL, getAuthHeaders } from '../../src/config/api';
 
@@ -84,22 +83,21 @@ const BankAccountSection: React.FC<{ user: any }> = ({ user }) => {
     try {
       setIsSaving(true);
       
-      const updatedUser = {
-        ...user,
-        bankAccount: bankData
-      };
+      // Validar se pelo menos um campo obrigatório está preenchido
+      if (!bankData.bank && !bankData.pixKey) {
+        alert('Preencha pelo menos o banco ou a chave PIX.');
+        return;
+      }
 
-      // Salvar no contexto
+      // Salvar no contexto (que já faz a persistência no banco local)
       await updateUser(user.id, { bankAccount: bankData });
       
-      // Salvar no banco local
-      await updateUserDB(updatedUser);
-      
       setIsEditing(false);
+      alert('✅ Dados bancários salvos com sucesso!');
       console.log('✅ [BANK] Conta bancária salva com sucesso!');
     } catch (error) {
       console.error('❌ [BANK] Erro ao salvar conta bancária:', error);
-      alert('Erro ao salvar dados bancários. Tente novamente.');
+      alert('❌ Erro ao salvar dados bancários. Tente novamente.');
     } finally {
       setIsSaving(false);
     }
