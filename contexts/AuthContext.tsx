@@ -387,13 +387,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const activateAffiliate = async (userId: string) => {
-    await updateUser(userId, {
-      affiliateInfo: {
+    try {
+      // Ativação local sem depender do backend
+      const affiliateData = {
         referralCode: `viral_${userId.slice(-6)}`,
         earnings: 0,
         referredUserIds: []
+      };
+
+      // Atualizar usuário local
+      if (user && user.id === userId) {
+        const updatedUser = { ...user, affiliateInfo: affiliateData, isAffiliate: true };
+        setUser(updatedUser);
+        localStorage.setItem(ACTIVE_USER_STORAGE_KEY, JSON.stringify(updatedUser));
       }
-    });
+
+      // Tentar atualizar no backend (opcional)
+      try {
+        await updateUser(userId, { affiliateInfo: affiliateData, isAffiliate: true });
+      } catch (backendError) {
+        console.warn('Backend não disponível, usando apenas localStorage:', backendError);
+      }
+    } catch (error) {
+      console.error('Erro na ativação de afiliado:', error);
+      throw error;
+    }
   };
 
   const subscribeUserToPlan = async (userId: string, plan: Plan): Promise<boolean> => {
