@@ -1422,19 +1422,39 @@ const AffiliateRegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
             console.log(' Dados salvos no localStorage');
             console.log(' Token gerado:', fakeToken);
 
-            // Fechar modal e redirecionar
+            // Fechar modal
             onClose();
             
             console.log(' Redirecionando para /affiliate');
             
-            // Redirecionamento usando hash routing
+            // Redirecionamento mais robusto
             setTimeout(() => {
-                window.location.hash = '#/affiliate';
-                setTimeout(() => {
-                    console.log(' Recarregando página');
+                console.log(' Executando redirecionamento...');
+                
+                // Múltiplas estratégias de redirecionamento
+                try {
+                    // Estratégia 1: Hash routing
+                    window.location.hash = '#/affiliate';
+                    console.log(' Hash definido para #/affiliate');
+                    
+                    // Estratégia 2: Redirecionamento completo após delay
+                    setTimeout(() => {
+                        console.log(' Redirecionamento completo...');
+                        window.location.href = window.location.origin + window.location.pathname + '#/affiliate';
+                    }, 500);
+                    
+                    // Estratégia 3: Reload forçado após mais tempo
+                    setTimeout(() => {
+                        console.log(' Reload forçado...');
+                        window.location.reload();
+                    }, 1000);
+                    
+                } catch (redirectError) {
+                    console.error(' Erro no redirecionamento:', redirectError);
+                    // Fallback: reload simples
                     window.location.reload();
-                }, 200);
-            }, 300);
+                }
+            }, 100);
 
         } catch (error) {
             console.error(' Erro crítico:', error);
