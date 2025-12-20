@@ -17,7 +17,7 @@ const translations = {
         'hero.generating': 'Gerando apresentação personalizada...',
         'nav.features': 'Funcionalidades',
         'nav.testimonials': 'Depoimentos',
-        'nav.pricing': 'Ver Planos',
+        'nav.pricing': 'Ver Planos', // Cache buster - 20/12/2025
         'nav.login': 'Entrar',
         'nav.dashboard': 'Dashboard',
         'nav.register': 'Cadastre-se',
