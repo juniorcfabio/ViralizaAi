@@ -7,7 +7,7 @@ import { API_BASE_URL } from '../../src/config/api';
 import Logo from '../ui/Logo';
 import AIPersona from '../ui/AIPersona';
 import InteractiveAIPersona from '../ui/InteractiveAIPersona';
-import { getPartnersDB, getTestimonialsDB, getTrustedCompaniesDB } from '../../services/dbService';
+import { getPartnersDB, getTestimonialsDB, getTrustedCompaniesDB, addUserDB } from '../../services/dbService';
 
 const CampaignIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1396,23 +1396,24 @@ const AffiliateRegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
                 email: formData.email,
                 cpf: accountType === 'individual' ? cpfOrCnpj : undefined,
                 cnpj: accountType === 'business' ? cpfOrCnpj : undefined,
-                type: 'client',
+                type: 'client' as const,
                 isAffiliate: true,
                 affiliateInfo: {
                     referralCode: `viral_${userId.slice(-6)}`,
                     earnings: 0,
                     referredUserIds: []
                 },
-                status: 'Ativo',
+                status: 'Ativo' as const,
                 joinedDate: new Date().toISOString().split('T')[0],
                 socialAccounts: [],
                 paymentMethods: [],
-                billingHistory: []
+                billingHistory: [],
+                password: formData.password
             };
 
             console.log(' Usuário criado:', userData);
 
-            // Salvar no localStorage
+            // Salvar no localStorage para sessão atual
             localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(userData));
             
             // Gerar token fake para compatibilidade
@@ -1421,6 +1422,14 @@ const AffiliateRegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
 
             console.log(' Dados salvos no localStorage');
             console.log(' Token gerado:', fakeToken);
+
+            // IMPORTANTE: Salvar no banco de dados local para aparecer no painel admin
+            try {
+                await addUserDB(userData);
+                console.log(' Usuário salvo no banco de dados local - aparecerá no painel admin!');
+            } catch (dbError) {
+                console.warn(' Erro ao salvar no banco local, mas usuário criado:', dbError);
+            }
 
             // Fechar modal
             onClose();
