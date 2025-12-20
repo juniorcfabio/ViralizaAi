@@ -122,3 +122,8 @@ html {
   50% { transform: rotate3d(1, -1, 0, -180deg) scale(1.25); opacity: 0.4; }
   100% { transform: rotate3d(1, -1, 0, -360deg) scale(1.2); opacity: 1; }
 }
+
+/* Hide SupportChatbot */
+.fixed.bottom-6.right-6 {
+  display: none !important;
+}

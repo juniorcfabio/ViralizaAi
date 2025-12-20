@@ -721,6 +721,161 @@ const WorldMap: React.FC = () => {
     );
 };
 
+const AffiliateSection: React.FC<{ onAffiliateRegister: () => void }> = ({ onAffiliateRegister }) => {
+    const { t } = useLanguage();
+
+    return (
+        <section className="py-20 bg-gradient-to-br from-green-900/20 via-primary to-blue-900/20 relative overflow-hidden">
+            {/* Background Effects */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(34,197,94,0.1),transparent_50%)]"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(59,130,246,0.1),transparent_50%)]"></div>
+            
+            <div className="container mx-auto px-6 relative z-10">
+                <div className="text-center mb-12">
+                    <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-full px-6 py-2 mb-6">
+                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        <span className="text-green-400 font-semibold text-sm">PROGRAMA DE AFILIADOS EXCLUSIVO</span>
+                    </div>
+                    
+                    <h2 className="text-4xl md:text-5xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-blue-400 to-purple-400">
+                        Ganhe R$ 12-80 por Venda
+                    </h2>
+                    
+                    <p className="text-xl text-gray-300 mb-4 max-w-3xl mx-auto">
+                        Torne-se um <span className="text-green-400 font-bold">Parceiro Viraliza.ai</span> e monetize sua audiência vendendo a ferramenta de IA mais completa do mercado
+                    </p>
+                    
+                    <p className="text-gray-400 max-w-2xl mx-auto">
+                        Comissões de <span className="text-green-400 font-bold">20% a 40%</span> + dashboard exclusivo + materiais de venda + suporte dedicado
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-16">
+                    {/* Left Side - Benefits */}
+                    <div className="space-y-8">
+                        <div className="bg-secondary/50 backdrop-blur-sm border border-green-500/20 rounded-2xl p-6">
+                            <h3 className="text-2xl font-bold mb-6 text-green-400">Por que ser nosso afiliado?</h3>
+                            
+                            <div className="space-y-4">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                                        <span className="text-green-400 font-bold text-sm">💰</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-light mb-1">Comissões Altas</h4>
+                                        <p className="text-gray-400 text-sm">20% a 40% por venda + bônus por performance</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-start gap-4">
+                                    <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                                        <span className="text-blue-400 font-bold text-sm">🎯</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-light mb-1">Produto que Vende</h4>
+                                        <p className="text-gray-400 text-sm">IA + Marketing Digital = mercado aquecido de R$ 50bi</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-start gap-4">
+                                    <div className="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                                        <span className="text-purple-400 font-bold text-sm">📊</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-light mb-1">Dashboard Completo</h4>
+                                        <p className="text-gray-400 text-sm">Acompanhe vendas, comissões e performance em tempo real</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-start gap-4">
+                                    <div className="w-8 h-8 bg-yellow-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                                        <span className="text-yellow-400 font-bold text-sm">🚀</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-light mb-1">Suporte Dedicado</h4>
+                                        <p className="text-gray-400 text-sm">Materiais de venda + treinamentos + suporte técnico</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Side - Earnings Calculator */}
+                    <div className="bg-gradient-to-br from-secondary/80 to-primary/80 backdrop-blur-sm border border-accent/30 rounded-2xl p-8">
+                        <h3 className="text-2xl font-bold mb-6 text-center text-accent">Calculadora de Ganhos</h3>
+                        
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-primary/50 rounded-lg p-4 text-center">
+                                    <div className="text-2xl font-bold text-green-400">5 vendas</div>
+                                    <div className="text-sm text-gray-400">por mês</div>
+                                    <div className="text-lg font-bold text-light mt-2">R$ 300-400</div>
+                                </div>
+                                <div className="bg-primary/50 rounded-lg p-4 text-center">
+                                    <div className="text-2xl font-bold text-green-400">15 vendas</div>
+                                    <div className="text-sm text-gray-400">por mês</div>
+                                    <div className="text-lg font-bold text-light mt-2">R$ 900-1.200</div>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 rounded-lg p-4 text-center border border-green-500/30">
+                                <div className="text-sm text-gray-300 mb-1">Meta Realista (50 vendas/mês)</div>
+                                <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-400">
+                                    R$ 3.000-4.000
+                                </div>
+                                <div className="text-xs text-gray-400 mt-1">Renda mensal recorrente</div>
+                            </div>
+                            
+                            <div className="text-center">
+                                <p className="text-xs text-gray-500 mb-4">
+                                    * Baseado em comissões de 20-40% sobre planos de R$ 59,90 a R$ 399,90
+                                </p>
+                                
+                                <button 
+                                    onClick={onAffiliateRegister}
+                                    className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white font-bold py-4 px-8 rounded-full text-lg hover:from-green-400 hover:to-blue-400 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                                >
+                                    🚀 QUERO SER AFILIADO AGORA
+                                </button>
+                                
+                                <p className="text-xs text-gray-400 mt-3">
+                                    Cadastro gratuito • Aprovação automática • Comece a vender hoje
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bottom CTA */}
+                <div className="text-center">
+                    <div className="bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/30 rounded-2xl p-8 max-w-4xl mx-auto">
+                        <h3 className="text-2xl font-bold mb-4 text-light">Pronto para começar a faturar?</h3>
+                        <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
+                            Junte-se a centenas de afiliados que já faturam vendendo Viraliza.ai. 
+                            Cadastro gratuito, sem mensalidade, sem burocracia.
+                        </p>
+                        
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                            <button 
+                                onClick={onAffiliateRegister}
+                                className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-3 px-8 rounded-full hover:from-green-400 hover:to-green-500 transition-all duration-300 flex items-center gap-2"
+                            >
+                                <span>💎</span> CADASTRO GRATUITO DE AFILIADO
+                            </button>
+                            
+                            <div className="text-sm text-gray-400">
+                                <span className="text-green-400">✓</span> Sem taxa de adesão
+                                <span className="mx-2">•</span>
+                                <span className="text-green-400">✓</span> Aprovação imediata
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+};
+
 const PartnerAdsSection: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
     const { t } = useLanguage();
     const [partners, setPartners] = useState<AdPartner[]>([]);
@@ -1160,9 +1315,312 @@ const Footer: React.FC = () => {
     );
 };
 
+const AffiliateRegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+    const { register, login } = useAuth();
+    const navigate = useNavigate();
+    const [formData, setFormData] = useState<Omit<RegistrationData, 'plan'>>({ 
+        name: '', 
+        email: '', 
+        password: '',
+        cnpj: '',
+        cpf: ''
+    });
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [accountType, setAccountType] = useState<'individual' | 'business'>('individual');
+    const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+
+    const formatCPF = (value: string) => {
+        const v = value.replace(/\D/g, '').slice(0, 11);
+        return v
+            .replace(/(\d{3})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+        if (e.target.name === 'cpf') {
+            value = formatCPF(value);
+        }
+        setFormData({ ...formData, [e.target.name]: value });
+        setError('');
+    };
+
+    const handleAccountTypeChange = (type: 'individual' | 'business') => {
+        setAccountType(type);
+        setFormData({ ...formData, cnpj: '', cpf: '' });
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+
+        console.log(' Iniciando cadastro de afiliado');
+        console.log(' Form data:', formData);
+
+        if (formData.password !== confirmPassword) {
+            setError("As senhas não coincidem.");
+            return;
+        }
+
+        if (accountType === 'individual') {
+            const plainCPF = formData.cpf?.replace(/\D/g, '') || '';
+            if (plainCPF.length !== 11) {
+                setError("O CPF deve conter 11 dígitos.");
+                return;
+            }
+        }
+
+        const dataToRegister: any = { 
+            ...formData,
+            isAffiliate: true // Marca como cadastro de afiliado
+        };
+        
+        if (accountType === 'individual') {
+            delete dataToRegister.cnpj;
+        } else {
+            delete dataToRegister.cpf;
+        }
+
+        console.log('📤 [AFFILIATE REGISTER] Enviando dados:', dataToRegister);
+        console.log('🌐 [AFFILIATE REGISTER] API URL:', API_BASE_URL);
+        
+        // FORÇA URL LOCAL PARA DEBUG
+        const localApiUrl = 'http://localhost:3002';
+        console.log('🔧 [AFFILIATE REGISTER] Forçando URL local:', localApiUrl);
+
+        try {
+            // BYPASS: Fazer requisição direta ao localhost
+            console.log('🔧 [AFFILIATE REGISTER] Fazendo requisição direta para localhost:3002');
+            
+            const response = await fetch('http://localhost:3002/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(dataToRegister),
+            });
+
+            console.log('📡 [AFFILIATE REGISTER] Status da resposta:', response.status);
+            
+            const result = await response.json().catch(() => null);
+            console.log('📥 [AFFILIATE REGISTER] Resposta recebida:', result);
+
+            if (response.ok && result?.success) {
+                console.log('✅ [AFFILIATE REGISTER] Cadastro realizado com sucesso!');
+                
+                // Fazer login automático após cadastro
+                console.log('🔐 [AFFILIATE REGISTER] Fazendo login automático...');
+                const cpfForLogin = accountType === 'individual' ? formData.cpf?.replace(/\D/g, '') : formData.cnpj;
+                
+                try {
+                    // BYPASS: Fazer login direto também
+                    console.log('🔐 [AFFILIATE REGISTER] Fazendo login direto para localhost:3002');
+                    
+                    const loginResponse = await fetch('http://localhost:3002/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            cpf: cpfForLogin,
+                            password: formData.password
+                        }),
+                    });
+
+                    console.log('📡 [AFFILIATE REGISTER] Status do login:', loginResponse.status);
+                    
+                    const loginResult = await loginResponse.json().catch(() => null);
+                    console.log('📥 [AFFILIATE REGISTER] Resposta do login:', loginResult);
+                    console.log('🔍 [AFFILIATE REGISTER] Detalhes do erro de login:', loginResult?.message);
+                    
+                    if (loginResponse.ok && loginResult?.token) {
+                        console.log('🚀 [AFFILIATE REGISTER] Login realizado! Redirecionando para /affiliate');
+                        
+                        // Salvar token e dados do usuário
+                        localStorage.setItem('viraliza_ai_auth_token_v1', loginResult.token);
+                        if (loginResult.user) {
+                            localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify({
+                                ...loginResult.user,
+                                isAffiliate: true,
+                                type: 'client' // Garantir que o tipo está correto
+                            }));
+                        }
+                        
+                        console.log('💾 [AFFILIATE REGISTER] Dados salvos no localStorage');
+                        console.log('🔑 Token salvo:', loginResult.token.substring(0, 50) + '...');
+                        console.log('👤 Usuário salvo:', loginResult.user);
+                        
+                        onClose(); // Fecha o modal
+                        
+                        // Aguardar um pouco antes de redirecionar
+                        setTimeout(() => {
+                            console.log('🚀 [AFFILIATE REGISTER] Redirecionando para /dashboard');
+                            navigate('/dashboard');
+                            
+                            // Recarregar após um pequeno delay
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 100);
+                        }, 500);
+                    } else {
+                        console.log('⚠️ [AFFILIATE REGISTER] Login falhou, mostrando mensagem de sucesso');
+                        setSuccessMessage('Cadastro de afiliado realizado! Faça login manualmente para acessar o painel exclusivo de afiliados.');
+                    }
+                } catch (loginError) {
+                    console.error('❌ [AFFILIATE REGISTER] Erro no login automático:', loginError);
+                    setSuccessMessage('Cadastro de afiliado realizado! Faça login manualmente para acessar o painel exclusivo de afiliados.');
+                }
+            } else {
+                const message = result?.message || `Erro HTTP ${response.status}`;
+                setError(message);
+            }
+        } catch (error) {
+            console.error('❌ [AFFILIATE REGISTER] Erro no cadastro:', error);
+            setError('Erro de conexão. Verifique se o backend está rodando na porta 3002.');
+        }
+    };
+
+    if (successMessage) {
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+                <div className="bg-secondary p-8 rounded-lg shadow-xl w-full max-w-md relative animate-fade-in-right">
+                    <button onClick={onClose} className="absolute top-4 right-4 text-2xl text-gray-dark hover:text-light">&times;</button>
+                    <div className="text-center">
+                        <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span className="text-3xl">🎉</span>
+                        </div>
+                        <h2 className="text-2xl font-bold mb-4 text-green-400">Bem-vindo ao Programa de Afiliados!</h2>
+                        <p className="text-gray-300 mb-6">{successMessage}</p>
+                        <button 
+                            onClick={onClose}
+                            className="w-full bg-green-500 text-white font-semibold py-3 rounded-full hover:bg-green-400 transition-colors"
+                        >
+                            Entendi, vou verificar meu e-mail
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+            <div className="bg-secondary p-8 rounded-lg shadow-xl w-full max-w-md relative animate-fade-in-right max-h-[90vh] overflow-y-auto">
+                <button onClick={onClose} className="absolute top-4 right-4 text-2xl text-gray-dark hover:text-light">&times;</button>
+                
+                <div className="text-center mb-6">
+                    <div className="w-16 h-16 bg-gradient-to-r from-green-500/20 to-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-3xl">💎</span>
+                    </div>
+                    <h2 className="text-2xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-400">
+                        Cadastro de Afiliado
+                    </h2>
+                    <p className="text-sm text-gray-400">
+                        Ganhe <span className="text-green-400 font-bold">20-40%</span> de comissão em cada venda
+                    </p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="flex bg-primary rounded-lg p-1 border border-gray-700">
+                        <button type="button" onClick={() => handleAccountTypeChange('individual')} className={`flex-1 py-1 rounded-md text-sm transition-colors ${accountType === 'individual' ? 'bg-green-500 text-white shadow' : 'text-gray-dark hover:bg-secondary'}`}>Pessoa Física</button>
+                        <button type="button" onClick={() => handleAccountTypeChange('business')} className={`flex-1 py-1 rounded-md text-sm transition-colors ${accountType === 'business' ? 'bg-green-500 text-white shadow' : 'text-gray-dark hover:bg-secondary'}`}>Empresa</button>
+                    </div>
+
+                    <input 
+                        type="text" 
+                        name="name" 
+                        placeholder={accountType === 'business' ? "Nome da Empresa" : "Nome Completo"} 
+                        value={formData.name} 
+                        onChange={handleChange} 
+                        required 
+                        className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" 
+                    />
+                    
+                    {accountType === 'business' ? (
+                         <input 
+                            type="text" 
+                            name="cnpj" 
+                            placeholder="CNPJ" 
+                            value={formData.cnpj} 
+                            onChange={handleChange} 
+                            required 
+                            className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" 
+                        />
+                    ) : (
+                         <input 
+                            type="text" 
+                            name="cpf" 
+                            placeholder="CPF (000.000.000-00)" 
+                            value={formData.cpf} 
+                            onChange={handleChange} 
+                            required 
+                            className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" 
+                        />
+                    )}
+
+                    <input 
+                        type="email" 
+                        name="email" 
+                        placeholder="E-mail" 
+                        value={formData.email} 
+                        onChange={handleChange} 
+                        required 
+                        className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" 
+                    />
+                    
+                    <input 
+                        type="password" 
+                        name="password" 
+                        placeholder="Senha" 
+                        value={formData.password} 
+                        onChange={handleChange} 
+                        required 
+                        className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" 
+                    />
+                    
+                    <input 
+                        type="password" 
+                        placeholder="Confirmar Senha" 
+                        value={confirmPassword} 
+                        onChange={(e) => setConfirmPassword(e.target.value)} 
+                        required 
+                        className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" 
+                    />
+
+                    {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
+                    <div className="bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/30 rounded-lg p-4 text-center">
+                        <h4 className="font-bold text-green-400 mb-2">🎯 Benefícios Exclusivos</h4>
+                        <ul className="text-xs text-gray-300 space-y-1">
+                            <li>✓ Comissões de 20% a 40% por venda</li>
+                            <li>✓ Dashboard de afiliado completo</li>
+                            <li>✓ Materiais de venda prontos</li>
+                            <li>✓ Suporte dedicado para afiliados</li>
+                        </ul>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white font-bold py-3 rounded-full hover:from-green-400 hover:to-blue-400 transition-all duration-300 transform hover:scale-105"
+                    >
+                        🚀 CRIAR CONTA DE AFILIADO
+                    </button>
+
+                    <p className="text-xs text-gray-400 text-center">
+                        Ao se cadastrar, você concorda com nossos termos de afiliado e política de comissões.
+                    </p>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 const LandingPage: React.FC = () => {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
     const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+    const [isAffiliateRegisterOpen, setIsAffiliateRegisterOpen] = useState(false);
     const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
     const [bannerMessage, setBannerMessage] = useState('');
 
@@ -1215,12 +1673,14 @@ const LandingPage: React.FC = () => {
                 <WorldMap />
                 <Testimonials />
                 <Pricing onRegister={() => setIsRegisterOpen(true)} />
+                <AffiliateSection onAffiliateRegister={() => setIsAffiliateRegisterOpen(true)} />
                 <PartnerAdsSection onRegister={() => setIsRegisterOpen(true)} />
             </main>
             <Footer />
 
             {isLoginOpen && <LoginModal onClose={() => setIsLoginOpen(false)} />}
             {isRegisterOpen && <RegisterModal onClose={() => setIsRegisterOpen(false)} />}
+            {isAffiliateRegisterOpen && <AffiliateRegisterModal onClose={() => setIsAffiliateRegisterOpen(false)} />}
             {isPersonaModalOpen && <InteractiveAIPersona onClose={() => setIsPersonaModalOpen(false)} />}
         </div>
     );

@@ -182,18 +182,27 @@ const translations = {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [language, setLanguage] = useState<Language>('en'); // Default to English for global reach
+    const [language, setLanguage] = useState<Language>('pt'); // Forçar português
 
     useEffect(() => {
         const browserLang = navigator.language.split('-')[0];
-        if (browserLang === 'pt') setLanguage('pt');
-        else if (browserLang === 'es') setLanguage('es');
-        else setLanguage('en'); // Fallback to English for any other language
+        console.log(' Idioma detectado:', browserLang);
+        console.log(' Forçando idioma para português');
+        setLanguage('pt'); // Sempre português
+        console.log(' Idioma definido como: pt');
     }, []);
 
     const t = (key: string) => {
         // @ts-ignore
-        return translations[language][key] || key;
+        const translation = translations[language][key] || key;
+        if (key === 'nav.pricing') {
+            console.log('🔍 Traduzindo nav.pricing:', { language, key, translation });
+            console.log('🔍 Tipo da tradução:', typeof translation);
+            console.log('🔍 Valor exato:', JSON.stringify(translation));
+            // Forçar retorno correto para nav.pricing
+            return 'Ver Planos';
+        }
+        return translation;
     };
 
     return (

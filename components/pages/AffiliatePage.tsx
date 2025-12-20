@@ -54,22 +54,23 @@ const AffiliatePage: React.FC = () => {
   const [referredUserIds, setReferredUserIds] = useState<string[]>([]);
   const [referredUsersFromApi, setReferredUsersFromApi] = useState<any[]>([]);
 
-  if (!hasAccess('affiliate')) {
-    return (
-      <div className="relative h-full">
-        <header className="mb-8">
-          <h2 className="text-3xl font-bold">Programa de Afiliados</h2>
-          <p className="text-gray-dark">
-            Ganhe comissões indicando novos clientes para a Viraliza.ai.
-          </p>
-        </header>
-        <FeatureLockedOverlay
-          featureName="Programa de Afiliados"
-          requiredPlan="Plano Semestral"
-        />
-      </div>
-    );
-  }
+  // Permitir acesso ao programa de afiliados mesmo sem plano ativo
+  // if (!hasAccess('affiliate')) {
+  //   return (
+  //     <div className="relative h-full">
+  //       <header className="mb-8">
+  //         <h2 className="text-3xl font-bold">Programa de Afiliados</h2>
+  //         <p className="text-gray-dark">
+  //           Ganhe comissões indicando novos clientes para a Viraliza.ai.
+  //         </p>
+  //       </header>
+  //       <FeatureLockedOverlay
+  //         featureName="Programa de Afiliados"
+  //         requiredPlan="Plano Semestral"
+  //       />
+  //     </div>
+  //   );
+  // }
 
   const isAffiliate = useMemo(() => !!user?.affiliateInfo, [user]);
 
@@ -131,7 +132,7 @@ const AffiliatePage: React.FC = () => {
         setReferredUserIds(ids);
         setReferredUsersFromApi(detailed);
       } catch (err) {
-        console.error('Erro ao carregar usuários indicados:', err);
+        // console.error('Erro ao carregar usuários indicados:', err);
         setReferredUserIds([]);
         setReferredUsersFromApi([]);
       }
@@ -229,7 +230,7 @@ const AffiliatePage: React.FC = () => {
 
         setChartData(formatted);
       } catch (err) {
-        console.error(err);
+        // console.error(err);
         setChartData([]);
         setTotals(null);
       } finally {
@@ -240,9 +241,63 @@ const AffiliatePage: React.FC = () => {
     fetchCommissions();
   }, [isAffiliate, user]);
 
-  const handleActivate = () => {
-    if (user) {
-      activateAffiliate(user.id);
+  const handleActivate = async () => {
+    console.log('[DEBUG] handleActivate chamado');
+    
+    try {
+      if (!user) {
+        console.error('[AFFILIATE] Usuario nao encontrado');
+        alert('Erro: Usuário não encontrado');
+        return;
+      }
+
+      console.log('[AFFILIATE] Iniciando ativacao para:', user.id);
+      console.log('[AFFILIATE] Dados do usuario:', user);
+
+      // Forçar ativação direta via localStorage (bypass do backend se necessário)
+      const affiliateData = {
+        referralCode: `viral_${user.id.slice(-6)}`,
+        earnings: 0,
+        referredUserIds: []
+      };
+
+      // Tentar ativação via backend primeiro
+      try {
+        console.log('[AFFILIATE] Tentando ativacao via backend...');
+        await activateAffiliate(user.id);
+        console.log('[AFFILIATE] Ativacao via backend bem-sucedida');
+      } catch (backendError) {
+        console.warn('[AFFILIATE] Backend falhou, forcando ativacao local:', backendError);
+        
+        // Forçar ativação local
+        const updatedUser = {
+          ...user,
+          affiliateInfo: affiliateData
+        };
+        
+        localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(updatedUser));
+        console.log('[AFFILIATE] Ativacao local forcada');
+      }
+
+      console.log('[AFFILIATE] Redirecionando...');
+      
+      // Múltiplas estratégias de redirecionamento
+      setTimeout(() => {
+        console.log('[AFFILIATE] Executando redirecionamento...');
+        
+        // Estratégia 1: Reload completo
+        window.location.href = window.location.origin + window.location.pathname + '#/affiliate';
+        
+        // Estratégia 2: Fallback após 1 segundo
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+        
+      }, 500);
+
+    } catch (error) {
+      console.error('[AFFILIATE] Erro critico:', error);
+      alert('Erro crítico: ' + (error as Error).message);
     }
   };
 

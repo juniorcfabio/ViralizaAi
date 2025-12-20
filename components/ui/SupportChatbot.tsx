@@ -28,6 +28,9 @@ const TypingIndicator: React.FC = () => (
 
 
 const SupportChatbot: React.FC = () => {
+    // Componente desabilitado temporariamente
+    return null;
+    
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>(() => {
         try {

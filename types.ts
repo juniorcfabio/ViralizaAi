@@ -74,6 +74,7 @@ export interface User {
   lastReviewPromptDate?: string;
   hasReviewed?: boolean;
   addOns?: FeatureKey[]; // List of features purchased separately or granted by admin
+  isAffiliate?: boolean; // Indicates if user is registered as an affiliate
 }
 
 // Updated feature keys to include the new niche dominance tools and viral prediction

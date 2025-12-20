@@ -231,6 +231,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         email: data.email,
         password: data.password,
         cpf: data.cpf ? String(data.cpf).replace(/\D/g, '') : undefined,
+        isAffiliate: (data as any).isAffiliate || false,
       };
 
       if (referralCode) {
@@ -309,9 +310,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           trialStartDate: backendUser.trialStartDate,
           trialFollowers: backendUser.trialFollowers,
           trialSales: backendUser.trialSales,
-          affiliateInfo: backendUser.affiliateInfo,
+          affiliateInfo: backendUser.affiliateInfo || (backendUser.isAffiliate ? {
+            referralCode: `REF${backendUser.id.slice(-6).toUpperCase()}`,
+            earnings: 0,
+            referredUserIds: []
+          } : undefined),
           referredBy: backendUser.referredBy,
           addOns: backendUser.addOns,
+          isAffiliate: backendUser.isAffiliate || false,
         };
 
         setUser(mappedUser);

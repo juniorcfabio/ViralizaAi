@@ -94,7 +94,17 @@ const AppRoutes: React.FC = () => {
             {/* Client Routes */}
             <Route
                 path="/dashboard"
-                element={user?.type === 'client' ? <ClientLayout /> : <Navigate to="/" />}
+                element={
+                    user?.type === 'client' ? (
+                        user?.isAffiliate && !user?.plan ? (
+                            <Navigate to="/affiliate" />
+                        ) : (
+                            <ClientLayout />
+                        )
+                    ) : (
+                        <Navigate to="/" />
+                    )
+                }
             >
                 <Route index element={<DashboardPage />} />
                 <Route path="social" element={<SocialAccountsPage />} />
@@ -105,6 +115,22 @@ const AppRoutes: React.FC = () => {
                 <Route path="growth-engine" element={<UserGrowthEnginePage />} />
                 <Route path="autopilot" element={<ViralizaAutopilotPage />} />
                 <Route path="advertise" element={<AdvertisePage />} />
+            </Route>
+
+            {/* Affiliate-only Route */}
+            <Route
+                path="/affiliate"
+                element={
+                    user?.isAffiliate ? (
+                        <ClientLayout />
+                    ) : user?.type === 'client' ? (
+                        <Navigate to="/dashboard" />
+                    ) : (
+                        <Navigate to="/" />
+                    )
+                }
+            >
+                <Route index element={<AffiliatePage />} />
             </Route>
 
             {/* Admin Routes */}

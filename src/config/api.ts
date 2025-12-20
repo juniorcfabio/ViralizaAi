@@ -6,6 +6,11 @@ export const getApiBaseUrl = (): string => {
     return import.meta.env.VITE_API_BASE_URL;
   }
 
+  // Em desenvolvimento local, usar localhost
+  if (import.meta.env.DEV) {
+    return 'http://localhost:3002';
+  }
+
   // Fallback para produção (URL real do Railway)
   return 'https://viralizaai-backend-production.up.railway.app';
 };
