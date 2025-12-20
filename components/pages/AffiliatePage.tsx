@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
 import FeatureLockedOverlay from '../ui/FeatureLockedOverlay';
+import { updateUserDB } from '../../services/dbService';
 
 import { API_BASE_URL, getAuthHeaders } from '../../src/config/api';
 
@@ -44,6 +45,227 @@ const CopyIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
   </svg>
 );
+
+const BankIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M3 21h18" />
+    <path d="M5 21V7l8-4v18" />
+    <path d="M19 21V11l-6-4" />
+    <path d="M9 9v12" />
+    <path d="M15 11v10" />
+  </svg>
+);
+
+const BankAccountSection: React.FC<{ user: any }> = ({ user }) => {
+  const { updateUser } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [bankData, setBankData] = useState({
+    bank: user?.bankAccount?.bank || '',
+    agency: user?.bankAccount?.agency || '',
+    account: user?.bankAccount?.account || '',
+    accountType: user?.bankAccount?.accountType || 'corrente',
+    pixKey: user?.bankAccount?.pixKey || '',
+    pixKeyType: user?.bankAccount?.pixKeyType || 'cpf'
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      
+      const updatedUser = {
+        ...user,
+        bankAccount: bankData
+      };
+
+      // Salvar no contexto
+      await updateUser(user.id, { bankAccount: bankData });
+      
+      // Salvar no banco local
+      await updateUserDB(updatedUser);
+      
+      setIsEditing(false);
+      console.log('✅ [BANK] Conta bancária salva com sucesso!');
+    } catch (error) {
+      console.error('❌ [BANK] Erro ao salvar conta bancária:', error);
+      alert('Erro ao salvar dados bancários. Tente novamente.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const hasBankData = user?.bankAccount?.bank || user?.bankAccount?.pixKey;
+
+  return (
+    <div className="bg-secondary p-6 rounded-lg">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <BankIcon className="w-5 h-5 text-green-400" />
+          <h3 className="text-xl font-bold">Dados Bancários</h3>
+        </div>
+        {!isEditing ? (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="bg-accent text-light px-4 py-2 rounded-lg hover:bg-blue-500 transition-colors text-sm"
+          >
+            {hasBankData ? 'Editar' : 'Cadastrar'}
+          </button>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="bg-green-500 text-light px-4 py-2 rounded-lg hover:bg-green-400 transition-colors text-sm disabled:opacity-50"
+            >
+              {isSaving ? 'Salvando...' : 'Salvar'}
+            </button>
+            <button
+              onClick={() => {
+                setIsEditing(false);
+                setBankData({
+                  bank: user?.bankAccount?.bank || '',
+                  agency: user?.bankAccount?.agency || '',
+                  account: user?.bankAccount?.account || '',
+                  accountType: user?.bankAccount?.accountType || 'corrente',
+                  pixKey: user?.bankAccount?.pixKey || '',
+                  pixKeyType: user?.bankAccount?.pixKeyType || 'cpf'
+                });
+              }}
+              className="bg-gray-500 text-light px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors text-sm"
+            >
+              Cancelar
+            </button>
+          </div>
+        )}
+      </div>
+
+      {!isEditing ? (
+        <div className="space-y-3">
+          {hasBankData ? (
+            <>
+              {bankData.bank && (
+                <div>
+                  <span className="text-gray-400 text-sm">Banco:</span>
+                  <p className="text-light">{bankData.bank}</p>
+                </div>
+              )}
+              {bankData.agency && (
+                <div>
+                  <span className="text-gray-400 text-sm">Agência:</span>
+                  <p className="text-light">{bankData.agency}</p>
+                </div>
+              )}
+              {bankData.account && (
+                <div>
+                  <span className="text-gray-400 text-sm">Conta ({bankData.accountType}):</span>
+                  <p className="text-light">{bankData.account}</p>
+                </div>
+              )}
+              {bankData.pixKey && (
+                <div>
+                  <span className="text-gray-400 text-sm">Chave PIX ({bankData.pixKeyType}):</span>
+                  <p className="text-light">{bankData.pixKey}</p>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <BankIcon className="w-12 h-12 mx-auto text-gray-500 mb-3" />
+              <p className="text-gray-400">Nenhum dado bancário cadastrado</p>
+              <p className="text-gray-500 text-sm mt-1">
+                Cadastre seus dados para receber os pagamentos das comissões
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Banco</label>
+            <input
+              type="text"
+              value={bankData.bank}
+              onChange={(e) => setBankData({ ...bankData, bank: e.target.value })}
+              placeholder="Ex: Banco do Brasil, Itaú, Nubank..."
+              className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Agência</label>
+            <input
+              type="text"
+              value={bankData.agency}
+              onChange={(e) => setBankData({ ...bankData, agency: e.target.value })}
+              placeholder="0000"
+              className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Conta</label>
+            <input
+              type="text"
+              value={bankData.account}
+              onChange={(e) => setBankData({ ...bankData, account: e.target.value })}
+              placeholder="00000-0"
+              className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Tipo de Conta</label>
+            <select
+              value={bankData.accountType}
+              onChange={(e) => setBankData({ ...bankData, accountType: e.target.value })}
+              className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              <option value="corrente">Conta Corrente</option>
+              <option value="poupanca">Poupança</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Chave PIX</label>
+            <input
+              type="text"
+              value={bankData.pixKey}
+              onChange={(e) => setBankData({ ...bankData, pixKey: e.target.value })}
+              placeholder="Sua chave PIX"
+              className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Tipo da Chave PIX</label>
+            <select
+              value={bankData.pixKeyType}
+              onChange={(e) => setBankData({ ...bankData, pixKeyType: e.target.value })}
+              className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              <option value="cpf">CPF</option>
+              <option value="cnpj">CNPJ</option>
+              <option value="email">E-mail</option>
+              <option value="telefone">Telefone</option>
+              <option value="aleatoria">Chave Aleatória</option>
+            </select>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AffiliatePage: React.FC = () => {
   const { user, activateAffiliate, platformUsers, hasAccess } = useAuth();
@@ -402,6 +624,9 @@ const AffiliatePage: React.FC = () => {
               </ResponsiveContainer>
             </div>
           </div>
+
+          {/* Seção de Conta Bancária */}
+          <BankAccountSection user={user} />
 
           <div className="bg-secondary p-6 rounded-lg">
             <h3 className="text-xl font-bold mb-4">Usuários Indicados por Você</h3>

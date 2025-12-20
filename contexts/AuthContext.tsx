@@ -513,6 +513,65 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return true;
   };
 
+  // Função para migrar usuários existentes que são afiliados
+  const migrateExistingAffiliates = async () => {
+    try {
+      console.log('🔄 [MIGRATION] Verificando usuários existentes para migração...');
+      
+      // Buscar todos os usuários do localStorage que podem ser afiliados
+      const existingUsers = [];
+      
+      // Verificar localStorage atual
+      const currentUser = localStorage.getItem('viraliza_ai_active_user_v1');
+      if (currentUser) {
+        try {
+          const userData = JSON.parse(currentUser);
+          if (userData.isAffiliate && userData.id) {
+            existingUsers.push(userData);
+          }
+        } catch (e) {
+          console.warn('Erro ao parsear usuário atual:', e);
+        }
+      }
+
+      // Verificar se há usuários no banco de dados local
+      const dbUsers = await getAllUsersDB();
+      const affiliateUsers = dbUsers.filter(u => u.isAffiliate);
+      
+      console.log(`📊 [MIGRATION] Encontrados ${affiliateUsers.length} afiliados no banco local`);
+      console.log(`📊 [MIGRATION] Encontrados ${existingUsers.length} afiliados no localStorage`);
+
+      // Migrar usuários do localStorage que não estão no banco
+      for (const userData of existingUsers) {
+        const existsInDB = dbUsers.find(u => u.id === userData.id || u.email === userData.email);
+        
+        if (!existsInDB) {
+          try {
+            await addUserDB(userData);
+            console.log(`✅ [MIGRATION] Usuário migrado: ${userData.name} (${userData.email})`);
+          } catch (error) {
+            console.warn(`⚠️ [MIGRATION] Erro ao migrar ${userData.email}:`, error);
+          }
+        }
+      }
+
+      console.log('✅ [MIGRATION] Migração de afiliados concluída!');
+    } catch (error) {
+      console.error('❌ [MIGRATION] Erro na migração:', error);
+    }
+  };
+
+  // Executar migração na inicialização
+  useEffect(() => {
+    const runMigration = async () => {
+      await migrateExistingAffiliates();
+    };
+    
+    if (platformUsers.length > 0) {
+      runMigration();
+    }
+  }, [platformUsers.length]);
+
   return (
     <AuthContext.Provider
       value={{
