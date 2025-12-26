@@ -109,7 +109,7 @@ const AppleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 );
 
 const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-    const [cpf, setCpf] = useState('');
+    const [loginField, setLoginField] = useState('');
     const [password, setPassword] = useState('');
     const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
     const [forgotEmail, setForgotEmail] = useState('');
@@ -160,7 +160,7 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         setIsLoggingIn(true);
 
         try {
-            const user = await login(cpf, password);
+            const user = await login(loginField, password);
             if (user && typeof user === 'object' && 'error' in user) {
                 setError((user as any).error || 'Erro ao processar login. Tente novamente.');
                 return;
@@ -205,16 +205,16 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         <div className="w-full border-t border-gray-700"></div>
                     </div>
                     <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-secondary text-gray-500">Ou entre com CPF</span>
+                        <span className="px-2 bg-secondary text-gray-500">Ou entre com CPF ou E-mail</span>
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <input 
                         type="text" 
-                        placeholder="CPF (somente números)" 
-                        value={cpf} 
-                        onChange={e => setCpf(e.target.value)} 
+                        placeholder="CPF ou E-mail" 
+                        value={loginField} 
+                        onChange={e => setLoginField(e.target.value)} 
                         required 
                         className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent"
                         disabled={isLoading || isLoggingIn}
