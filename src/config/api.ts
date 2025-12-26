@@ -48,3 +48,9 @@ export const apiConfig = {
 };
 
 console.log('🔗 API Base URL:', API_BASE_URL);
+console.log('🔧 Environment Variables Check:', {
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+  NODE_ENV: import.meta.env.NODE_ENV,
+  MODE: import.meta.env.MODE,
+  PROD: import.meta.env.PROD
+});
