@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './components/pages/LandingPage';
 import DashboardPage from './components/pages/DashboardPage';
 import AdminDashboardPage from './components/pages/AdminDashboardPage';
@@ -153,11 +153,11 @@ const App: React.FC = () => {
         <AuthProvider>
             <LanguageProvider>
                 <ThemeProvider>
-                    <HashRouter>
+                    <BrowserRouter>
                         <AppRoutes />
                         <SupportChatbot />
                         <UpdateModal />
-                    </HashRouter>
+                    </BrowserRouter>
                 </ThemeProvider>
             </LanguageProvider>
         </AuthProvider>
