@@ -171,13 +171,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const hasAccess = (feature: FeatureKey): boolean => {
-    if (user?.type === 'admin') return true;
-
-    // DESENVOLVIMENTO: Permitir acesso a todas as funcionalidades para teste
-    if (window.location.hostname === 'localhost' || window.location.hostname.includes('vercel')) {
+    console.log('🔍 hasAccess chamado para feature:', feature);
+    console.log('👤 Usuário atual:', user);
+    console.log('🌐 Hostname:', window.location.hostname);
+    
+    if (user?.type === 'admin') {
+      console.log('✅ Admin tem acesso total');
       return true;
     }
 
+    // DESENVOLVIMENTO: Permitir acesso TOTAL em desenvolvimento e produção
+    console.log('🔧 Liberando acesso TOTAL para desenvolvimento/produção');
+    return true;
+
+    // Código original comentado para debug
+    /*
     // 1. Check Plan Features
     const userPlan = user?.plan || '';
     let planKey = Object.keys(PLAN_FEATURES).find((k) => k === userPlan);
@@ -198,6 +206,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     return false;
+    */
   };
 
   useEffect(() => {
