@@ -258,7 +258,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return { success: true };
     } catch (error) {
       console.error('Erro no cadastro:', error);
-      return { success: false, message: 'Erro ao cadastrar. Tente novamente.' };
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao cadastrar. Tente novamente.';
+      return { success: false, message: errorMessage };
     }
   };
 
