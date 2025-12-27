@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, Plan, BillingRecord, FeatureKey } from '../types';
-import { API_BASE_URL, clearAuthToken, setAuthToken } from '../src/config/api';
+import { API_BASE_URL, clearAuthToken, setAuthToken, getAuthHeaders } from '../src/config/api';
 import {
   initDB,
   getAllUsersDB,
@@ -195,6 +195,58 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         setIsLoading(true);
         await initDB(); // Auto-restore do banco
+
+        // Carregar usuários do backend primeiro
+        try {
+          const res = await fetch(`${API_BASE_URL}/auth/users`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (res.ok) {
+            const backendUsers = await res.json();
+            // Sincronizar usuários do backend com o banco local
+            for (const backendUser of backendUsers) {
+              const mappedUser: User = {
+                id: String(backendUser.id),
+                name: String(backendUser.name || ''),
+                email: String(backendUser.email || ''),
+                cpf: backendUser.cpf ? String(backendUser.cpf) : undefined,
+                type: backendUser.role === 'admin' ? 'admin' : 'client',
+                status: 'Ativo',
+                joinedDate: backendUser.createdAt ? String(backendUser.createdAt).split('T')[0] : new Date().toISOString().split('T')[0],
+                socialAccounts: backendUser.socialAccounts || [],
+                paymentMethods: backendUser.paymentMethods || [],
+                billingHistory: backendUser.billingHistory || [],
+                plan: backendUser.plan,
+                subscriptionEndDate: backendUser.subscriptionEndDate,
+                trialStartDate: backendUser.trialStartDate || new Date().toISOString(),
+                trialFollowers: backendUser.trialFollowers || 0,
+                trialSales: backendUser.trialSales || 0,
+                affiliateInfo: backendUser.affiliateInfo,
+                referredBy: backendUser.referredBy,
+                addOns: backendUser.addOns,
+                password: ''
+              };
+
+              // Verificar se usuário já existe no banco local
+              const existingUsers = await getAllUsersDB();
+              const existingUser = existingUsers.find(u => u.email === mappedUser.email);
+
+              if (!existingUser) {
+                await addUserDB(mappedUser);
+              } else {
+                // Atualizar dados do usuário existente
+                await updateUserDB({ ...existingUser, ...mappedUser });
+              }
+            }
+          }
+        } catch (error) {
+          console.log('Erro ao sincronizar com backend:', error);
+        }
+
         const users = await getAllUsersDB();
         setPlatformUsers(users);
 
