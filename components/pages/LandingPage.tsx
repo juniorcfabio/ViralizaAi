@@ -186,7 +186,7 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
             <div className="bg-secondary p-8 rounded-lg shadow-xl w-full max-w-sm relative animate-fade-in-right">
                 <button onClick={onClose} className="absolute top-4 right-4 text-2xl text-gray-dark hover:text-light">&times;</button>
-                <h2 className="text-2xl font-bold mb-6 text-center">Conecte-se</h2>
+                <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
                 
                 <div className="flex justify-center gap-4 mb-6">
                     <button onClick={() => handleSocialLogin('Google')} className="p-2 bg-primary rounded-full hover:bg-gray-700 transition-colors" title="Google">
@@ -205,7 +205,7 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         <div className="w-full border-t border-gray-700"></div>
                     </div>
                     <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-secondary text-gray-500">Ou faça login com CPF ou E-mail</span>
+                        <span className="px-2 bg-secondary text-gray-500">Entre com CPF ou E-mail</span>
                     </div>
                 </div>
 
