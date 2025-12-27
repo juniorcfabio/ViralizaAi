@@ -10,7 +10,7 @@ type SortKey = keyof User;
 type SortDirection = 'asc' | 'desc';
 
 const AdminUsersPage: React.FC = () => {
-    const { platformUsers, deleteUsers } = useAuth();
+    const { platformUsers, deleteUsers, updateUser } = useAuth();
     
     // State for CRUD and UI
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -198,7 +198,22 @@ const AdminUsersPage: React.FC = () => {
                                     </td>
                                     <td className="p-3">{new Date(user.joinedDate).toLocaleDateString('pt-BR')}</td>
                                     <td className="p-3">
-                                        <button onClick={() => handleOpenModal(user)} className="text-accent hover:underline">Editar</button>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleOpenModal(user)} className="text-accent hover:underline">Editar</button>
+                                            <button 
+                                                onClick={() => {
+                                                    if (window.confirm(`Tem certeza que deseja ${user.status === 'Ativo' ? 'bloquear' : 'desbloquear'} o usuário ${user.name}?`)) {
+                                                        // Toggle user status between Ativo and Inativo
+                                                        const newStatus = user.status === 'Ativo' ? 'Inativo' : 'Ativo';
+                                                        updateUser(user.id, { status: newStatus });
+                                                        showNotification(`Usuário ${newStatus === 'Ativo' ? 'desbloqueado' : 'bloqueado'} com sucesso!`);
+                                                    }
+                                                }}
+                                                className={`text-sm px-2 py-1 rounded ${user.status === 'Ativo' ? 'text-red-400 hover:bg-red-500 hover:bg-opacity-20' : 'text-green-400 hover:bg-green-500 hover:bg-opacity-20'}`}
+                                            >
+                                                {user.status === 'Ativo' ? 'Bloquear' : 'Desbloquear'}
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

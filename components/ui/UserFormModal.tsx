@@ -112,7 +112,23 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose, onSave }) 
                     </div>
                      <div>
                         <label className="block text-sm text-gray-dark mb-1">Senha</label>
-                        <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder={user ? 'Deixe em branco para não alterar' : ''} className="w-full bg-primary p-2 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent" />
+                        <div className="flex gap-2">
+                            <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder={user ? 'Deixe em branco para não alterar' : ''} className="flex-1 bg-primary p-2 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent" />
+                            {user && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const newPassword = Math.random().toString(36).slice(-8);
+                                        setFormData({ ...formData, password: newPassword });
+                                        alert(`Nova senha gerada: ${newPassword}\nCopie esta senha e forneça ao usuário.`);
+                                    }}
+                                    className="bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                                    title="Gerar nova senha aleatória"
+                                >
+                                    Reset
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>

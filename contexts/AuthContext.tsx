@@ -254,6 +254,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { success: false, message };
       }
 
+      // Adicionar usuário ao banco local após cadastro bem-sucedido no backend
+      if (responseJson?.user) {
+        const backendUser = responseJson.user;
+        const newUser: User = {
+          id: String(backendUser.id),
+          name: String(backendUser.name || data.name),
+          email: String(backendUser.email || data.email),
+          cpf: backendUser.cpf ? String(backendUser.cpf) : (data.cpf ? String(data.cpf).replace(/\D/g, '') : undefined),
+          type: backendUser.role === 'admin' ? 'admin' : 'client',
+          status: 'Ativo',
+          joinedDate: backendUser.createdAt ? String(backendUser.createdAt).split('T')[0] : new Date().toISOString().split('T')[0],
+          socialAccounts: backendUser.socialAccounts || [],
+          paymentMethods: backendUser.paymentMethods || [],
+          billingHistory: backendUser.billingHistory || [],
+          plan: backendUser.plan,
+          subscriptionEndDate: backendUser.subscriptionEndDate,
+          trialStartDate: backendUser.trialStartDate || new Date().toISOString(),
+          trialFollowers: backendUser.trialFollowers || 0,
+          trialSales: backendUser.trialSales || 0,
+          affiliateInfo: backendUser.affiliateInfo,
+          referredBy: backendUser.referredBy,
+          addOns: backendUser.addOns,
+          password: '' // Não armazenar senha localmente
+        };
+
+        // Adicionar ao banco local e atualizar lista de usuários
+        await addUserDB(newUser);
+        setPlatformUsers(prev => [...prev, newUser]);
+      }
+
       sessionStorage.removeItem('referralCode');
       return { success: true };
     } catch (error) {
