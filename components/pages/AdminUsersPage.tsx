@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { User, UserStatus } from '../../types';
 import UserFormModal from '../ui/UserFormModal';
+import UserAccountReset from '../ui/UserAccountReset';
 
 const USERS_PER_PAGE = 7;
 
@@ -137,6 +138,11 @@ const AdminUsersPage: React.FC = () => {
                     {notification}
                 </div>
             )}
+
+            {/* Ferramenta de Reset de Conta */}
+            <div className="mb-6">
+                <UserAccountReset />
+            </div>
 
             <div className="bg-secondary p-6 rounded-lg">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">

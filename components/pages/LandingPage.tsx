@@ -8,6 +8,7 @@ import Logo from '../ui/Logo';
 import AIPersona from '../ui/AIPersona';
 import InteractiveAIPersona from '../ui/InteractiveAIPersona';
 import { getPartnersDB, getTestimonialsDB, getTrustedCompaniesDB } from '../../services/dbService';
+import AdminCredentialsFix from '../ui/AdminCredentialsFix';
 
 const CampaignIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1210,6 +1211,14 @@ const LandingPage: React.FC = () => {
                         </div>
                     </div>
                 )}
+                
+                {/* Ferramenta de Correção de Credenciais Admin - Apenas em desenvolvimento */}
+                {window.location.hostname === 'localhost' && (
+                    <div className="container mx-auto px-6 pt-6">
+                        <AdminCredentialsFix />
+                    </div>
+                )}
+                
                 <Hero onRegister={() => setIsRegisterOpen(true)} onPersonaClick={() => setIsPersonaModalOpen(true)} />
                 <Features />
                 <WorldMap />

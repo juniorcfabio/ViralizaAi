@@ -1014,26 +1014,50 @@ const DashboardPage: React.FC = () => {
   };
 
   const handleGenerateGrowth = async () => {
-    if (!checkAccess()) return;
-    if (!businessInfo.trim()) return;
+    console.log('🚀 handleGenerateGrowth chamado');
+    
+    if (!checkAccess()) {
+      console.log('❌ Acesso negado');
+      return;
+    }
+    
+    if (!businessInfo.trim()) {
+      console.log('❌ BusinessInfo vazio');
+      return;
+    }
+    
+    console.log('✅ Iniciando geração de campanha');
     setIsGeneratingGrowth(true);
     handleSaveBusinessInfo();
 
     const locationConfig: LocationConfig = { reach: 'National' };
 
     try {
+      console.log('📡 Chamando generateGrowthCampaign...');
       const campaign = await generateGrowthCampaign(businessInfo, platform, tone, locationConfig);
+      console.log('✅ Campanha gerada:', campaign);
       setGrowthCampaign(campaign);
     } catch (e) {
-      console.error(e);
+      console.error('❌ Erro ao gerar campanha:', e);
     } finally {
       setIsGeneratingGrowth(false);
     }
   };
 
   const handleGenerateFunnel = async () => {
-    if (!checkAccess()) return;
-    if (!businessInfo.trim()) return;
+    console.log('🚀 handleGenerateFunnel chamado');
+    
+    if (!checkAccess()) {
+      console.log('❌ Acesso negado');
+      return;
+    }
+    
+    if (!businessInfo.trim()) {
+      console.log('❌ BusinessInfo vazio');
+      return;
+    }
+    
+    console.log('✅ Iniciando geração de funil');
     setIsGeneratingFunnel(true);
     handleSaveBusinessInfo();
 
