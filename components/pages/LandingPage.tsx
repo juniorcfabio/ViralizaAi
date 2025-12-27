@@ -205,7 +205,7 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         <div className="w-full border-t border-gray-700"></div>
                     </div>
                     <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-secondary text-gray-500">Ou entre com CPF ou E-mail</span>
+                        <span className="px-2 bg-secondary text-gray-500">Ou faça login com CPF ou E-mail</span>
                     </div>
                 </div>
 
