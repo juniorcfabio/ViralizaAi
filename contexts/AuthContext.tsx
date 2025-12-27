@@ -395,8 +395,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const login = async (cpf: string, password: string): Promise<User | { error: string }> => {
-    const cleanCpf = String(cpf).replace(/\D/g, '');
+  const login = async (loginField: string, password: string): Promise<User | { error: string }> => {
+    // Detectar se é email ou CPF
+    const isEmail = loginField.includes('@');
+    let payload: any = { password };
+    
+    if (isEmail) {
+      payload.email = loginField.trim();
+    } else {
+      payload.cpf = String(loginField).replace(/\D/g, '');
+    }
 
     try {
       const res = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -404,7 +412,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ cpf: cleanCpf, password }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json().catch(() => null);
