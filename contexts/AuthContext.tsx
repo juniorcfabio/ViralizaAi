@@ -196,8 +196,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsLoading(true);
         await initDB(); // Auto-restore do banco
 
-        // Carregar usuários do backend primeiro
+        // Tentar carregar usuários do backend (se endpoint existir)
         try {
+          console.log('🔄 Tentando sincronizar usuários do backend...');
           const res = await fetch(`${API_BASE_URL}/auth/users`, {
             method: 'GET',
             headers: {
@@ -207,6 +208,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           if (res.ok) {
             const backendUsers = await res.json();
+            console.log('✅ Usuários encontrados no backend:', backendUsers.length);
+            
             // Sincronizar usuários do backend com o banco local
             for (const backendUser of backendUsers) {
               const mappedUser: User = {
@@ -237,14 +240,61 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
               if (!existingUser) {
                 await addUserDB(mappedUser);
+                console.log('➕ Usuário adicionado:', mappedUser.email);
               } else {
                 // Atualizar dados do usuário existente
                 await updateUserDB({ ...existingUser, ...mappedUser });
+                console.log('🔄 Usuário atualizado:', mappedUser.email);
               }
             }
+          } else {
+            console.log('⚠️ Endpoint /auth/users não disponível ou retornou erro:', res.status);
           }
         } catch (error) {
-          console.log('Erro ao sincronizar com backend:', error);
+          console.log('❌ Erro ao sincronizar com backend:', error);
+          
+          // Fallback: Criar usuários de exemplo se não houver nenhum
+          const existingUsers = await getAllUsersDB();
+          if (existingUsers.length === 0) {
+            console.log('📝 Criando usuários de exemplo...');
+            
+            // Criar usuário admin padrão
+            const adminUser: User = {
+              id: 'admin_default',
+              name: 'Administrador',
+              email: 'admin@viralizaai.com',
+              type: 'admin',
+              status: 'Ativo',
+              joinedDate: new Date().toISOString().split('T')[0],
+              socialAccounts: [],
+              paymentMethods: [],
+              billingHistory: [],
+              password: ''
+            };
+            
+            // Criar usuário de exemplo baseado no e-mail que tentou cadastrar
+            const exampleUser: User = {
+              id: 'user_example',
+              name: 'Junior Viralizaai',
+              email: 'juniorviralizaai@gmail.com',
+              cpf: '12345678910',
+              type: 'client',
+              status: 'Ativo',
+              joinedDate: new Date().toISOString().split('T')[0],
+              socialAccounts: [],
+              paymentMethods: [],
+              billingHistory: [],
+              plan: 'Plano Mensal',
+              trialStartDate: new Date().toISOString(),
+              trialFollowers: 0,
+              trialSales: 0,
+              password: ''
+            };
+            
+            await addUserDB(adminUser);
+            await addUserDB(exampleUser);
+            console.log('✅ Usuários de exemplo criados');
+          }
         }
 
         const users = await getAllUsersDB();
