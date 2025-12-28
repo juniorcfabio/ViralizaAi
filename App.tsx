@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './components/pages/LandingPage';
-import DashboardPage from './components/pages/DashboardPage';
 import AdminDashboardPage from './components/pages/AdminDashboardPage';
+import DashboardPage from './components/pages/DashboardPage';
+import RevenueProjectionPage from './components/pages/RevenueProjectionPage';
+import GlobalPromotionPage from './components/pages/GlobalPromotionPage';
+import AutonomousPromotionPage from './components/pages/AutonomousPromotionPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -21,6 +24,8 @@ import AdminLayout from './components/layout/AdminLayout';
 import AdminMaintenancePage from './components/pages/AdminMaintenancePage';
 import SupportChatbot from './components/ui/SupportChatbot';
 import ViralizaAutopilotPage from './components/pages/ViralizaAutopilotPage';
+import EbookGeneratorPage from './components/pages/EbookGeneratorPage';
+import AIVideoGeneratorPage from './components/pages/AIVideoGeneratorPage';
 import AdminPaymentsPage from './components/pages/AdminPaymentsPage';
 import AdminAdsPage from './components/pages/AdminAdsPage';
 import AdminTrustedCompaniesPage from './components/pages/AdminTrustedCompaniesPage';
@@ -105,6 +110,10 @@ const AppRoutes: React.FC = () => {
                 <Route path="growth-engine" element={<UserGrowthEnginePage />} />
                 <Route path="autopilot" element={<ViralizaAutopilotPage />} />
                 <Route path="advertise" element={<AdvertisePage />} />
+                <Route path="ebook-generator" element={<EbookGeneratorPage />} />
+                <Route path="ai-video-generator" element={<AIVideoGeneratorPage />} />
+                <Route path="revenue-projection" element={<RevenueProjectionPage />} />
+                <Route path="global-promotion" element={<GlobalPromotionPage />} />
             </Route>
 
             {/* Admin Routes */}
@@ -114,6 +123,7 @@ const AppRoutes: React.FC = () => {
             >
                 <Route index element={<AdminDashboardPage />} />
                 <Route path="financial" element={<AdminFinancialPage />} />
+                <Route path="autonomous-promotion" element={<AutonomousPromotionPage />} />
                 <Route path="payments" element={<AdminPaymentsPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
                 <Route path="marketing" element={<AdminMarketingPage />} />

@@ -96,6 +96,22 @@ const BriefcaseIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
         <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
     </svg>
 );
+const ShieldIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg
+        {...props}
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+    >
+        <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+    </svg>
+);
 
 const mockNotifications = [
     { id: 1, text: 'Novo usuário "Empresa Beta" cadastrado.', time: '5 min atrás' },
@@ -187,6 +203,14 @@ const AdminSidebar: React.FC = () => {
                     </NavLink>
                     <NavLink to="/admin/users" className={navLinkClasses}>
                         <span>{t('sidebar.admin_users')}</span>
+                    </NavLink>
+                    <NavLink to="/admin/withdrawals" className={navLinkClasses}>
+                        <ShieldIcon className="w-5 h-5" />
+                        <span>🛡️ Gerenciar Saques</span>
+                    </NavLink>
+                    <NavLink to="/admin/autonomous-promotion" className={navLinkClasses}>
+                        <RocketIcon className="w-5 h-5" />
+                        <span>🚀 Promoção Autônoma 24/7</span>
                     </NavLink>
                     <NavLink to="/admin/financial" className={navLinkClasses}>
                         <span>{t('sidebar.admin_financial')}</span>

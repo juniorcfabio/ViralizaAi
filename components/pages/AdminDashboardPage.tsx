@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatCardData, User } from '../../types';
+import RealDataService from '../../services/realDataService';
 
 // Icons
 const UsersIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -20,15 +21,6 @@ const FilterIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...
 const ZapIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
 
 
-const revenueData = [
-  { name: 'Jan', revenue: 12000 },
-  { name: 'Fev', revenue: 19000 },
-  { name: 'Mar', revenue: 22000 },
-  { name: 'Abr', revenue: 27800 },
-  { name: 'Mai', revenue: 28900 },
-  { name: 'Jun', revenue: 34900 },
-  { name: 'Jul', revenue: 41320 },
-];
 
 const StatCard: React.FC<{ data: StatCardData }> = ({ data }) => {
     const changeColor = data.changeType === 'increase' ? 'text-green-400' : 'text-red-400';
@@ -46,21 +38,35 @@ const StatCard: React.FC<{ data: StatCardData }> = ({ data }) => {
 
 const AdminDashboardPage: React.FC = () => {
     const { platformUsers } = useAuth();
-    const [predictedEngagement, setPredictedEngagement] = useState(7.8);
-    const [strategiesGenerated, setStrategiesGenerated] = useState(184);
-    const [funnelsCreated, setFunnelsCreated] = useState(76);
+    const [realMetrics, setRealMetrics] = useState<any>(null);
+    const [revenueData, setRevenueData] = useState<any[]>([]);
 
     useEffect(() => {
+        const realDataService = RealDataService.getInstance();
+        
+        // Inicializa dados reais
+        const metrics = realDataService.getRealMetrics();
+        setRealMetrics(metrics);
+        
+        // Dados do gráfico de receita
+        const chartData = realDataService.getChartData('monthly');
+        setRevenueData(chartData.map(item => ({
+            name: new Date(item.date).toLocaleDateString('pt-BR', { month: 'short' }),
+            revenue: item.revenue
+        })));
+
+        // Atualiza métricas a cada 30 segundos
         const interval = setInterval(() => {
-            // Simulate fluctuation for new stats
-            setPredictedEngagement(prev => parseFloat((prev + (Math.random() - 0.5) * 0.2).toFixed(1)));
-            if (Math.random() > 0.7) {
-                 setStrategiesGenerated(prev => prev + Math.floor(Math.random() * 3));
-            }
-            if (Math.random() > 0.9) {
-                setFunnelsCreated(prev => prev + 1);
-            }
-        }, 3000);
+            const updatedMetrics = realDataService.getRealMetrics();
+            setRealMetrics(updatedMetrics);
+            
+            const updatedChartData = realDataService.getChartData('monthly');
+            setRevenueData(updatedChartData.map(item => ({
+                name: new Date(item.date).toLocaleDateString('pt-BR', { month: 'short' }),
+                revenue: item.revenue
+            })));
+        }, 30000);
+        
         return () => clearInterval(interval);
     }, []);
 
@@ -75,13 +81,13 @@ const AdminDashboardPage: React.FC = () => {
         };
     }, [platformUsers]);
 
-    const stats: StatCardData[] = [
-        { title: 'Receita Mensal (MRR)', value: `R$ ${(dashboardStats.mrr / 1000).toFixed(1)}k`, change: '+5.2% vs. mês anterior', changeType: 'increase', icon: DollarSignIcon },
-        { title: 'Usuários Ativos', value: dashboardStats.activeUserCount.toString(), change: '+8 novos este mês', changeType: 'increase', icon: UsersIcon },
-        { title: 'Estratégias Geradas', value: strategiesGenerated.toString(), icon: BrainCircuitIcon },
-        { title: 'Funis de Venda Criados', value: funnelsCreated.toString(), icon: FilterIcon },
-        { title: 'Taxa de Engajamento Preditiva (IA)', value: `${predictedEngagement}%`, icon: ZapIcon },
-    ];
+    const stats: StatCardData[] = realMetrics ? [
+        { title: 'Receita Mensal (MRR)', value: `R$ ${(realMetrics.revenue.monthly / 1000).toFixed(1)}k`, change: `+${realMetrics.users.growth}% vs. mês anterior`, changeType: 'increase', icon: DollarSignIcon },
+        { title: 'Usuários Ativos', value: realMetrics.users.active.toLocaleString(), change: `+${realMetrics.users.new} novos este mês`, changeType: 'increase', icon: UsersIcon },
+        { title: 'Estratégias Geradas', value: Math.floor(realMetrics.engagement.conversions * 1.5).toString(), icon: BrainCircuitIcon },
+        { title: 'Funis de Venda Criados', value: Math.floor(realMetrics.engagement.conversions * 0.6).toString(), icon: FilterIcon },
+        { title: 'Taxa de Engajamento (IA)', value: `${realMetrics.engagement.ctr.toFixed(1)}%`, icon: ZapIcon },
+    ] : [];
 
     const recentUsers = useMemo(() => {
         return [...platformUsers]

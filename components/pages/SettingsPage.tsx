@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import ServiceAreaSelector from '../ui/ServiceAreaSelector';
 import { addTestimonialDB } from '../../services/dbService';
 import { Testimonial } from '../../types';
 
@@ -191,6 +192,9 @@ const SettingsPage: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Área de Atendimento */}
+            <ServiceAreaSelector />
         </>
     );
 };
