@@ -341,6 +341,10 @@ const ClientSidebar: React.FC = () => {
           {t('sidebar.logout')}
         </button>
         <div className="mt-4 space-y-2">
+          <NavLink to="/dashboard/task-monitoring" className={navLinkClasses}>
+            <span className="text-xl animate-pulse">🎯</span>
+            <span className="font-semibold">Monitor Ultra-Avançado</span>
+          </NavLink>
           <NavLink to="/dashboard/global-promotion" className={navLinkClasses}>
             <span className="text-xl">🌍</span>
             <span className="font-semibold">Promoção Global</span>

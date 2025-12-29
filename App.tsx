@@ -28,6 +28,7 @@ import SupportChatbot from './components/ui/SupportChatbot';
 import ViralizaAutopilotPage from './components/pages/ViralizaAutopilotPage';
 import EbookGeneratorPage from './components/pages/EbookGeneratorPage';
 import AIVideoGeneratorPage from './components/pages/AIVideoGeneratorPage';
+import TaskMonitoringPage from './components/pages/TaskMonitoringPage';
 import AdminPaymentsPage from './components/pages/AdminPaymentsPage';
 import AdminAdsPage from './components/pages/AdminAdsPage';
 import AdminTrustedCompaniesPage from './components/pages/AdminTrustedCompaniesPage';
@@ -117,6 +118,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="revenue-projection" element={<RevenueProjectionPage />} />
                 <Route path="global-promotion" element={<GlobalPromotionPage />} />
                 <Route path="viral-marketing" element={<ViralMarketingPage />} />
+                <Route path="task-monitoring" element={<TaskMonitoringPage />} />
             </Route>
 
             {/* Admin Routes */}
