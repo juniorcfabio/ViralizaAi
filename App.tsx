@@ -5,6 +5,7 @@ import AdminDashboardPage from './components/pages/AdminDashboardPage';
 import DashboardPage from './components/pages/DashboardPage';
 import RevenueProjectionPage from './components/pages/RevenueProjectionPage';
 import GlobalPromotionPage from './components/pages/GlobalPromotionPage';
+import ViralMarketingPage from './components/pages/ViralMarketingPage';
 import AutonomousPromotionPage from './components/pages/AutonomousPromotionPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
@@ -114,6 +115,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="ai-video-generator" element={<AIVideoGeneratorPage />} />
                 <Route path="revenue-projection" element={<RevenueProjectionPage />} />
                 <Route path="global-promotion" element={<GlobalPromotionPage />} />
+                <Route path="viral-marketing" element={<ViralMarketingPage />} />
             </Route>
 
             {/* Admin Routes */}

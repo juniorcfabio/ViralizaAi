@@ -340,6 +340,16 @@ const ClientSidebar: React.FC = () => {
         >
           {t('sidebar.logout')}
         </button>
+        <div className="mt-4 space-y-2">
+          <NavLink to="/dashboard/global-promotion" className={navLinkClasses}>
+            <span className="text-xl">🌍</span>
+            <span className="font-semibold">Promoção Global</span>
+          </NavLink>
+          <NavLink to="/dashboard/viral-marketing" className={navLinkClasses}>
+            <span className="text-xl">🚀</span>
+            <span className="font-semibold">Marketing Viral Gratuito</span>
+          </NavLink>
+        </div>
       </div>
     </aside>
   );
