@@ -1215,7 +1215,7 @@ const Footer: React.FC = () => {
                     <ClientLogos />
                 </div>
                 <Logo />
-                <p className="mt-4">&copy; {new Date().getFullYear() + 1} Viraliza.ai. {t('footer.rights')}</p>
+                <p className="mt-4">&copy; 2025 ViralizaAi. {t('footer.rights')}</p>
             </div>
         </footer>
     );

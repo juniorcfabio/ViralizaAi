@@ -24,7 +24,6 @@ import AdminAffiliatesPage from './components/pages/AdminAffiliatesPage';
 import ClientLayout from './components/layout/ClientLayout';
 import AdminLayout from './components/layout/AdminLayout';
 import AdminMaintenancePage from './components/pages/AdminMaintenancePage';
-import SupportChatbot from './components/ui/SupportChatbot';
 import ViralizaAutopilotPage from './components/pages/ViralizaAutopilotPage';
 import EbookGeneratorPage from './components/pages/EbookGeneratorPage';
 import AIVideoGeneratorPage from './components/pages/AIVideoGeneratorPage';
@@ -171,7 +170,6 @@ const App: React.FC = () => {
                 <ThemeProvider>
                     <BrowserRouter>
                         <AppRoutes />
-                        <SupportChatbot />
                         <UpdateModal />
                     </BrowserRouter>
                 </ThemeProvider>
