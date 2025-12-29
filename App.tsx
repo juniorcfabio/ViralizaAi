@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './components/pages/LandingPage';
-import AdminDashboardPage from './components/pages/AdminDashboardPage';
-import DashboardPage from './components/pages/DashboardPage';
-import RevenueProjectionPage from './components/pages/RevenueProjectionPage';
-import GlobalPromotionPage from './components/pages/GlobalPromotionPage';
-import ViralMarketingPage from './components/pages/ViralMarketingPage';
+import AdminDashboardPageReal from './components/pages/AdminDashboardPageReal';
+import AdminPaymentsPage from './components/pages/AdminPaymentsPage';
+import AdminAdsPage from './components/pages/AdminAdsPage';
+import AdminTrustedCompaniesPage from './components/pages/AdminTrustedCompaniesPage';
+import AdminGrowthEngineConfigPage from './components/pages/AdminGrowthEngineConfigPage';
 import AutonomousPromotionPage from './components/pages/AutonomousPromotionPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import AdminFinancialPage from './components/pages/AdminFinancialPage';
+import AdminFinancialPageReal from './components/pages/AdminFinancialPageReal';
 import SocialAccountsPage from './components/pages/SocialAccountsPage';
 import AnalyticsPage from './components/pages/AnalyticsPage';
 import BillingPage from './components/pages/BillingPage';
@@ -125,8 +125,8 @@ const AppRoutes: React.FC = () => {
                 path="/admin"
                 element={user?.type === 'admin' ? <AdminLayout /> : <Navigate to="/" />}
             >
-                <Route index element={<AdminDashboardPage />} />
-                <Route path="financial" element={<AdminFinancialPage />} />
+                <Route index element={<AdminDashboardPageReal />} />
+                <Route path="financial" element={<AdminFinancialPageReal />} />
                 <Route path="autonomous-promotion" element={<AutonomousPromotionPage />} />
                 <Route path="payments" element={<AdminPaymentsPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
