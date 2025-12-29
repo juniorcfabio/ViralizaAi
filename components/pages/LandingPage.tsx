@@ -512,7 +512,7 @@ const Header: React.FC<{ onLogin: () => void; onRegister: () => void }> = ({ onL
                 <nav className="hidden md:flex items-center space-x-6 text-gray-dark">
                     <a href="#features" onClick={(e) => handleNavClick(e, 'features')} className="hover:text-light">{t('nav.features')}</a>
                     <a href="#testimonials" onClick={(e) => handleNavClick(e, 'testimonials')} className="hover:text-light">{t('nav.testimonials')}</a>
-                    <a href="#pricing" onClick={(e) => handleNavClick(e, 'pricing')} className="hover:text-light">Ver Planos</a>
+                    <a href="#pricing" onClick={(e) => handleNavClick(e, 'pricing')} className="hover:text-light">{t('nav.pricing')}</a>
                     <button onClick={handleAffiliateClick} className="hover:text-light transition-colors">Afiliado</button>
                 </nav>
                 <div className="flex items-center space-x-4">
