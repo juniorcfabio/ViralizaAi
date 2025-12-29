@@ -218,20 +218,21 @@ export class GeolocationService {
   }
 
   private async getLocationFromIPAPI(): Promise<LocationData> {
-    const response = await fetch('http://ip-api.com/json/?fields=status,country,countryCode,region,city,timezone,query');
+    // Usar HTTPS para evitar Mixed Content error
+    const response = await fetch('https://ipapi.co/json/');
     const data = await response.json();
     
-    if (data.status !== 'success') throw new Error('IP-API failed');
+    if (!data.country_code) throw new Error('IP-API failed');
 
     return {
-      country: data.country,
-      countryCode: data.countryCode,
-      region: data.region,
+      country: data.country_name || data.country,
+      countryCode: data.country_code || data.country,
+      region: data.region || data.region_code,
       city: data.city,
       timezone: data.timezone,
-      currency: GLOBAL_MARKETS[data.countryCode]?.currency || 'USD',
-      language: COUNTRY_LANGUAGES[data.countryCode] || 'en',
-      ip: data.query
+      currency: GLOBAL_MARKETS[data.country_code]?.currency || 'USD',
+      language: COUNTRY_LANGUAGES[data.country_code] || 'en',
+      ip: data.ip
     };
   }
 
