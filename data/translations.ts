@@ -16,7 +16,26 @@ export const translations = {
     'sidebar.affiliate': 'Afiliados',
     'sidebar.autopilot': 'Autopromoção',
     'sidebar.settings': 'Configurações',
-    'sidebar.logout': 'Sair'
+    'sidebar.logout': 'Sair',
+    'ads.title': 'Parceiros Premium',
+    'ads.subtitle': 'Empresas que confiam na nossa plataforma',
+    'ads.visit': 'Visitar',
+    'feature.growth': 'Crescimento Inteligente',
+    'feature.content': 'Conteúdo Visual',
+    'feature.sales': 'Funis de Venda',
+    'plan.mensal': 'Mensal',
+    'plan.trimestral': 'Trimestral',
+    'plan.semestral': 'Semestral',
+    'plan.anual': 'Anual',
+    'plan.period.month': '/mês',
+    'plan.period.quarter': '/trimestre',
+    'plan.period.semester': '/semestre',
+    'plan.period.year': '/ano',
+    'plan.feature.conversion_tags': 'Tags de Conversão Avançadas',
+    'plan.feature.retention_audio': 'Áudios de Retenção IA',
+    'plan.feature.competitor_spy': 'Espião de Concorrentes',
+    'plan.feature.future_trends': 'Tendências Futuras IA',
+    'footer.rights': 'Todos os direitos reservados.'
   },
   en: {
     'hero.title': 'Transform Your Digital Presence with Artificial Intelligence',
@@ -35,7 +54,10 @@ export const translations = {
     'sidebar.affiliate': 'Affiliates',
     'sidebar.autopilot': 'Autopilot',
     'sidebar.settings': 'Settings',
-    'sidebar.logout': 'Logout'
+    'sidebar.logout': 'Logout',
+    'ads.title': 'Premium Partners',
+    'ads.subtitle': 'Companies that trust our platform',
+    'ads.visit': 'Visit'
   },
   fr: {
     'hero.title': 'Transformez votre Présence Numérique avec l\'Intelligence Artificielle',
@@ -54,7 +76,10 @@ export const translations = {
     'sidebar.affiliate': 'Affiliés',
     'sidebar.autopilot': 'Pilote Automatique',
     'sidebar.settings': 'Paramètres',
-    'sidebar.logout': 'Déconnexion'
+    'sidebar.logout': 'Déconnexion',
+    'ads.title': 'Partenaires Premium',
+    'ads.subtitle': 'Entreprises qui font confiance à notre plateforme',
+    'ads.visit': 'Visiter'
   },
   de: {
     'hero.title': 'Verwandeln Sie Ihre Digitale Präsenz mit Künstlicher Intelligenz',
@@ -73,7 +98,10 @@ export const translations = {
     'sidebar.affiliate': 'Partner',
     'sidebar.autopilot': 'Autopilot',
     'sidebar.settings': 'Einstellungen',
-    'sidebar.logout': 'Abmelden'
+    'sidebar.logout': 'Abmelden',
+    'ads.title': 'Premium Partner',
+    'ads.subtitle': 'Unternehmen, die unserer Plattform vertrauen',
+    'ads.visit': 'Besuchen'
   },
   it: {
     'hero.title': 'Trasforma la tua Presenza Digitale con l\'Intelligenza Artificiale',
@@ -92,7 +120,10 @@ export const translations = {
     'sidebar.affiliate': 'Affiliati',
     'sidebar.autopilot': 'Pilota Automatico',
     'sidebar.settings': 'Impostazioni',
-    'sidebar.logout': 'Esci'
+    'sidebar.logout': 'Esci',
+    'ads.title': 'Partner Premium',
+    'ads.subtitle': 'Aziende che si fidano della nostra piattaforma',
+    'ads.visit': 'Visita'
   },
   ru: {
     'hero.title': 'Преобразите свое Цифровое Присутствие с Искусственным Интеллектом',
@@ -111,7 +142,10 @@ export const translations = {
     'sidebar.affiliate': 'Партнеры',
     'sidebar.autopilot': 'Автопилот',
     'sidebar.settings': 'Настройки',
-    'sidebar.logout': 'Выйти'
+    'sidebar.logout': 'Выйти',
+    'ads.title': 'Премиум Партнеры',
+    'ads.subtitle': 'Компании, которые доверяют нашей платформе',
+    'ads.visit': 'Посетить'
   },
   zh: {
     'hero.title': '用人工智能改变您的数字存在',
@@ -130,7 +164,10 @@ export const translations = {
     'sidebar.affiliate': '联盟',
     'sidebar.autopilot': '自动驾驶',
     'sidebar.settings': '设置',
-    'sidebar.logout': '登出'
+    'sidebar.logout': '登出',
+    'ads.title': '高级合作伙伴',
+    'ads.subtitle': '信任我们平台的公司',
+    'ads.visit': '访问'
   },
   ja: {
     'hero.title': '人工知能でデジタルプレゼンスを変革',
@@ -149,7 +186,10 @@ export const translations = {
     'sidebar.affiliate': 'アフィリエイト',
     'sidebar.autopilot': 'オートパイロット',
     'sidebar.settings': '設定',
-    'sidebar.logout': 'ログアウト'
+    'sidebar.logout': 'ログアウト',
+    'ads.title': 'プレミアムパートナー',
+    'ads.subtitle': '私たちのプラットフォームを信頼する企業',
+    'ads.visit': '訪問'
   },
   ko: {
     'hero.title': '인공지능으로 디지털 존재감을 변화시키세요',
@@ -168,7 +208,10 @@ export const translations = {
     'sidebar.affiliate': '제휴',
     'sidebar.autopilot': '자동조종',
     'sidebar.settings': '설정',
-    'sidebar.logout': '로그아웃'
+    'sidebar.logout': '로그아웃',
+    'ads.title': '프리미엄 파트너',
+    'ads.subtitle': '우리 플랫폼을 신뢰하는 기업들',
+    'ads.visit': '방문'
   },
   hi: {
     'hero.title': 'कृत्रिम बुद्धिमत्ता के साथ अपनी डिजिटल उपस्थिति को बदलें',
@@ -187,7 +230,10 @@ export const translations = {
     'sidebar.affiliate': 'सहयोगी',
     'sidebar.autopilot': 'ऑटोपायलट',
     'sidebar.settings': 'सेटिंग्स',
-    'sidebar.logout': 'लॉग आउट'
+    'sidebar.logout': 'लॉग आउट',
+    'ads.title': 'प्रीमियम भागीदार',
+    'ads.subtitle': 'कंपनियां जो हमारे प्लेटफॉर्म पर भरोसा करती हैं',
+    'ads.visit': 'देखें'
   },
   ar: {
     'hero.title': 'حول حضورك الرقمي بالذكاء الاصطناعي',
@@ -206,6 +252,9 @@ export const translations = {
     'sidebar.affiliate': 'الشركاء',
     'sidebar.autopilot': 'الطيار الآلي',
     'sidebar.settings': 'الإعدادات',
-    'sidebar.logout': 'تسجيل الخروج'
+    'sidebar.logout': 'تسجيل الخروج',
+    'ads.title': 'شركاء ممتازون',
+    'ads.subtitle': 'الشركات التي تثق في منصتنا',
+    'ads.visit': 'زيارة'
   }
 };
