@@ -16,7 +16,7 @@ import AnalyticsPage from './components/pages/AnalyticsPage';
 import BillingPage from './components/pages/BillingPage';
 import SettingsPage from './components/pages/SettingsPage';
 import AdminUsersPage from './components/pages/AdminUsersPage';
-import AdminWithdrawalsPageTest from './components/pages/AdminWithdrawalsPageTest';
+import AdminWithdrawalsPageFixed from './components/pages/AdminWithdrawalsPageFixed';
 import AdminMarketingPage from './components/pages/AdminMarketingPage';
 import AdminSettingsPage from './components/pages/AdminSettingsPage';
 import AffiliatePage from './components/pages/AffiliatePage';
@@ -130,7 +130,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="autonomous-promotion" element={<AutonomousPromotionPage />} />
                 <Route path="payments" element={<AdminPaymentsPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
-                <Route path="withdrawals" element={<AdminWithdrawalsPageTest />} />
+                <Route path="withdrawals" element={<AdminWithdrawalsPageFixed />} />
                 <Route path="marketing" element={<AdminMarketingPage />} />
                 <Route path="affiliates" element={<AdminAffiliatesPage />} />
                 <Route path="ads" element={<AdminAdsPage />} />
