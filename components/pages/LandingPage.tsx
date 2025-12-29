@@ -7,6 +7,7 @@ import { API_BASE_URL } from '../../src/config/api';
 import Logo from '../ui/Logo';
 import AIPersona from '../ui/AIPersona';
 import InteractiveAIPersona from '../ui/InteractiveAIPersona';
+import DraggableHelpButton from '../ui/DraggableHelpButton';
 import { getPartnersDB, getTestimonialsDB, getTrustedCompaniesDB } from '../../services/dbService';
 import AdminCredentialsFix from '../ui/AdminCredentialsFix';
 
@@ -497,6 +498,13 @@ const Header: React.FC<{ onLogin: () => void; onRegister: () => void }> = ({ onL
         }
     };
 
+    const handleAffiliateClick = () => {
+        const affiliateSection = document.getElementById('affiliate');
+        if (affiliateSection) {
+            affiliateSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     return (
         <header className="fixed top-0 left-0 right-0 z-40 bg-primary/80 backdrop-blur-sm border-b border-gray-800">
             <div className="container mx-auto px-6 py-4 flex justify-between items-center">
@@ -504,7 +512,8 @@ const Header: React.FC<{ onLogin: () => void; onRegister: () => void }> = ({ onL
                 <nav className="hidden md:flex items-center space-x-6 text-gray-dark">
                     <a href="#features" onClick={(e) => handleNavClick(e, 'features')} className="hover:text-light">{t('nav.features')}</a>
                     <a href="#testimonials" onClick={(e) => handleNavClick(e, 'testimonials')} className="hover:text-light">{t('nav.testimonials')}</a>
-                    <a href="#pricing" onClick={(e) => handleNavClick(e, 'pricing')} className="hover:text-light">{t('nav.pricing')}</a>
+                    <a href="#pricing" onClick={(e) => handleNavClick(e, 'pricing')} className="hover:text-light">Ver Planos</a>
+                    <button onClick={handleAffiliateClick} className="hover:text-light transition-colors">Afiliado</button>
                 </nav>
                 <div className="flex items-center space-x-4">
                     <button onClick={onLogin} className="text-gray-dark hover:text-light">{t('nav.login')}</button>
@@ -1108,6 +1117,57 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
     );
 };
 
+const AffiliateSection: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
+    return (
+        <section id="affiliate" className="py-20 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+            <div className="container mx-auto px-6 text-center">
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                    💰 Programa de Afiliados ViralizaAi
+                </h2>
+                <p className="text-lg text-gray-300 max-w-3xl mx-auto mb-8">
+                    Ganhe até <span className="text-yellow-400 font-bold">40% de comissão</span> indicando nossos planos! 
+                    Sistema de pagamento automático e suporte completo para afiliados.
+                </p>
+                
+                <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto mb-12">
+                    <div className="bg-white/10 backdrop-blur-sm p-6 rounded-lg border border-white/20">
+                        <div className="text-4xl mb-4">🎯</div>
+                        <h3 className="text-xl font-bold text-white mb-2">Comissões Altas</h3>
+                        <p className="text-gray-300">Até 40% de comissão recorrente em todos os planos vendidos</p>
+                    </div>
+                    
+                    <div className="bg-white/10 backdrop-blur-sm p-6 rounded-lg border border-white/20">
+                        <div className="text-4xl mb-4">⚡</div>
+                        <h3 className="text-xl font-bold text-white mb-2">Pagamento Rápido</h3>
+                        <p className="text-gray-300">Receba suas comissões automaticamente a cada 15 dias</p>
+                    </div>
+                    
+                    <div className="bg-white/10 backdrop-blur-sm p-6 rounded-lg border border-white/20">
+                        <div className="text-4xl mb-4">📊</div>
+                        <h3 className="text-xl font-bold text-white mb-2">Dashboard Completo</h3>
+                        <p className="text-gray-300">Acompanhe suas vendas, comissões e performance em tempo real</p>
+                    </div>
+                </div>
+                
+                <div className="bg-gradient-to-r from-yellow-500 to-orange-500 p-8 rounded-2xl max-w-2xl mx-auto">
+                    <h3 className="text-2xl font-bold text-black mb-4">
+                        🚀 Comece Agora e Ganhe Dinheiro!
+                    </h3>
+                    <p className="text-black/80 mb-6">
+                        Cadastre-se gratuitamente e comece a ganhar comissões hoje mesmo
+                    </p>
+                    <button 
+                        onClick={onRegister}
+                        className="bg-black text-white font-bold py-4 px-8 rounded-full hover:bg-gray-800 transition-all transform hover:scale-105 shadow-lg"
+                    >
+                        Quero Ser Afiliado Agora!
+                    </button>
+                </div>
+            </div>
+        </section>
+    );
+};
+
 const ClientLogos: React.FC = () => {
     const [logos, setLogos] = useState<TrustedCompany[]>([]);
 
@@ -1224,6 +1284,7 @@ const LandingPage: React.FC = () => {
                 <WorldMap />
                 <Testimonials />
                 <Pricing onRegister={() => setIsRegisterOpen(true)} />
+                <AffiliateSection onRegister={() => setIsRegisterOpen(true)} />
                 <PartnerAdsSection onRegister={() => setIsRegisterOpen(true)} />
             </main>
             <Footer />
@@ -1231,6 +1292,9 @@ const LandingPage: React.FC = () => {
             {isLoginOpen && <LoginModal onClose={() => setIsLoginOpen(false)} />}
             {isRegisterOpen && <RegisterModal onClose={() => setIsRegisterOpen(false)} />}
             {isPersonaModalOpen && <InteractiveAIPersona onClose={() => setIsPersonaModalOpen(false)} />}
+            
+            {/* Botão de Auto Ajuda Flutuante e Arrastável */}
+            <DraggableHelpButton />
         </div>
     );
 };
