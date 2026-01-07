@@ -213,8 +213,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loginWithGoogle = async (): Promise<User | { error: string }> => {
     try {
-      setIsLoading(true);
-      
       const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
       if (!clientId) {
         throw new Error('Google Client ID não configurado');
@@ -239,8 +237,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error('❌ Erro no login Google:', error);
       return { error: 'Erro ao fazer login com Google' };
-    } finally {
-      setIsLoading(false);
     }
   };
 
