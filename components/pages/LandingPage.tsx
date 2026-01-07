@@ -939,24 +939,6 @@ const PartnerAdsSection: React.FC<{ onRegister: () => void }> = ({ onRegister })
                             )}
 
                             <div className="mt-auto w-full">
-                                <div className="flex justify-center gap-3 mt-2 w-full">
-                                    <a 
-                                        href={partner.websiteUrl} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="flex-1 flex items-center justify-center gap-2 bg-accent text-white text-xs py-2 rounded-lg hover:bg-blue-500 transition-colors"
-                                    >
-                                        <GlobeIcon className="w-3 h-3" /> {t('ads.visit')}
-                                    </a>
-                                </div>
-                                <div className="flex justify-center gap-3 mt-2 w-full">
-                                    {partner.phone && (
-                                        <a href={`https://wa.me/${partner.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-1 bg-green-600/20 text-green-400 text-xs py-1.5 rounded-lg hover:bg-green-600/40 transition-colors border border-green-600/30">
-                                            <WhatsAppIcon className="w-3 h-3" /> WhatsApp
-                                        </a>
-                                    )}
-                                    {partner.instagram && (
-                                        <a href={`https://instagram.com/${partner.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-1 bg-purple-600/20 text-purple-400 text-xs py-1.5 rounded-lg hover:bg-purple-600/40 transition-colors border border-purple-600/30">
                                             <InstagramIcon className="w-3 h-3" /> Instagram
                                         </a>
                                     )}
