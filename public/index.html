@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta name="cache-bust" content="20250107-2017" />
+    <title>Viraliza.ai - Marketing Digital</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Plataforma completa de marketing digital com programa de afiliados e anúncios pagos" />
+    <meta name="theme-color" content="#4F46E5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Viraliza.ai" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    
+    <!-- PWA Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/icons/icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/icons/icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/icons/icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/icons/icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/icons/icon-57x57.png" />
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileColor" content="#4F46E5" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+    
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/index.css" />
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              'primary': 'var(--color-primary)',
+              'secondary': 'var(--color-secondary)',
+              'accent': 'var(--color-accent)',
+              'light': 'var(--color-light)',
+              'gray-light': '#F0F0F0',
+              'gray-dark': 'var(--color-gray-dark)',
+              'success': '#00B87A',
+              'warning': '#FFAA00',
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            animation: {
+              'pulse-badge': 'pulse-badge 2s ease-in-out infinite',
+              'pulse-ring': 'pulse-ring 2s infinite',
+              'spin-3d': 'spin-3d 15s linear infinite',
+              'light-sweep': 'light-sweep 4s ease-in-out infinite',
+              'magnetic-ring-1': 'magnetic-ring-1 8s linear infinite',
+              'magnetic-ring-2': 'magnetic-ring-2 10s linear infinite reverse',
+            }
+          },
+        },
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script type="importmap">
+    {
+      "imports": {
+        "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.5",
+        "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
+        "react/": "https://aistudiocdn.com/react@^19.2.0/",
+        "react": "https://aistudiocdn.com/react@^19.2.0",
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+        "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0"
+      }
+    }
+    </script>
+
+    <!-- IMPORTANTE: carregar o app React/Vite -->
+    <script type="module" src="/index.tsx"></script>
+  </head>
+  <body class="bg-primary text-light font-sans dark">
+    <div id="root"></div>
+    
+    <!-- Google OAuth Callback Handler -->
+    <script>
+      window.handleGoogleCallback = function(response) {
+        console.log('🔄 Google callback recebido:', response);
+        
+        if (response.credential) {
+          try {
+            // Decodificar JWT token
+            const payload = JSON.parse(atob(response.credential.split('.')[1]));
+            console.log('👤 Dados do usuário:', payload);
+            
+            // Criar usuário no sistema
+            const newUser = {
+              id: `google_${payload.sub}`,
+              name: payload.name || payload.email,
+              email: payload.email,
+              type: 'client',
+              status: 'Ativo',
+              joinedDate: new Date().toISOString().split('T')[0],
+              avatar: payload.picture || '',
+              socialAccounts: [{
+                platform: 'Google',
+                accountId: payload.sub,
+                username: payload.email
+              }],
+              paymentMethods: [],
+              billingHistory: []
+            };
+            
+            // Salvar usuário
+            localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(newUser));
+            
+            console.log('✅ Login Google realizado com sucesso');
+            
+            // Redirecionar para dashboard
+            window.location.href = '/dashboard';
+            
+          } catch (error) {
+            console.error('❌ Erro ao processar token Google:', error);
+          }
+        }
+      };
+      
+      window.initializeGoogleAuth = function() {
+        if (typeof google !== 'undefined' && google.accounts) {
+          console.log('🔄 Inicializando Google Identity Services...');
+          
+          google.accounts.id.initialize({
+            client_id: '158170096258-5bb00bb3jqjqjcv4r1no1ac5v3dc2e6.apps.googleusercontent.com',
+            callback: window.handleGoogleCallback,
+            auto_select: false,
+            cancel_on_tap_outside: true
+          });
+          
+          console.log('✅ Google Identity Services inicializado');
+        } else {
+          console.log('⏳ Aguardando Google Identity Services...');
+          setTimeout(window.initializeGoogleAuth, 100);
+        }
+      };
+      
+      // Inicializar quando a página carregar
+      document.addEventListener('DOMContentLoaded', function() {
+        window.initializeGoogleAuth();
+      });
+    </script>
+  </body>
+</html>

@@ -123,6 +123,72 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const { login, loginWithGoogle, isLoading } = useAuth();
     const navigate = useNavigate();
 
+    useEffect(() => {
+        // Initialize Google Sign-In button when modal opens
+        const initGoogleButton = () => {
+            if (typeof window.google !== 'undefined' && window.google.accounts) {
+                const buttonElement = document.getElementById('google-signin-button');
+                if (buttonElement) {
+                    window.google.accounts.id.initialize({
+                        client_id: '158170096258-5bb00bb3jqjqjcv4r1no1ac5v3dc2e6.apps.googleusercontent.com',
+                        callback: (response: any) => {
+                            console.log('🔄 Google callback recebido:', response);
+                            
+                            if (response.credential) {
+                                try {
+                                    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+                                    console.log('👤 Dados do usuário:', payload);
+                                    
+                                    const newUser = {
+                                        id: `google_${payload.sub}`,
+                                        name: payload.name || payload.email,
+                                        email: payload.email,
+                                        type: 'client' as const,
+                                        status: 'Ativo',
+                                        joinedDate: new Date().toISOString().split('T')[0],
+                                        avatar: payload.picture || '',
+                                        socialAccounts: [{
+                                            platform: 'Google',
+                                            accountId: payload.sub,
+                                            username: payload.email
+                                        }],
+                                        paymentMethods: [],
+                                        billingHistory: []
+                                    };
+                                    
+                                    localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(newUser));
+                                    console.log('✅ Login Google realizado com sucesso');
+                                    
+                                    onClose();
+                                    navigate('/dashboard');
+                                    
+                                } catch (error) {
+                                    console.error('❌ Erro ao processar token Google:', error);
+                                    setError('Erro ao processar login com Google');
+                                }
+                            }
+                        },
+                        auto_select: false,
+                        cancel_on_tap_outside: true
+                    });
+
+                    window.google.accounts.id.renderButton(buttonElement, {
+                        theme: 'outline',
+                        size: 'large',
+                        text: 'signin_with',
+                        shape: 'rectangular',
+                        logo_alignment: 'left',
+                        width: '100%'
+                    });
+                }
+            } else {
+                setTimeout(initGoogleButton, 100);
+            }
+        };
+
+        initGoogleButton();
+    }, [navigate, onClose]);
+
     const handleForgotPassword = async () => {
         setError('');
         setForgotMessage('');
@@ -228,21 +294,16 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <button onClick={onClose} className="absolute top-4 right-4 text-2xl text-gray-dark hover:text-light">&times;</button>
                 <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
                 
-                <div className="flex justify-center gap-4 mb-6">
-                    <button 
-                        onClick={() => handleSocialLogin('Google')} 
-                        className="p-2 bg-primary rounded-full hover:bg-gray-700 transition-colors disabled:opacity-50" 
-                        title="Google"
-                        disabled={isLoggingIn || isLoading}
-                    >
-                        <GoogleIcon className="w-6 h-6" />
-                    </button>
-                    <button onClick={() => handleSocialLogin('Facebook')} className="p-2 bg-primary rounded-full hover:bg-gray-700 transition-colors" title="Facebook">
-                        <FacebookIcon className="w-6 h-6" />
-                    </button>
-                    <button onClick={() => handleSocialLogin('Apple')} className="p-2 bg-primary rounded-full hover:bg-gray-700 transition-colors" title="Apple">
-                        <AppleIcon className="w-6 h-6" />
-                    </button>
+                <div className="mb-6">
+                    <div id="google-signin-button" className="w-full"></div>
+                    <div className="flex justify-center gap-4 mt-4">
+                        <button onClick={() => handleSocialLogin('Facebook')} className="p-2 bg-primary rounded-full hover:bg-gray-700 transition-colors" title="Facebook">
+                            <FacebookIcon className="w-6 h-6" />
+                        </button>
+                        <button onClick={() => handleSocialLogin('Apple')} className="p-2 bg-primary rounded-full hover:bg-gray-700 transition-colors" title="Apple">
+                            <AppleIcon className="w-6 h-6" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="relative mb-6">
