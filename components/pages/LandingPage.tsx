@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth, RegistrationData } from '../../contexts/AuthContext';
+import { useAuth, RegistrationData } from '../../contexts/AuthContextFixed';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Plan, Testimonial, AdPartner, TrustedCompany } from '../../types';
 import { API_BASE_URL } from '../../src/config/api';
@@ -184,18 +184,25 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const handleSocialLogin = async (platform: string) => {
         if (platform === 'Google') {
             setIsLoggingIn(true);
-            try {
-                const user = await loginWithGoogle();
-                if (user && typeof user === 'object' && 'error' in user) {
-                    setError((user as any).error || 'Erro ao fazer login com Google.');
-                    return;
-                }
+            const handleGoogleLogin = () => {
+                const clientId = '158170096258-5bb00bb3jqjqjcv4r1no1ac5v3dc2e6.apps.googleusercontent.com';
+                const redirectUri = `${window.location.origin}/auth/google/callback`;
+                const scope = 'email profile';
+                const responseType = 'code';
+                const state = Math.random().toString(36).substring(7);
                 
-                if (user) {
-                    navigate(user.type === 'admin' ? '/admin' : '/dashboard');
-                } else {
-                    setError('Erro ao fazer login com Google.');
-                }
+                const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                  `client_id=${encodeURIComponent(clientId)}&` +
+                  `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+                  `scope=${encodeURIComponent(scope)}&` +
+                  `response_type=${responseType}&` +
+                  `state=${state}`;
+                
+                localStorage.setItem('google_oauth_state', state);
+                window.location.href = authUrl;
+            };
+            try {
+                await handleGoogleLogin();
             } catch (err) {
                 setError('Erro ao fazer login com Google.');
             } finally {
