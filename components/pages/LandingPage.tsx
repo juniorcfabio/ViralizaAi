@@ -185,9 +185,11 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         if (platform === 'Google') {
             setIsLoggingIn(true);
             const handleGoogleLogin = () => {
+                console.log('🔄 Iniciando Google OAuth...');
+                
                 const clientId = '158170096258-5bb00bb3jqjqjcv4r1no1ac5v3dc2e6.apps.googleusercontent.com';
                 const redirectUri = `${window.location.origin}/auth/google/callback`;
-                const scope = 'email profile';
+                const scope = 'email profile openid';
                 const responseType = 'code';
                 const state = Math.random().toString(36).substring(7);
                 
@@ -196,9 +198,16 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   `redirect_uri=${encodeURIComponent(redirectUri)}&` +
                   `scope=${encodeURIComponent(scope)}&` +
                   `response_type=${responseType}&` +
-                  `state=${state}`;
+                  `state=${state}&` +
+                  `access_type=offline&` +
+                  `prompt=consent`;
+                
+                console.log('🔗 URL de autenticação:', authUrl);
+                console.log('🔐 State gerado:', state);
                 
                 localStorage.setItem('google_oauth_state', state);
+                localStorage.setItem('google_oauth_redirect', window.location.pathname);
+                
                 window.location.href = authUrl;
             };
             try {

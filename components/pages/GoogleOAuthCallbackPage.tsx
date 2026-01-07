@@ -1,47 +1,61 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../contexts/AuthContextFixed';
+import { useNavigate } from 'react-router-dom';
 
 const GoogleOAuthCallbackPage: React.FC = () => {
-  const { } = useAuth();
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [message, setMessage] = useState('Processando login com Google...');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        console.log('🔄 Iniciando processamento do callback Google OAuth');
+        
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
         const error = urlParams.get('error');
         const state = urlParams.get('state');
 
+        console.log('📋 Parâmetros recebidos:', { code: code?.substring(0, 10) + '...', error, state });
+
         if (error) {
+          console.error('❌ Erro retornado pelo Google:', error);
           setStatus('error');
           setMessage(`Erro no login: ${error}`);
           return;
         }
 
         if (!code) {
+          console.error('❌ Código de autorização não encontrado');
           setStatus('error');
           setMessage('Código de autorização não encontrado');
           return;
         }
 
-        // Verificar state
+        // Verificar state de segurança
         const savedState = localStorage.getItem('google_oauth_state');
+        console.log('🔐 Verificando state:', { received: state, saved: savedState });
+        
         if (state !== savedState) {
+          console.error('❌ Estado de segurança inválido');
           setStatus('error');
           setMessage('Estado de segurança inválido');
           return;
         }
 
-        // Trocar código por token
-        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-        const clientSecret = import.meta.env.VITE_GOOGLE_CLIENT_SECRET;
+        console.log('🔄 Trocando código por token...');
+        
+        // Usar credenciais diretas (sem env vars que podem não estar carregando)
+        const clientId = '158170096258-5bb00bb3jqjqjcv4r1no1ac5v3dc2e6.apps.googleusercontent.com';
+        const clientSecret = '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';
         const redirectUri = `${window.location.origin}/auth/google/callback`;
 
         const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          headers: { 
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+          },
           body: new URLSearchParams({
             code,
             client_id: clientId,
@@ -51,53 +65,81 @@ const GoogleOAuthCallbackPage: React.FC = () => {
           })
         });
 
+        console.log('📡 Resposta do token:', tokenResponse.status);
         const tokenData = await tokenResponse.json();
+        console.log('🎫 Dados do token:', { hasAccessToken: !!tokenData.access_token, error: tokenData.error });
         
         if (!tokenData.access_token) {
-          throw new Error('Token não recebido');
+          console.error('❌ Token não recebido:', tokenData);
+          throw new Error(`Token não recebido: ${tokenData.error || 'Erro desconhecido'}`);
         }
 
+        console.log('🔄 Obtendo dados do usuário...');
+        
         // Obter dados do usuário
         const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-          headers: { Authorization: `Bearer ${tokenData.access_token}` }
+          headers: { 
+            'Authorization': `Bearer ${tokenData.access_token}`,
+            'Accept': 'application/json'
+          }
         });
 
+        console.log('👤 Resposta do usuário:', userResponse.status);
         const userData = await userResponse.json();
+        console.log('📋 Dados do usuário:', { id: userData.id, email: userData.email, name: userData.name });
+
+        if (!userData.id || !userData.email) {
+          throw new Error('Dados do usuário incompletos');
+        }
 
         // Criar usuário no sistema
         const newUser = {
           id: `google_${userData.id}`,
-          name: userData.name,
+          name: userData.name || userData.email,
           email: userData.email,
           type: 'client' as const,
           status: 'Ativo',
           joinedDate: new Date().toISOString().split('T')[0],
-          avatar: userData.picture,
-          socialAccounts: [],
+          avatar: userData.picture || '',
+          socialAccounts: [{
+            platform: 'Google',
+            accountId: userData.id,
+            username: userData.email
+          }],
           paymentMethods: [],
           billingHistory: []
         };
 
-        // Salvar usuário
+        console.log('💾 Salvando usuário:', newUser.email);
+        
+        // Salvar usuário no localStorage
         localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(newUser));
         localStorage.removeItem('google_oauth_state');
+        localStorage.removeItem('google_oauth_redirect');
 
+        console.log('✅ Login Google realizado com sucesso');
         setStatus('success');
         setMessage('Login realizado com sucesso! Redirecionando...');
         
+        // Redirecionar para dashboard
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          navigate('/dashboard', { replace: true });
         }, 1500);
 
       } catch (error) {
         console.error('❌ Erro no callback OAuth:', error);
         setStatus('error');
-        setMessage('Erro ao processar login com Google');
+        setMessage(`Erro ao processar login: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+        
+        // Redirecionar para home após erro
+        setTimeout(() => {
+          navigate('/', { replace: true });
+        }, 3000);
       }
     };
 
     handleCallback();
-  }, []);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-primary flex items-center justify-center">
