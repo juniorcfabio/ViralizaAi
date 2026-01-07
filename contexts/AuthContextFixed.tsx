@@ -8,7 +8,7 @@ import {
   updateUserDB,
   deleteUsersDB
 } from '../services/dbService';
-import GoogleOAuthReal from '../services/googleOAuthReal';
+// import GoogleOAuthReal from '../services/googleOAuthReal';
 
 export type RegistrationData = Omit<User, 'id' | 'type' | 'status' | 'joinedDate'>;
 export type AdminUserData = Omit<User, 'id' | 'joinedDate'>;
@@ -334,10 +334,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Logout do Google se necessário
     try {
-      const googleOAuth = GoogleOAuthReal.getInstance();
-      googleOAuth.signOut();
+      localStorage.removeItem('google_user_data');
+      localStorage.removeItem('google_access_token');
+      localStorage.removeItem('google_oauth_state');
     } catch (error) {
-      console.log('Google OAuth não disponível para logout');
+      console.log('Erro ao limpar dados do Google');
     }
 
     localStorage.removeItem('viraliza_ai_active_user_v1');
