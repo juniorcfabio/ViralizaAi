@@ -7,6 +7,7 @@ export interface Plan {
   period?: string;
   features: string[] | string;
   highlight?: boolean;
+  includedTools?: FeatureKey[]; // Ferramentas incluídas no plano
 }
 
 export interface Testimonial {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import { PaymentMethod, Plan } from '../../types';
 import { useLanguage } from '../../contexts/LanguageContext';
 import StripeService from '../../services/stripeService';
@@ -355,122 +355,151 @@ const BillingPage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [notification, setNotification] = useState('');
     const [subscribingPlan, setSubscribingPlan] = useState<string | null>(null);
-    const [buyingGrowthEngine, setBuyingGrowthEngine] = useState<string | null>(null);
+const [buyingGrowthEngine, setBuyingGrowthEngine] = useState<string | null>(null);
 
-    const defaultPlans: Plan[] = [
-        {
-            id: 'p1',
-            name: t('plan.mensal'),
-            price: '59.90',
-            period: t('plan.period.month'),
-            features: [
-                'Crescimento Orgânico',
-                'Gestão de Conteúdo',
-                'Análises Básicas',
-                t('plan.feature.conversion_tags')
-            ]
-        },
-        {
-            id: 'quarterly',
-            name: 'Trimestral',
-            price: 159.90,
-            features: ['Tudo do Mensal', 'Análises Avançadas', 'IA Otimizada'],
-            highlight: false
-        },
-        {
-            id: 'semiannual',
-            name: 'Semestral',
-            price: 259.90,
-            features: ['Tudo do Trimestral', 'Relatórios Estratégicos', 'Acesso Beta'],
-            highlight: true
-        },
-        {
-            id: 'annual',
-            name: 'Anual',
-            price: 399.90,
-            features: ['Tudo do Semestral', 'Gerente Dedicado', 'API', '2 Meses Grátis'],
-            highlight: false
-        }
-    ];
+const plans: Plan[] = [
+    {
+        id: 'mensal',
+        name: 'Mensal',
+        price: 97,
+        period: 'mês',
+        features: [
+            'Análises básicas de performance',
+            'Geração de conteúdo com IA',
+            'Agendamento de posts',
+            'Suporte por email',
+            '2 ferramentas avançadas incluídas'
+        ],
+        includedTools: ['analytics', 'trendPredictor']
+    },
+    {
+        id: 'trimestral',
+        name: 'Trimestral',
+        price: 247,
+        period: '3 meses',
+        features: [
+            'Tudo do plano mensal',
+            'Análises avançadas de crescimento',
+            'Sistema de afiliados',
+            'Detector de áudio viral',
+            'Suporte prioritário',
+            '4 ferramentas avançadas incluídas'
+        ],
+        includedTools: ['analytics', 'trendPredictor', 'affiliate', 'audioDetector']
+    },
+    {
+        id: 'semestral',
+        name: 'Semestral',
+        price: 447,
+        period: '6 meses',
+        features: [
+            'Tudo do plano trimestral',
+            'Piloto automático de crescimento',
+            'Radar de conversão avançado',
+            'Espião de concorrentes',
+            'Predição viral com IA',
+            'Suporte VIP',
+            '7 ferramentas avançadas incluídas'
+        ],
+        highlight: true,
+        includedTools: ['analytics', 'trendPredictor', 'affiliate', 'audioDetector', 'autopilot', 'conversionRadar', 'competitorSpy']
+    },
+    {
+        id: 'anual',
+        name: 'Anual',
+        price: 797,
+        period: 'ano',
+        features: [
+            'Tudo do plano semestral',
+            'Motor de crescimento completo',
+            'Predição viral avançada',
+            'Crescimento avançado premium',
+            'Consultoria estratégica mensal',
+            'Suporte 24/7 dedicado',
+            'TODAS as ferramentas incluídas'
+        ],
+        includedTools: ['analytics', 'affiliate', 'autopilot', 'advancedGrowth', 'conversionRadar', 'audioDetector', 'competitorSpy', 'trendPredictor', 'viralPrediction', 'growthEngine']
+    }
+];
 
-    const [availablePlans, setAvailablePlans] = useState<Plan[]>(defaultPlans);
-    const [plansSource, setPlansSource] = useState<'default' | 'admin'>('default');
+const [availablePlans, setAvailablePlans] = useState<Plan[]>(plans);
+const [plansSource, setPlansSource] = useState<'default' | 'admin'>('default');
 
-    useEffect(() => {
-        const loadPlans = () => {
-            try {
-                const raw = localStorage.getItem('viraliza_plans');
-                if (!raw) return;
+useEffect(() => {
+    const loadPlans = () => {
+        try {
+            const raw = localStorage.getItem('viraliza_plans');
+            if (!raw) return;
 
-                const stored: Plan[] = JSON.parse(raw);
+            const stored: Plan[] = JSON.parse(raw);
 
-                const metaById: Record<string, { period?: string; highlight?: boolean }> = {};
-                defaultPlans.forEach((p) => {
-                    if (p.id) {
-                        metaById[p.id] = {
-                            period: p.period,
-                            highlight: p.highlight
-                        };
-                    }
-                });
-
-                const mapped: Plan[] = stored.map((p, index) => {
-                    const meta =
-                        (p.id && metaById[p.id]) || metaById[`p${index + 1}`] || {};
-                    const period = meta.period || defaultPlans[index]?.period || '';
-                    const highlight =
-                        typeof p.highlight === 'boolean'
-                            ? p.highlight
-                            : meta.highlight;
-
-                    return {
-                        ...p,
-                        price:
-                            typeof p.price === 'number'
-                                ? p.price.toFixed(2)
-                                : p.price,
-                        period,
-                        features: Array.isArray(p.features)
-                            ? p.features
-                            : String(p.features || '')
-                                  .split(',')
-                                  .map((f) => f.trim())
-                                  .filter(Boolean),
-                        highlight
+            const metaById: Record<string, { period?: string; highlight?: boolean }> = {};
+            plans.forEach((p) => {
+                if (p.id) {
+                    metaById[p.id] = {
+                        period: p.period,
+                        highlight: p.highlight
                     };
-                });
+                }
+            });
 
-                console.log('📋 Planos carregados do admin:', mapped.length);
-                setAvailablePlans(mapped);
-                setPlansSource('admin');
-            } catch (error) {
-                console.error('Erro ao carregar planos do admin:', error);
-                setAvailablePlans(defaultPlans);
-                setPlansSource('default');
-            }
-        };
+            const mapped: Plan[] = stored.map((p, index) => {
+                const meta =
+                    (p.id && metaById[p.id]) || metaById[`p${index + 1}`] || {};
+                const period = meta.period || plans[index]?.period || '';
+                const highlight =
+                    typeof p.highlight === 'boolean'
+                        ? p.highlight
+                        : meta.highlight;
 
-        // Carregar planos inicialmente
-        loadPlans();
+                return {
+                    ...p,
+                    price:
+                        typeof p.price === 'number'
+                            ? p.price.toFixed(2)
+                            : p.price,
+                    period,
+                    features: Array.isArray(p.features)
+                        ? p.features
+                        : String(p.features || '')
+                              .split(',')
+                              .map((f) => f.trim())
+                              .filter(Boolean),
+                    highlight
+                };
+            });
 
-        // Listener para atualizações de preços em tempo real
-        const handlePriceUpdate = (event: CustomEvent) => {
-            console.log('💰 Preço atualizado detectado no BillingPage:', event.detail);
-            loadPlans();
-        };
-
-        window.addEventListener('priceUpdated', handlePriceUpdate as EventListener);
-        
-        return () => {
-            window.removeEventListener('priceUpdated', handlePriceUpdate as EventListener);
-        };
-    }, []);
-
-    const defaultGrowthEnginePricing = {
-        quinzenal: 49.9,
-        mensal: 79.9,
-        anual: 199.9
+            console.log('📋 Planos carregados do admin:', mapped.length);
+            setAvailablePlans(mapped);
+            setPlansSource('admin');
+        } catch (error) {
+            console.error('Erro ao carregar planos do admin:', error);
+            setAvailablePlans(plans);
+            setPlansSource('default');
+        }
     };
+
+    // Carregar planos inicialmente
+    loadPlans();
+
+    // Listener para atualizações de preços em tempo real
+    const handlePriceUpdate = (event: CustomEvent) => {
+        console.log('💰 Preço atualizado detectado no BillingPage:', event.detail);
+        loadPlans();
+    };
+
+    window.addEventListener('priceUpdated', handlePriceUpdate as EventListener);
+    
+    return () => {
+        window.removeEventListener('priceUpdated', handlePriceUpdate as EventListener);
+    };
+}, []);
+
+const defaultGrowthEnginePricing = {
+    quinzenal: 49.9,
+    mensal: 79.9,
+    anual: 199.9
+};
 
     const [growthEnginePricing, setGrowthEnginePricing] = useState(defaultGrowthEnginePricing);
 
