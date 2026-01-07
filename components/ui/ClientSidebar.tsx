@@ -241,7 +241,6 @@ const navItems: NavItem[] = [
   { path: '/dashboard/advertise', labelKey: 'sidebar.advertise', icon: MegaphoneIcon },
   { path: '/dashboard/billing', labelKey: 'sidebar.billing', icon: CreditCardIcon },
   { path: '/dashboard/affiliate', labelKey: 'sidebar.affiliate', icon: GiftIcon },
-  { path: '/dashboard/autopilot', labelKey: 'sidebar.autopilot', icon: RocketIcon },
   { path: '/dashboard/settings', labelKey: 'sidebar.settings', icon: SettingsIcon }
 ];
 
@@ -288,9 +287,47 @@ const ClientSidebar: React.FC = () => {
   return (
     <aside className="w-64 bg-secondary p-6 hidden md:flex flex-col justify-between border-r border-primary">
       <div>
-        <div className="mb-10">
-          <Logo />
+        {/* Nome, Email e Foto na primeira linha */}
+        <div className="mb-6 border-b border-primary/50 pb-4">
+          <div className="flex items-center gap-3 mb-4 relative">
+            <input
+              type="file"
+              ref={avatarInputRef}
+              onChange={handleAvatarChange}
+              className="hidden"
+              accept="image/*"
+            />
+            <button
+              onClick={handleAvatarClick}
+              className="w-10 h-10 rounded-full bg-accent flex items-center justify-center font-bold text-light ring-2 ring-primary overflow-hidden relative group cursor-pointer animate-pulse-ring"
+            >
+              {user?.avatar ? (
+                <img src={user.avatar} alt="User Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span>{user?.name.charAt(0).toUpperCase()}</span>
+              )}
+              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center transition-all">
+                <span className="text-white text-xs opacity-0 group-hover:opacity-100">
+                  {t('sidebar.change_photo')}
+                </span>
+              </div>
+            </button>
+            <div className="overflow-hidden">
+              <p className="font-semibold text-sm truncate text-light">{user?.name}</p>
+              <p className="text-xs text-gray-dark truncate">{user?.email}</p>
+            </div>
+            {notification && (
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-green-500/20 text-green-300 text-xs px-2 py-1 rounded-full animate-fade-in-right whitespace-nowrap">
+                {notification}
+              </div>
+            )}
+          </div>
         </div>
+
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-light mb-4">Painel</h1>
+        </div>
+
         <nav className="space-y-2">
           {navItems.map(({ path, labelKey, icon: Icon, end }) => (
             <NavLink key={path} to={path} end={end} className={navLinkClasses}>
@@ -300,60 +337,14 @@ const ClientSidebar: React.FC = () => {
           ))}
         </nav>
       </div>
-      <div className="border-t border-primary pt-4">
-        <div className="flex items-center gap-3 mb-4 relative">
-          <input
-            type="file"
-            ref={avatarInputRef}
-            onChange={handleAvatarChange}
-            className="hidden"
-            accept="image/*"
-          />
-          <button
-            onClick={handleAvatarClick}
-            className="w-10 h-10 rounded-full bg-accent flex items-center justify-center font-bold text-light ring-2 ring-primary overflow-hidden relative group cursor-pointer animate-pulse-ring"
-          >
-            {user?.avatar ? (
-              <img src={user.avatar} alt="User Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <span>{user?.name.charAt(0).toUpperCase()}</span>
-            )}
-            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center transition-all">
-              <span className="text-white text-xs opacity-0 group-hover:opacity-100">
-                {t('sidebar.change_photo')}
-              </span>
-            </div>
-          </button>
-          <div className="overflow-hidden">
-            <p className="font-semibold text-sm truncate">{user?.name}</p>
-            <p className="text-xs text-gray-dark truncate">{user?.email}</p>
-          </div>
-          {notification && (
-            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-green-500/20 text-green-300 text-xs px-2 py-1 rounded-full animate-fade-in-right whitespace-nowrap">
-              {notification}
-            </div>
-          )}
-        </div>
+      
+      <div className="space-y-2">
         <button
           onClick={handleLogout}
           className="w-full bg-red-600 text-light font-semibold py-2 px-4 rounded-full hover:bg-red-500 transition-colors"
         >
-          {t('sidebar.logout')}
+          Sair
         </button>
-        <div className="mt-4 space-y-2">
-          <NavLink to="/dashboard/task-monitoring" className={navLinkClasses}>
-            <span className="text-xl animate-pulse">🎯</span>
-            <span className="font-semibold">Monitor Ultra-Avançado</span>
-          </NavLink>
-          <NavLink to="/dashboard/global-promotion" className={navLinkClasses}>
-            <span className="text-xl">🌍</span>
-            <span className="font-semibold">Promoção Global</span>
-          </NavLink>
-          <NavLink to="/dashboard/viral-marketing" className={navLinkClasses}>
-            <span className="text-xl">🚀</span>
-            <span className="font-semibold">Marketing Viral Gratuito</span>
-          </NavLink>
-        </div>
       </div>
     </aside>
   );

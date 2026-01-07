@@ -1,5 +1,6 @@
 import GeolocationService from './geolocationService';
 import RealDataService from './realDataService';
+import ErrorHandler from './errorHandler';
 import { translations } from '../data/translations';
 
 interface GlobalMarket {
@@ -135,22 +136,36 @@ class GlobalPromotionEngine {
   }
 
   public async startGlobalPromotion(): Promise<void> {
+    const errorHandler = ErrorHandler.getInstance();
+    
     if (this.isRunning) {
       console.log('🌍 Sistema de Promoção Global já está ativo');
       return;
     }
 
-    this.isRunning = true;
-    console.log('🚀 INICIANDO SISTEMA DE PROMOÇÃO GLOBAL ULTRA-AVANÇADO 24/7');
-    console.log('🌍 Promovendo ViralizaAi em tempo real no mundo inteiro');
+    try {
+      this.isRunning = true;
+      console.log('🚀 INICIANDO SISTEMA DE PROMOÇÃO GLOBAL ULTRA-AVANÇADO 24/7');
+      console.log('🌍 Promovendo ViralizaAi em tempo real no mundo inteiro');
 
-    // Iniciar campanhas em todos os mercados globais
-    await this.launchGlobalCampaigns();
+      // Iniciar campanhas em todos os mercados globais
+      await errorHandler.handleApiCall(
+        () => this.launchGlobalCampaigns(),
+        'GlobalPromotionEngine.launchGlobalCampaigns'
+      );
+      
+      // Iniciar monitoramento e otimização em tempo real
+      await errorHandler.handleApiCall(
+        () => Promise.resolve(this.startRealTimeOptimization()),
+        'GlobalPromotionEngine.startRealTimeOptimization'
+      );
 
-    // Iniciar monitoramento e otimização em tempo real
-    this.startRealTimeOptimization();
-
-    console.log('✅ Sistema de Promoção Global ativo em todos os continentes');
+      console.log('✅ Sistema de Promoção Global ativo em todos os continentes');
+    } catch (error) {
+      errorHandler.logError(error, 'GlobalPromotionEngine.startGlobalPromotion');
+      this.isRunning = false;
+      throw error;
+    }
   }
 
   private async launchGlobalCampaigns(): Promise<void> {

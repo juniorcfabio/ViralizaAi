@@ -27,7 +27,9 @@ const ClientLayout: React.FC = () => {
 
                 <div className="flex-1 overflow-y-auto relative pb-20 md:pb-0">
                     <main className="p-6 lg:p-10">
-                        <Outlet />
+                        <div className="flex-1 overflow-y-auto scroll-smooth" style={{scrollBehavior: 'smooth'}}>
+                            <Outlet />
+                        </div>
                     </main>
                 </div>
             </div>

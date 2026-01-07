@@ -8,6 +8,7 @@ const PARTNERS_STORE_NAME = 'partners';
 const TESTIMONIALS_STORE_NAME = 'testimonials';
 const TRUSTED_COMPANIES_STORE_NAME = 'trusted_companies';
 const LOCAL_STORAGE_BACKUP_KEY = 'viraliza_users_backup_v2';
+const PERSISTENT_STORAGE_KEY = 'viraliza_persistent_data_v1';
 const AD_PRICING_KEY = 'viraliza_ad_pricing_config';
 
 let db: IDBDatabase;
@@ -120,6 +121,64 @@ const saveUsersToBackup = (users: User[]) => {
     }
 };
 
+// --- Sistema de Persistência Permanente ---
+const savePersistentData = (users: User[]) => {
+    try {
+        const persistentData = {
+            users: users,
+            timestamp: Date.now(),
+            version: '1.0'
+        };
+        
+        // Salvar em múltiplos locais para garantir persistência
+        localStorage.setItem(PERSISTENT_STORAGE_KEY, JSON.stringify(persistentData));
+        sessionStorage.setItem(PERSISTENT_STORAGE_KEY, JSON.stringify(persistentData));
+        
+        // Salvar também com timestamp para backup rotativo
+        const timestampKey = `${PERSISTENT_STORAGE_KEY}_${Date.now()}`;
+        localStorage.setItem(timestampKey, JSON.stringify(persistentData));
+        
+        console.log('✅ Dados salvos persistentemente:', users.length, 'usuários');
+    } catch (e) {
+        console.error('❌ Erro ao salvar dados persistentes:', e);
+    }
+};
+
+const loadPersistentData = (): User[] => {
+    try {
+        // Tentar carregar do localStorage primeiro
+        let persistentData = localStorage.getItem(PERSISTENT_STORAGE_KEY);
+        
+        // Se não encontrar, tentar sessionStorage
+        if (!persistentData) {
+            persistentData = sessionStorage.getItem(PERSISTENT_STORAGE_KEY);
+        }
+        
+        // Se ainda não encontrar, procurar backups com timestamp
+        if (!persistentData) {
+            const keys = Object.keys(localStorage).filter(key => key.startsWith(PERSISTENT_STORAGE_KEY + '_'));
+            if (keys.length > 0) {
+                // Pegar o backup mais recente
+                const latestKey = keys.sort().pop();
+                if (latestKey) {
+                    persistentData = localStorage.getItem(latestKey);
+                }
+            }
+        }
+        
+        if (persistentData) {
+            const data = JSON.parse(persistentData);
+            console.log('✅ Dados persistentes carregados:', data.users?.length || 0, 'usuários');
+            return data.users || [];
+        }
+        
+        return [];
+    } catch (e) {
+        console.error('❌ Erro ao carregar dados persistentes:', e);
+        return [];
+    }
+};
+
 const getUsersFromBackup = (): User[] => {
     try {
         const backup = localStorage.getItem(LOCAL_STORAGE_BACKUP_KEY);
@@ -180,20 +239,33 @@ export const initDB = async (): Promise<void> => {
         const userStore = transaction.objectStore(USERS_STORE_NAME);
         const partnerStore = transaction.objectStore(PARTNERS_STORE_NAME);
 
-        // 1. Sync Users
+        // 1. Sync Users - PRIORIDADE: Dados persistentes
         const userCountRequest = userStore.count();
         userCountRequest.onsuccess = () => {
+            const persistentUsers = loadPersistentData();
             const backupUsers = getUsersFromBackup();
             
-            if (userCountRequest.result === 0 || (backupUsers.length > 0 && userCountRequest.result < backupUsers.length)) {
-                if (backupUsers.length > 0) {
-                    backupUsers.forEach(user => userStore.put(user));
-                    console.log("Database restored from persistent local backup.");
-                } else {
-                    initialUsers.forEach(user => userStore.add(user));
-                    saveUsersToBackup(initialUsers);
-                    console.log("Database seeded with initial users.");
-                }
+            // PRIORIDADE 1: Dados persistentes (nunca perdidos)
+            if (persistentUsers.length > 0) {
+                console.log('🔄 Restaurando dados persistentes:', persistentUsers.length, 'usuários');
+                persistentUsers.forEach(user => userStore.put(user));
+                savePersistentData(persistentUsers); // Re-salvar para garantir
+                console.log("✅ Database restaurado de dados PERSISTENTES.");
+            }
+            // PRIORIDADE 2: Backup local
+            else if (backupUsers.length > 0) {
+                console.log('🔄 Restaurando backup local:', backupUsers.length, 'usuários');
+                backupUsers.forEach(user => userStore.put(user));
+                savePersistentData(backupUsers); // Promover para persistente
+                console.log("✅ Database restaurado de backup local.");
+            }
+            // PRIORIDADE 3: Usuários iniciais (apenas se não há nada)
+            else if (userCountRequest.result === 0) {
+                console.log('🔄 Criando usuários iniciais');
+                initialUsers.forEach(user => userStore.add(user));
+                saveUsersToBackup(initialUsers);
+                savePersistentData(initialUsers); // Salvar como persistente
+                console.log("✅ Database inicializado com usuários padrão.");
             }
         };
 
@@ -283,6 +355,14 @@ export const getAllUsersDB = (): Promise<User[]> => {
             request.onsuccess = () => {
                 const users = request.result;
                 if (users.length === 0) {
+                     // PRIORIDADE: Dados persistentes primeiro
+                     const persistentUsers = loadPersistentData();
+                     if (persistentUsers.length > 0) {
+                         console.log('🔄 Restaurando dados persistentes no getAllUsers');
+                         resolve(persistentUsers);
+                         return;
+                     }
+                     
                      const backup = getUsersFromBackup();
                      // If DB empty but backup exists, return backup (and implicitly UI should trigger a restore later)
                      if (backup.length > 0) resolve(backup);
@@ -290,6 +370,7 @@ export const getAllUsersDB = (): Promise<User[]> => {
                 } else {
                     // Keep backup synced on every read to ensure latest state is in LocalStorage
                     saveUsersToBackup(users);
+                    savePersistentData(users); // CRÍTICO: Manter dados persistentes atualizados
                     resolve(users);
                 }
             };
@@ -307,6 +388,7 @@ export const addUserDB = (user: User): Promise<User> => {
         if (!currentBackup.some(u => u.email === user.email)) {
              const updatedBackup = [...currentBackup, user];
              saveUsersToBackup(updatedBackup);
+             savePersistentData(updatedBackup); // CRÍTICO: Salvar persistentemente
         }
 
         try {
@@ -336,6 +418,7 @@ export const updateUserDB = (user: User): Promise<User> => {
         const currentBackup = getUsersFromBackup();
         const updatedBackup = currentBackup.map(u => u.id === user.id ? user : u);
         saveUsersToBackup(updatedBackup);
+        savePersistentData(updatedBackup); // CRÍTICO: Salvar persistentemente
 
         try {
             const dbInstance = await openDB();
@@ -359,6 +442,7 @@ export const deleteUsersDB = (userIds: string[]): Promise<void> => {
         const currentBackup = getUsersFromBackup();
         const updatedBackup = currentBackup.filter(u => !userIds.includes(u.id));
         saveUsersToBackup(updatedBackup);
+        savePersistentData(updatedBackup); // CRÍTICO: Salvar persistentemente
 
         const dbInstance = await openDB();
         const transaction = dbInstance.transaction(USERS_STORE_NAME, 'readwrite');

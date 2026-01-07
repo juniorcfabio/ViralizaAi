@@ -3,6 +3,8 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import FeatureLockedOverlay from '../ui/FeatureLockedOverlay';
+import WithdrawalSection from '../ui/WithdrawalSection';
+import AffiliateRegistrationModal from '../ui/AffiliateRegistrationModal';
 
 import { API_BASE_URL, getAuthHeaders } from '../../src/config/api';
 
@@ -55,6 +57,7 @@ const AffiliatePage: React.FC = () => {
   const [totals, setTotals] = useState<{ pending: number; paid: number } | null>(null);
   const [referredUserIds, setReferredUserIds] = useState<string[]>([]);
   const [referredUsersFromApi, setReferredUsersFromApi] = useState<any[]>([]);
+  const [showRegistrationModal, setShowRegistrationModal] = useState(false);
 
   if (!hasAccess('affiliate')) {
     return (
@@ -113,9 +116,12 @@ const AffiliatePage: React.FC = () => {
   };
 
   const handleActivate = () => {
-    if (user) {
-      activateAffiliate(user.id);
-    }
+    setShowRegistrationModal(true);
+  };
+
+  const handleRegistrationSuccess = () => {
+    // Recarregar dados do usuário ou atualizar estado
+    window.location.reload();
   };
 
   const handleCopyLink = (e: React.MouseEvent) => {
@@ -170,6 +176,9 @@ const AffiliatePage: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-8">
+          {/* Sistema de Saque */}
+          <WithdrawalSection />
+
           <div className="bg-secondary p-6 rounded-lg max-w-sm ml-auto">
             <p className="text-sm text-gray-dark font-medium mb-2">Seu Link de Indicação</p>
             <div className="relative">
@@ -236,6 +245,14 @@ const AffiliatePage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Cadastro de Afiliado */}
+      {showRegistrationModal && (
+        <AffiliateRegistrationModal
+          onClose={() => setShowRegistrationModal(false)}
+          onSuccess={handleRegistrationSuccess}
+        />
       )}
     </>
   );

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { PaymentMethod, Plan } from '../../types';
 import { useLanguage } from '../../contexts/LanguageContext';
+import StripeService from '../../services/stripeService';
 
 import { API_BASE_URL, getAuthHeaders } from '../../src/config/api';
 
@@ -370,42 +371,25 @@ const BillingPage: React.FC = () => {
             ]
         },
         {
-            id: 'p2',
-            name: t('plan.trimestral'),
-            price: '159.90',
-            period: t('plan.period.quarter'),
-            features: [
-                'Tudo do Mensal',
-                'Análises Avançadas',
-                'IA Otimizada',
-                t('plan.feature.retention_audio')
-            ]
+            id: 'quarterly',
+            name: 'Trimestral',
+            price: 159.90,
+            features: ['Tudo do Mensal', 'Análises Avançadas', 'IA Otimizada'],
+            highlight: false
         },
         {
-            id: 'p3',
-            name: t('plan.semestral'),
-            price: '259.90',
-            period: t('plan.period.semester'),
-            features: [
-                'Tudo do Trimestral',
-                'Relatórios Estratégicos',
-                'Acesso Beta',
-                t('plan.feature.competitor_spy')
-            ],
+            id: 'semiannual',
+            name: 'Semestral',
+            price: 259.90,
+            features: ['Tudo do Trimestral', 'Relatórios Estratégicos', 'Acesso Beta'],
             highlight: true
         },
         {
-            id: 'p4',
-            name: t('plan.anual'),
-            price: '399.90',
-            period: t('plan.period.year'),
-            features: [
-                'Tudo do Semestral',
-                'Gerente Dedicado',
-                'API de Integração',
-                '2 Meses Grátis',
-                t('plan.feature.future_trends')
-            ]
+            id: 'annual',
+            name: 'Anual',
+            price: 399.90,
+            features: ['Tudo do Semestral', 'Gerente Dedicado', 'API', '2 Meses Grátis'],
+            highlight: false
         }
     ];
 
@@ -413,58 +397,74 @@ const BillingPage: React.FC = () => {
     const [plansSource, setPlansSource] = useState<'default' | 'admin'>('default');
 
     useEffect(() => {
-        try {
-            const raw = localStorage.getItem('viraliza_plans');
-            if (!raw) return;
+        const loadPlans = () => {
+            try {
+                const raw = localStorage.getItem('viraliza_plans');
+                if (!raw) return;
 
-            const stored: Plan[] = JSON.parse(raw);
+                const stored: Plan[] = JSON.parse(raw);
 
-            const metaById: Record<string, { period?: string; highlight?: boolean }> = {};
-            defaultPlans.forEach((p) => {
-                if (p.id) {
-                    metaById[p.id] = {
-                        period: p.period,
-                        highlight: p.highlight
+                const metaById: Record<string, { period?: string; highlight?: boolean }> = {};
+                defaultPlans.forEach((p) => {
+                    if (p.id) {
+                        metaById[p.id] = {
+                            period: p.period,
+                            highlight: p.highlight
+                        };
+                    }
+                });
+
+                const mapped: Plan[] = stored.map((p, index) => {
+                    const meta =
+                        (p.id && metaById[p.id]) || metaById[`p${index + 1}`] || {};
+                    const period = meta.period || defaultPlans[index]?.period || '';
+                    const highlight =
+                        typeof p.highlight === 'boolean'
+                            ? p.highlight
+                            : meta.highlight;
+
+                    return {
+                        ...p,
+                        price:
+                            typeof p.price === 'number'
+                                ? p.price.toFixed(2)
+                                : p.price,
+                        period,
+                        features: Array.isArray(p.features)
+                            ? p.features
+                            : String(p.features || '')
+                                  .split(',')
+                                  .map((f) => f.trim())
+                                  .filter(Boolean),
+                        highlight
                     };
-                }
-            });
+                });
 
-            const mapped: Plan[] = stored.map((p, index) => {
-                const meta =
-                    (p.id && metaById[p.id]) || metaById[`p${index + 1}`] || {};
-                const period = meta.period || defaultPlans[index]?.period || '';
-                const highlight =
-                    typeof p.highlight === 'boolean'
-                        ? p.highlight
-                        : meta.highlight;
-
-                return {
-                    ...p,
-                    price:
-                        typeof p.price === 'number'
-                            ? p.price.toFixed(2)
-                            : p.price,
-                    period,
-                    features: Array.isArray(p.features)
-                        ? p.features
-                        : String(p.features || '')
-                              .split(',')
-                              .map((f) => f.trim())
-                              .filter(Boolean),
-                    highlight
-                };
-            });
-
-            if (mapped.length > 0) {
+                console.log('📋 Planos carregados do admin:', mapped.length);
                 setAvailablePlans(mapped);
                 setPlansSource('admin');
+            } catch (error) {
+                console.error('Erro ao carregar planos do admin:', error);
+                setAvailablePlans(defaultPlans);
+                setPlansSource('default');
             }
-        } catch (err) {
-            console.error('Erro ao carregar planos do admin:', err);
-            setAvailablePlans(defaultPlans);
-            setPlansSource('default');
-        }
-    }, [t]);
+        };
+
+        // Carregar planos inicialmente
+        loadPlans();
+
+        // Listener para atualizações de preços em tempo real
+        const handlePriceUpdate = (event: CustomEvent) => {
+            console.log('💰 Preço atualizado detectado no BillingPage:', event.detail);
+            loadPlans();
+        };
+
+        window.addEventListener('priceUpdated', handlePriceUpdate as EventListener);
+        
+        return () => {
+            window.removeEventListener('priceUpdated', handlePriceUpdate as EventListener);
+        };
+    }, []);
 
     const defaultGrowthEnginePricing = {
         quinzenal: 49.9,
@@ -516,13 +516,8 @@ const BillingPage: React.FC = () => {
     };
 
     const ensurePaymentMethod = (): boolean => {
-        if (paymentMethods.length === 0) {
-            alert(
-                'Por favor, adicione um método de pagamento antes de concluir uma compra.'
-            );
-            setIsModalOpen(true);
-            return false;
-        }
+        // Para Stripe, não precisamos de métodos pré-salvos
+        // O Stripe Checkout coleta os dados do cartão diretamente
         return true;
     };
 
@@ -691,39 +686,41 @@ const BillingPage: React.FC = () => {
             const amount = parseFloat(normalizedPrice.replace(',', '.'));
             const appBaseUrl = buildAppBaseUrl();
 
-            const response = await fetch(`${API_BASE_URL}/payments/checkout`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...getAuthHeaders(),
-                },
-                body: JSON.stringify({
+            // Usar StripeService diretamente
+            const stripeService = StripeService.getInstance();
+            
+            // Determinar ciclo de cobrança baseado no nome do plano
+            let billingCycle: 'monthly' | 'quarterly' | 'semiannual' | 'annual' = 'monthly';
+            const planName = plan.name.toLowerCase();
+            if (planName.includes('trimestral')) billingCycle = 'quarterly';
+            else if (planName.includes('semestral')) billingCycle = 'semiannual';
+            else if (planName.includes('anual')) billingCycle = 'annual';
+
+            const subscriptionData = {
+                amount: amount,
+                currency: 'brl',
+                description: `Assinatura ${plan.name} - ViralizaAI`,
+                productId: plan.id || plan.name,
+                productType: 'subscription' as const,
+                userId: user.id,
+                userEmail: user.email,
+                successUrl: `${appBaseUrl}/#/dashboard/billing?success=true`,
+                cancelUrl: `${appBaseUrl}/#/dashboard/billing?canceled=true`,
+                planId: plan.id || plan.name,
+                planName: plan.name,
+                billingCycle: billingCycle,
+                metadata: {
+                    planName: plan.name,
                     userId: user.id,
-                    itemType: 'plan',
-                    itemId: plan.name,
-                    amount,
-                    currency: 'BRL',
-                    provider: 'stripe',
-                    successUrl: `${appBaseUrl}/#/dashboard/billing`,
-                    cancelUrl: `${appBaseUrl}/#/dashboard/billing` 
-                })
-            });
+                    userEmail: user.email
+                }
+            };
 
-            if (!response.ok) {
-                throw new Error(`Erro ao iniciar checkout: ${response.status}`);
-            }
+            showNotification('Redirecionando para o pagamento seguro...');
+            await stripeService.processSubscriptionPayment(subscriptionData);
 
-            const data = await response.json();
-
-            if (data.checkoutUrl) {
-                showNotification('Redirecionando para o pagamento seguro...');
-                window.location.href = data.checkoutUrl;
-                return;
-            } else {
-                throw new Error('Resposta sem checkoutUrl');
-            }
         } catch (error) {
-            console.error(error);
+            console.error('Erro no pagamento:', error);
             showNotification(
                 `Houve um erro ao iniciar o pagamento da assinatura. Tente novamente.` 
             );
@@ -1035,105 +1032,6 @@ const BillingPage: React.FC = () => {
                             </div>
                         );
                     })}
-                </div>
-            </div>
-
-            <div id="plans-section" className="mt-12">
-                <h2 className="text-2xl font-bold text-center mb-3">
-                    Nossos Planos
-                </h2>
-                {plansSource === 'default' ? (
-                    <p className="text-center text-gray-dark mb-8 text-sm">
-                        Planos padrão de demonstração. O administrador pode ajustar os valores no painel.
-                    </p>
-                ) : (
-                    <p className="text-center text-gray-dark mb-8 text-sm">
-                        Valores atuais definidos pelo administrador da plataforma.
-                    </p>
-                )}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {availablePlans.map((plan) => (
-                        <div
-                            key={plan.name}
-                            className={`bg-secondary p-6 rounded-lg border flex flex-col transition-transform hover:-translate-y-2 ${
-                                plan.highlight
-                                    ? 'border-accent shadow-lg shadow-accent/20'
-                                    : 'border-gray-700'
-                            }`}
-                        >
-                            {plan.highlight && (
-                                <div className="bg-accent text-xs text-white px-2 py-1 rounded-full self-start mb-2 font-bold animate-pulse-badge">
-                                    Recomendado
-                                </div>
-                            )}
-                            <h3 className="text-xl font-bold">{plan.name}</h3>
-                            <p className="text-3xl font-bold mt-2">
-                                R$ {plan.price}
-                                <span className="text-base font-normal text-gray-dark">
-                                    {plan.period}
-                                </span>
-                            </p>
-                            <ul className="mt-4 mb-6 space-y-2 text-sm text-gray-dark flex-grow">
-                                {(Array.isArray(plan.features)
-                                    ? plan.features
-                                    : String(plan.features || '')
-                                          .split(',')
-                                          .map((f) => f.trim())
-                                          .filter(Boolean)
-                                ).map((feat: string, i: number) => (
-                                    <li key={i} className="flex items-start">
-                                        {[
-                                            t('plan.feature.conversion_tags'),
-                                            t('plan.feature.retention_audio'),
-                                            t('plan.feature.competitor_spy'),
-                                            t('plan.feature.future_trends')
-                                        ].includes(feat) ? (
-                                            <span className="text-yellow-400 mr-2 mt-1">
-                                                ★
-                                            </span>
-                                        ) : (
-                                            <span className="text-accent mr-2 mt-1">
-                                                ✓
-                                            </span>
-                                        )}
-                                        <span
-                                            className={
-                                                [
-                                                    t('plan.feature.conversion_tags'),
-                                                    t(
-                                                        'plan.feature.retention_audio'
-                                                    ),
-                                                    t(
-                                                        'plan.feature.competitor_spy'
-                                                    ),
-                                                    t(
-                                                        'plan.feature.future_trends'
-                                                    )
-                                                ].includes(feat)
-                                                    ? 'text-light font-semibold'
-                                                    : ''
-                                            }
-                                        >
-                                            {feat}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                            <button
-                                onClick={() => handleSubscribe(plan)}
-                                className="w-full py-2 rounded-full font-semibold transition-colors bg-accent text-light hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
-                                disabled={
-                                    currentPlan?.name === plan.name || !!subscribingPlan
-                                }
-                            >
-                                {subscribingPlan === plan.name
-                                    ? 'Processando...'
-                                    : currentPlan?.name === plan.name
-                                    ? 'Plano Atual'
-                                    : 'Assine Agora'}
-                            </button>
-                        </div>
-                    ))}
                 </div>
             </div>
 

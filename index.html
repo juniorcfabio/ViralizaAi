@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta name="cache-bust" content="20241231-1406" />
     <title>Viraliza.ai - Marketing Digital</title>
     <!-- Força novo deploy no Vercel - Correções de tradução aplicadas -->
     
@@ -14,8 +18,8 @@
     <meta name="apple-mobile-web-app-title" content="Viraliza.ai" />
     <meta name="mobile-web-app-capable" content="yes" />
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- PWA Manifest - Removido temporariamente para evitar erro 401 -->
+    <!-- <link rel="manifest" href="/manifest.json" /> -->
     
     <!-- PWA Icons -->
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
@@ -54,12 +58,6 @@
               sans: ['Inter', 'sans-serif'],
             },
             animation: {
-              'fade-in-right': 'animate-fade-in-right 0.5s ease-out forwards',
-              'fade-in-up': 'animate-fade-in-up 0.6s ease-out forwards',
-              'blinking-cursor': 'blinking-cursor 1s step-end infinite',
-              'scroll': 'scroll 40s linear infinite',
-              'scroll-testimonials': 'scroll 80s linear infinite',
-              'spin-slow': 'spin 8s linear infinite',
               'pulse-badge': 'pulse-badge 2s ease-in-out infinite',
               'pulse-ring': 'pulse-ring 2s infinite',
               'spin-3d': 'spin-3d 15s linear infinite',

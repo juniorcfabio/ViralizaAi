@@ -173,11 +173,11 @@ const AdminDashboardPageReal: React.FC = () => {
         return () => clearInterval(interval);
     }, [platformUsers]);
 
-    // Dados do gráfico baseados em dados reais
+    // Dados do gráfico baseados em dados reais - ZERADO até haver vendas reais
     const revenueData = useMemo(() => {
         if (!realData) return [];
         
-        // Gerar dados dos últimos 12 meses baseados na receita atual
+        // Gerar dados dos últimos 12 meses - TODOS ZERADOS até haver vendas reais
         const months = [];
         const currentDate = new Date();
         
@@ -185,13 +185,13 @@ const AdminDashboardPageReal: React.FC = () => {
             const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
             const monthName = date.toLocaleDateString('pt-BR', { month: 'short' });
             
-            // Simular crescimento gradual até o valor atual
-            const growthFactor = (12 - i) / 12;
-            const revenue = Math.floor(realData.revenue.monthly * growthFactor);
+            // DADOS REAIS: Se não há receita real, gráfico fica zerado
+            // Só mostra valores quando houver vendas reais registradas
+            const revenue = realData.revenue.monthly > 0 ? realData.revenue.monthly : 0;
             
             months.push({
                 name: monthName,
-                revenue: revenue
+                revenue: i === 0 ? revenue : 0 // Só o mês atual mostra receita real se houver
             });
         }
         

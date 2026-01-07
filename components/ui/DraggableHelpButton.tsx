@@ -142,10 +142,16 @@ const DraggableHelpButton: React.FC = () => {
         onMouseDown={handleMouseDown}
       >
         <div 
-          className={`w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full shadow-2xl flex items-center justify-center text-white text-2xl font-bold transition-all duration-300 hover:scale-110 ${isOpen ? 'scale-110' : ''} animate-pulse-ring`}
+          className={`w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full shadow-2xl flex items-center justify-center text-white text-2xl font-bold transition-all duration-300 hover:scale-110 ${isOpen ? 'scale-110' : ''} relative`}
           onClick={() => !isDragging && setIsOpen(!isOpen)}
         >
           {isOpen ? '✕' : '💡'}
+          {!isOpen && (
+            <div className="absolute inset-0 rounded-full bg-blue-400 animate-ping opacity-75"></div>
+          )}
+          {!isOpen && (
+            <div className="absolute top-0 right-0 w-4 h-4 bg-green-400 rounded-full animate-pulse border-2 border-white"></div>
+          )}
         </div>
       </div>
 

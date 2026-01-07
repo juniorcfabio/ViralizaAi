@@ -218,57 +218,104 @@ export class GeolocationService {
   }
 
   private async getLocationFromIPAPI(): Promise<LocationData> {
-    // Usar HTTPS para evitar Mixed Content error
-    const response = await fetch('https://ipapi.co/json/');
-    const data = await response.json();
-    
-    if (!data.country_code) throw new Error('IP-API failed');
-
-    return {
-      country: data.country_name || data.country,
-      countryCode: data.country_code || data.country,
-      region: data.region || data.region_code,
-      city: data.city,
-      timezone: data.timezone,
-      currency: GLOBAL_MARKETS[data.country_code]?.currency || 'USD',
-      language: COUNTRY_LANGUAGES[data.country_code] || 'en',
-      ip: data.ip
-    };
+    try {
+      // Usar HTTPS para evitar Mixed Content error
+      const response = await fetch('https://ipapi.co/json/', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      console.log('✅ IP-API response:', data);
+      
+      return {
+        ip: data.ip || 'unknown',
+        country: data.country_name || data.country || 'Brasil',
+        countryCode: data.country_code || data.country || 'BR',
+        region: data.region || data.region_name || 'São Paulo',
+        city: data.city || 'São Paulo',
+        timezone: data.timezone || 'America/Sao_Paulo',
+        currency: data.currency || 'BRL',
+        language: data.languages?.split(',')[0] || 'pt'
+      };
+    } catch (error) {
+      console.error('IP-API failed:', error);
+      throw error;
+    }
   }
 
   private async getLocationFromIPInfo(): Promise<LocationData> {
-    const response = await fetch('https://ipinfo.io/json');
-    const data = await response.json();
+    try {
+      const response = await fetch('https://ipinfo.io/json', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
 
-    return {
-      country: data.country,
-      countryCode: data.country,
-      region: data.region,
-      city: data.city,
-      timezone: data.timezone,
-      currency: GLOBAL_MARKETS[data.country]?.currency || 'USD',
-      language: COUNTRY_LANGUAGES[data.country] || 'en',
-      ip: data.ip
-    };
+      return {
+        country: data.country || 'Unknown',
+        countryCode: data.country || 'US',
+        region: data.region || 'Unknown',
+        city: data.city || 'Unknown',
+        timezone: data.timezone || 'UTC',
+        currency: GLOBAL_MARKETS[data.country]?.currency || 'USD',
+        language: COUNTRY_LANGUAGES[data.country] || 'en',
+        ip: data.ip || 'Unknown'
+      };
+    } catch (error) {
+      console.warn('IPInfo failed:', error);
+      throw error;
+    }
   }
 
   private async getLocationFromCloudflare(): Promise<LocationData> {
-    const response = await fetch('https://www.cloudflare.com/cdn-cgi/trace');
-    const text = await response.text();
-    const data = Object.fromEntries(
-      text.split('\n').map(line => line.split('='))
-    );
+    try {
+      const response = await fetch('https://www.cloudflare.com/cdn-cgi/trace', {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const text = await response.text();
+      const data = Object.fromEntries(
+        text.split('\n')
+          .filter(line => line.includes('='))
+          .map(line => line.split('='))
+      );
 
-    return {
-      country: data.loc || 'Unknown',
-      countryCode: data.loc || 'US',
-      region: 'Unknown',
-      city: 'Unknown',
-      timezone: 'UTC',
-      currency: GLOBAL_MARKETS[data.loc]?.currency || 'USD',
-      language: COUNTRY_LANGUAGES[data.loc] || 'en',
-      ip: data.ip || 'Unknown'
-    };
+      return {
+        country: data.loc || 'Unknown',
+        countryCode: data.loc || 'US',
+        region: 'Unknown',
+        city: 'Unknown',
+        timezone: 'UTC',
+        currency: GLOBAL_MARKETS[data.loc]?.currency || 'USD',
+        language: COUNTRY_LANGUAGES[data.loc] || 'en',
+        ip: data.ip || 'Unknown'
+      };
+    } catch (error) {
+      console.warn('Cloudflare trace failed:', error);
+      throw error;
+    }
   }
 
   private async getLocationFromBrowser(): Promise<LocationData> {
@@ -308,22 +355,47 @@ export class GeolocationService {
   }
 
   private getFallbackLocation(): LocationData {
-    // Detectar idioma do navegador como fallback
-    const browserLang = navigator.language.split('-')[0];
-    const fallbackCountry = Object.keys(COUNTRY_LANGUAGES).find(
-      country => COUNTRY_LANGUAGES[country] === browserLang
-    ) || 'US';
+    try {
+      // Detectar idioma do navegador como fallback
+      const browserLang = (navigator.language || 'en').split('-')[0];
+      const fallbackCountry = Object.keys(COUNTRY_LANGUAGES).find(
+        country => COUNTRY_LANGUAGES[country] === browserLang
+      ) || 'US';
 
-    return {
-      country: 'Unknown',
-      countryCode: fallbackCountry,
-      region: 'Unknown',
-      city: 'Unknown',
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      currency: GLOBAL_MARKETS[fallbackCountry]?.currency || 'USD',
-      language: browserLang || 'en',
-      ip: 'Unknown'
-    };
+      const timezone = (() => {
+        try {
+          return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+        } catch {
+          return 'UTC';
+        }
+      })();
+
+      console.log('🔄 Using fallback location data:', { browserLang, fallbackCountry, timezone });
+
+      return {
+        country: 'Unknown',
+        countryCode: fallbackCountry,
+        region: 'Unknown',
+        city: 'Unknown',
+        timezone,
+        currency: GLOBAL_MARKETS[fallbackCountry]?.currency || 'USD',
+        language: browserLang || 'en',
+        ip: 'Unknown'
+      };
+    } catch (error) {
+      console.error('Fallback location failed:', error);
+      // Ultimate fallback
+      return {
+        country: 'Unknown',
+        countryCode: 'US',
+        region: 'Unknown',
+        city: 'Unknown',
+        timezone: 'UTC',
+        currency: 'USD',
+        language: 'en',
+        ip: 'Unknown'
+      };
+    }
   }
 
   getMarketData(countryCode: string): GlobalMarketData {

@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 html {
   scroll-behavior: smooth;
 }
@@ -87,6 +91,15 @@ html {
 @keyframes scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
+}
+
+@keyframes scroll-testimonials {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.animate-scroll-testimonials {
+  animation: scroll-testimonials 60s linear infinite;
 }
 
 @keyframes fadeIn {

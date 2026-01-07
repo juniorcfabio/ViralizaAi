@@ -45,6 +45,8 @@ const UsersIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     </svg>
 );
 
+const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300'];
+
 const AdminFinancialPageReal: React.FC = () => {
     const { platformUsers } = useAuth();
     const [realFinancialData, setRealFinancialData] = useState<any>(null);
@@ -105,7 +107,7 @@ const AdminFinancialPageReal: React.FC = () => {
                                     amount: parseFloat(t.amount) || 0,
                                     plan: t.plan || user.plan || 'Mensal',
                                     status: t.status || 'pending',
-                                    date: new Date(t.date || Date.now()),
+                                    date: new Date(t.date || Date.now()).toISOString(),
                                     paymentMethod: t.paymentMethod || 'credit_card',
                                     description: t.description || `Assinatura ${t.plan || user.plan || 'Mensal'}`
                                 };
@@ -231,12 +233,7 @@ const AdminFinancialPageReal: React.FC = () => {
         return Object.entries(realFinancialData.planDistribution).map(([plan, count]) => ({
             name: plan,
             value: count as number,
-            color: {
-                'Mensal': '#8884d8',
-                'Trimestral': '#82ca9d',
-                'Semestral': '#ffc658',
-                'Anual': '#ff7300'
-            }[plan] || '#8884d8'
+            color: COLORS[plan]
         }));
     }, [realFinancialData]);
 
@@ -286,10 +283,10 @@ const AdminFinancialPageReal: React.FC = () => {
     }
 
     return (
-        <div className="space-y-8">
-            <header>
-                <h2 className="text-3xl font-bold">Centro Financeiro</h2>
-                <p className="text-gray-dark">Análise de dados reais, interações e transações (sem simulação).</p>
+        <div className="h-full flex flex-col">
+            <header className="mb-6 flex-shrink-0">
+                <h2 className="text-3xl font-bold">Painel Financeiro</h2>
+                <p className="text-gray-dark">Análise financeira detalhada com dados reais (sem simulação).</p>
             </header>
 
             {/* Métricas Principais */}
@@ -341,8 +338,8 @@ const AdminFinancialPageReal: React.FC = () => {
                 <p className="text-sm text-gray-dark mb-6">
                     Baseado no histórico real de transações pagas (últimos 90 dias). Ideal para simular caixas e metas de curto, médio e longo prazo.
                 </p>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 flex-shrink-0">
                     {revenueProjectionData.map((item, index) => (
                         <div key={index} className="bg-primary p-4 rounded-lg text-center">
                             <p className="text-xs text-gray-dark mb-1">{item.period}</p>
@@ -353,29 +350,26 @@ const AdminFinancialPageReal: React.FC = () => {
             </div>
 
             {/* Gráficos */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-secondary p-6 rounded-lg">
-                    <h3 className="text-xl font-bold mb-4">Previsão de Receita (Próximos 6 meses - IA Histórico Real)</h3>
-                    <div style={{ width: '100%', height: 300 }}>
-                        <ResponsiveContainer>
-                            <AreaChart data={revenueChartData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#0B1747" />
-                                <XAxis dataKey="month" stroke="#94A3B8" />
-                                <YAxis stroke="#94A3B8" />
-                                <Tooltip contentStyle={{ backgroundColor: '#02042B', border: '1px solid #0B1747' }} />
-                                <Area type="monotone" dataKey="revenue" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.3} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                <div className="bg-secondary p-6 rounded-lg">
-                    <h3 className="text-xl font-bold mb-4">Distribuição de Planos</h3>
-                    {planDistributionData.length === 0 ? (
-                        <div className="flex items-center justify-center h-64">
-                            <p className="text-gray-400">Nenhum usuário ativo com plano</p>
+            <div className="flex-1 overflow-y-auto mt-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="bg-secondary p-6 rounded-lg h-fit">
+                        <h3 className="text-xl font-bold mb-4">Previsão de Receita (Próximos 6 meses - IA Histórico Real)</h3>
+                        <div style={{ width: '100%', height: 300 }}>
+                            <ResponsiveContainer>
+                                <AreaChart data={revenueChartData}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#0B1747" />
+                                    <XAxis dataKey="month" stroke="#94A3B8" />
+                                    <YAxis stroke="#94A3B8" />
+                                    <Tooltip contentStyle={{ backgroundColor: '#02042B', border: '1px solid #0B1747' }} />
+                                    <Legend />
+                                    <Area type="monotone" dataKey="revenue" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.3} name="Receita Projetada (R$)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         </div>
-                    ) : (
+                    </div>
+
+                    <div className="bg-secondary p-6 rounded-lg h-fit">
+                        <h3 className="text-xl font-bold mb-4">Distribuição de Receita por Plano</h3>
                         <div style={{ width: '100%', height: 300 }}>
                             <ResponsiveContainer>
                                 <PieChart>
@@ -390,14 +384,14 @@ const AdminFinancialPageReal: React.FC = () => {
                                         dataKey="value"
                                     >
                                         {planDistributionData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
                                     <Tooltip />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
 
@@ -466,7 +460,7 @@ const AdminFinancialPageReal: React.FC = () => {
                                             {formatCurrency(transaction.amount)}
                                         </td>
                                         <td className="py-4 px-4 text-xs text-gray-400">
-                                            {transaction.date.toLocaleDateString('pt-BR')}
+                                            {new Date(transaction.date).toLocaleDateString('pt-BR')}
                                         </td>
                                         <td className="py-4 px-4">
                                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(transaction.status)}`}>

@@ -22,9 +22,9 @@ const MobileNav: React.FC = () => {
                 <LayoutGridIcon className="w-6 h-6" />
                 <span className="text-[10px] font-medium">{t('sidebar.dashboard')}</span>
             </NavLink>
-            <NavLink to="/dashboard/autopilot" className={navClass}>
-                <RocketIcon className="w-6 h-6" />
-                <span className="text-[10px] font-medium">Auto</span>
+            <NavLink to="/dashboard/social" className={navClass}>
+                <UsersIcon className="w-6 h-6" />
+                <span className="text-[10px] font-medium">Social</span>
             </NavLink>
             <div className="relative -top-5">
                 <NavLink to="/dashboard" className="flex items-center justify-center w-14 h-14 rounded-full bg-accent text-white shadow-lg border-4 border-primary">

@@ -219,47 +219,17 @@ const AdminSettingsPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Plan Management */}
-                 <div className="bg-secondary p-6 rounded-lg">
-                    <h3 className="text-xl font-bold mb-4">Gerenciamento de Planos</h3>
-                    <div className="space-y-4">
-                        {plans.map(plan => (
-                            <div key={plan.id} className="grid grid-cols-1 md:grid-cols-10 gap-4 items-center bg-primary p-3 rounded-lg">
-                                <div className="md:col-span-2">
-                                    <input 
-                                        type="text" 
-                                        value={plan.name} 
-                                        onChange={e => handlePlanChange(plan.id!, 'name', e.target.value)}
-                                        className="w-full bg-secondary p-2 rounded border border-gray-600"
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <input 
-                                        type="number" 
-                                        value={plan.price} 
-                                        onChange={e => handlePlanChange(plan.id!, 'price', parseFloat(e.target.value))}
-                                        className="w-full bg-secondary p-2 rounded border border-gray-600"
-                                    />
-                                </div>
-                                <div className="md:col-span-5">
-                                    <textarea 
-                                        value={Array.isArray(plan.features) ? plan.features.join(',') : plan.features}
-                                        onChange={e => handlePlanChange(plan.id!, 'features', e.target.value)}
-                                        className="w-full bg-secondary p-2 rounded border border-gray-600 text-sm"
-                                        rows={2}
-                                    />
-                                </div>
-                                <div className="md:col-span-1 text-right">
-                                    <button onClick={() => handleRemovePlan(plan.id!)} className="text-red-500 hover:text-red-400 p-2">Remover</button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                     <div className="text-right mt-6">
-                        <button onClick={handleSavePlans} className="bg-accent text-light font-semibold py-2 px-6 rounded-full hover:bg-blue-500 transition-colors">
-                            Salvar Alterações nos Planos
-                        </button>
-                    </div>
+                {/* Plan Management - REMOVIDO */}
+                {/* Gerenciamento de planos movido para "Gerenciar Preços" para evitar duplicação */}
+                <div className="bg-secondary p-6 rounded-lg border border-yellow-500/30">
+                    <h3 className="text-xl font-bold mb-4 text-yellow-400">⚠️ Gerenciamento de Planos</h3>
+                    <p className="text-gray-300 mb-4">
+                        O gerenciamento de planos e preços foi movido para a seção <strong>"Gerenciar Preços"</strong> 
+                        para centralizar todas as configurações de preços em um só local.
+                    </p>
+                    <p className="text-sm text-gray-400">
+                        Acesse: <span className="text-accent">Painel Administrativo → Gerenciar Preços</span>
+                    </p>
                 </div>
             </div>
         </>

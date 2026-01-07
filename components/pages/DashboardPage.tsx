@@ -85,11 +85,11 @@ const DashboardPage: React.FC = () => {
           </button>
           
           <button
-            onClick={() => navigate('/dashboard/autopilot')}
+            onClick={() => navigate('/dashboard/ai-funnel-builder')}
             className="bg-primary p-4 rounded-lg border border-purple-500 hover:bg-purple-500/10 transition-colors text-left"
           >
-            <h3 className="font-bold text-purple-400 mb-2">🚀 Viraliza Autopilot</h3>
-            <p className="text-sm text-gray-300">Automação completa de marketing</p>
+            <h3 className="font-bold text-purple-400 mb-2">🔧 AI Funnel Builder</h3>
+            <p className="text-sm text-gray-300">Funis de vendas inteligentes</p>
           </button>
         </div>
       </div>

@@ -10,6 +10,7 @@ import InteractiveAIPersona from '../ui/InteractiveAIPersona';
 import DraggableHelpButton from '../ui/DraggableHelpButton';
 import { getPartnersDB, getTestimonialsDB, getTrustedCompaniesDB } from '../../services/dbService';
 import AdminCredentialsFix from '../ui/AdminCredentialsFix';
+import StripeService from '../../services/stripeService';
 
 const CampaignIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -119,7 +120,7 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [error, setError] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-    const { login, isLoading } = useAuth();
+    const { login, loginWithGoogle, isLoading } = useAuth();
     const navigate = useNavigate();
 
     const handleForgotPassword = async () => {
@@ -180,8 +181,29 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         }
     };
 
-    const handleSocialLogin = (platform: string) => {
-        alert(`Login com ${platform} em breve! Por favor, use o login padrão.`);
+    const handleSocialLogin = async (platform: string) => {
+        if (platform === 'Google') {
+            setIsLoggingIn(true);
+            try {
+                const user = await loginWithGoogle();
+                if (user && typeof user === 'object' && 'error' in user) {
+                    setError((user as any).error || 'Erro ao fazer login com Google.');
+                    return;
+                }
+                
+                if (user) {
+                    navigate(user.type === 'admin' ? '/admin' : '/dashboard');
+                } else {
+                    setError('Erro ao fazer login com Google.');
+                }
+            } catch (err) {
+                setError('Erro ao fazer login com Google.');
+            } finally {
+                setIsLoggingIn(false);
+            }
+        } else {
+            alert(`Login com ${platform} em breve! Por favor, use o Google ou login padrão.`);
+        }
     };
 
     return (
@@ -191,7 +213,12 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
                 
                 <div className="flex justify-center gap-4 mb-6">
-                    <button onClick={() => handleSocialLogin('Google')} className="p-2 bg-primary rounded-full hover:bg-gray-700 transition-colors" title="Google">
+                    <button 
+                        onClick={() => handleSocialLogin('Google')} 
+                        className="p-2 bg-primary rounded-full hover:bg-gray-700 transition-colors disabled:opacity-50" 
+                        title="Google"
+                        disabled={isLoggingIn || isLoading}
+                    >
                         <GoogleIcon className="w-6 h-6" />
                     </button>
                     <button onClick={() => handleSocialLogin('Facebook')} className="p-2 bg-primary rounded-full hover:bg-gray-700 transition-colors" title="Facebook">
@@ -296,7 +323,7 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [accountType, setAccountType] = useState<'individual' | 'business'>('business');
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
-    const { register } = useAuth();
+    const { register, loginWithGoogle, isLoading } = useAuth();
 
     const formatCPF = (value: string) => {
         const v = value.replace(/\D/g, '').slice(0, 11);
@@ -320,8 +347,25 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         setFormData({ ...formData, cnpj: '', cpf: '' });
     };
 
-    const handleSocialRegister = (platform: string) => {
-        alert(`Cadastro com ${platform} em breve! Por favor, preencha o formulário.`);
+    const handleSocialRegister = async (platform: string) => {
+        if (platform === 'Google') {
+            try {
+                const user = await loginWithGoogle();
+                if (user && typeof user === 'object' && 'error' in user) {
+                    setError((user as any).error || 'Erro ao fazer cadastro com Google.');
+                    return;
+                }
+                
+                if (user) {
+                    setSuccessMessage('Cadastro/Login com Google realizado com sucesso!');
+                    setTimeout(() => onClose(), 2000);
+                }
+            } catch (err) {
+                setError('Erro ao fazer cadastro com Google.');
+            }
+        } else {
+            alert(`Cadastro com ${platform} em breve! Por favor, use o Google ou preencha o formulário.`);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -363,7 +407,12 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <h2 className="text-2xl font-bold mb-6 text-center">Criar Conta</h2>
                 
                 <div className="flex justify-center gap-4 mb-6">
-                    <button onClick={() => handleSocialRegister('Google')} className="p-2 bg-primary rounded-full hover:bg-gray-700 transition-colors" title="Google">
+                    <button 
+                        onClick={() => handleSocialRegister('Google')} 
+                        className="p-2 bg-primary rounded-full hover:bg-gray-700 transition-colors disabled:opacity-50" 
+                        title="Google"
+                        disabled={isLoading}
+                    >
                         <GoogleIcon className="w-6 h-6" />
                     </button>
                     <button onClick={() => handleSocialRegister('Facebook')} className="p-2 bg-primary rounded-full hover:bg-gray-700 transition-colors" title="Facebook">
@@ -513,7 +562,7 @@ const Header: React.FC<{ onLogin: () => void; onRegister: () => void }> = ({ onL
                     <a href="#features" onClick={(e) => handleNavClick(e, 'features')} className="hover:text-light">{t('nav.features')}</a>
                     <a href="#testimonials" onClick={(e) => handleNavClick(e, 'testimonials')} className="hover:text-light">{t('nav.testimonials')}</a>
                     <a href="#pricing" onClick={(e) => handleNavClick(e, 'pricing')} className="hover:text-light">{t('nav.pricing')}</a>
-                    <button onClick={handleAffiliateClick} className="hover:text-light transition-colors">Afiliado</button>
+                    <button onClick={handleAffiliateClick} className="hover:text-light transition-colors">Afiliados</button>
                 </nav>
                 <div className="flex items-center space-x-4">
                     <button onClick={onLogin} className="text-gray-dark hover:text-light">{t('nav.login')}</button>
@@ -1008,6 +1057,40 @@ const Testimonials: React.FC = () => {
 
 const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
     const { t } = useLanguage();
+    
+    // Função para processar compra de plano via Stripe
+    const handlePlanPurchase = async (plan: Plan) => {
+        try {
+            const stripeService = StripeService.getInstance();
+            
+            const billingCycle = plan.name.toLowerCase().includes('mensal') ? 'monthly' :
+                               plan.name.toLowerCase().includes('trimestral') ? 'quarterly' :
+                               plan.name.toLowerCase().includes('semestral') ? 'semiannual' : 'annual';
+            
+            const subscriptionData = {
+                amount: parseFloat(String(plan.price).replace(',', '.')),
+                currency: 'BRL',
+                description: `Assinatura ${plan.name} - ViralizaAI`,
+                productId: plan.id || 'plan_' + Date.now(),
+                productType: 'subscription' as const,
+                userId: 'guest_' + Date.now(),
+                userEmail: 'usuario@exemplo.com',
+                successUrl: `${window.location.origin}/dashboard?payment=success`,
+                cancelUrl: `${window.location.origin}/?payment=cancelled`,
+                planId: plan.id || 'plan_' + Date.now(),
+                planName: plan.name,
+                billingCycle: billingCycle as 'monthly' | 'quarterly' | 'semiannual' | 'annual',
+                metadata: {
+                    planFeatures: Array.isArray(plan.features) ? plan.features.join(', ') : String(plan.features || '')
+                }
+            };
+            
+            await stripeService.processSubscriptionPayment(subscriptionData);
+        } catch (error) {
+            console.error('Erro ao processar pagamento:', error);
+            alert('Erro ao processar pagamento. Tente novamente.');
+        }
+    };
 
     const defaultPlans: Plan[] = [
         { id: 'p1', name: t('plan.mensal'), price: '59.90', period: t('plan.period.month'), features: ['Crescimento Orgânico', 'Gestão de Conteúdo', 'Análises Básicas', t('plan.feature.conversion_tags')] },
@@ -1106,8 +1189,11 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
                                     </li>
                                 ))}
                             </ul>
-                            <button onClick={onRegister} className="w-full bg-accent text-light font-semibold py-3 mt-2 rounded-full hover:bg-blue-500 transition-colors">
-                                {t('plan.buy')}
+                            <button 
+                                onClick={() => handlePlanPurchase(plan)} 
+                                className="w-full bg-accent text-light font-semibold py-3 mt-2 rounded-full hover:bg-blue-500 transition-colors"
+                            >
+                                Assine Agora
                             </button>
                         </div>
                     ))}

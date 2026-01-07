@@ -200,16 +200,18 @@ export interface ScheduledPost {
   status: PostStatus;
 }
 
-export type TransactionStatus = 'Pago' | 'Falhou' | 'Reembolsado' | 'Pendente';
+export type TransactionStatus = 'completed' | 'failed' | 'refunded' | 'pending';
 export interface Transaction {
   id: string;
   userId: string;
   userName: string;
+  userEmail: string;
   plan: string;
   amount: number;
   date: string; // ISO String
   status: TransactionStatus;
-  gateway: 'Stripe' | 'PayPal' | 'Mock';
+  paymentMethod?: string;
+  description?: string;
 }
 
 export type BusinessReach = 'Local' | 'National' | 'Global';

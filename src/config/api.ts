@@ -1,13 +1,9 @@
 // Configuração da API para diferentes ambientes
 
 export const getApiBaseUrl = (): string => {
-  // Em produção, usar variável de ambiente do Vercel
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-
-  // Fallback para produção (URL real do Railway)
-  return 'https://viralizaai-backend-production.up.railway.app';
+  // Sistema totalmente local - não depende de backend externo
+  // Todas as funcionalidades são processadas no frontend
+  return 'https://viralizaai.vercel.app/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();

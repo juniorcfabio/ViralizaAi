@@ -7,35 +7,44 @@ import AdminAdsPage from './components/pages/AdminAdsPage';
 import AdminTrustedCompaniesPage from './components/pages/AdminTrustedCompaniesPage';
 import AdminGrowthEngineConfigPage from './components/pages/AdminGrowthEngineConfigPage';
 import AutonomousPromotionPage from './components/pages/AutonomousPromotionPage';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContextFixed';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import AdminFinancialPageReal from './components/pages/AdminFinancialPageReal';
 import SocialAccountsPage from './components/pages/SocialAccountsPage';
 import AnalyticsPage from './components/pages/AnalyticsPage';
 import BillingPage from './components/pages/BillingPage';
-import SettingsPage from './components/pages/SettingsPage';
+import TargetingAreasPage from './components/pages/TargetingAreasPage';
 import AdminUsersPage from './components/pages/AdminUsersPage';
 import AdminWithdrawalsPageFixed from './components/pages/AdminWithdrawalsPageFixed';
 import AdminMarketingPage from './components/pages/AdminMarketingPage';
 import AdminSettingsPage from './components/pages/AdminSettingsPage';
 import AffiliatePage from './components/pages/AffiliatePage';
+import AffiliatePageFixed from './components/pages/AffiliatePageFixed';
 import AdminAffiliatesPage from './components/pages/AdminAffiliatesPage';
 import ClientLayout from './components/layout/ClientLayout';
 import AdminLayout from './components/layout/AdminLayout';
 import AdminMaintenancePage from './components/pages/AdminMaintenancePage';
 import ViralizaAutopilotPage from './components/pages/ViralizaAutopilotPage';
 import EbookGeneratorPage from './components/pages/EbookGeneratorPage';
+import AIFunnelBuilderPage from './components/pages/AIFunnelBuilderPage';
+import AIFunnelBuilderPageComplete from './components/pages/AIFunnelBuilderPageComplete';
 import AIVideoGeneratorPage from './components/pages/AIVideoGeneratorPage';
-import TaskMonitoringPage from './components/pages/TaskMonitoringPage';
-import AdminPaymentsPage from './components/pages/AdminPaymentsPage';
-import AdminAdsPage from './components/pages/AdminAdsPage';
-import AdminTrustedCompaniesPage from './components/pages/AdminTrustedCompaniesPage';
 import AdvertisePage from './components/pages/AdvertisePage';
 import { getSystemVersion } from './services/dbService';
 import UserGrowthEnginePage from './components/pages/UserGrowthEnginePage';
-import AdminGrowthEngineConfigPage from './components/pages/AdminGrowthEngineConfigPage';
 import ResetPasswordPage from './components/pages/ResetPasswordPage';
+import DashboardPage from './components/pages/DashboardPage';
+import RevenueProjectionPage from './components/pages/RevenueProjectionPage';
+import GlobalPromotionPage from './components/pages/GlobalPromotionPage';
+import ViralMarketingPage from './components/pages/ViralMarketingPage';
+import AdminToolsPricingPage from './components/pages/AdminToolsPricingPage';
+import TaskMonitoringPage from './components/pages/TaskMonitoringPage';
+import AdminTaskMonitoringPage from './components/pages/AdminTaskMonitoringPage';
+import PaymentSuccessPageUltraRobust from './components/pages/PaymentSuccessPageUltraRobust';
+import GoogleOAuthCallbackPage from './components/pages/GoogleOAuthCallbackPage';
+import StripeReturnHandler from './services/stripeReturnHandler';
+import EmergencyPaymentFix from './services/emergencyPaymentFix';
 
 const UpdateModal: React.FC = () => {
     const [hasUpdate, setHasUpdate] = useState(false);
@@ -85,6 +94,13 @@ const UpdateModal: React.FC = () => {
 const AppRoutes: React.FC = () => {
     const { user, isLoading } = useAuth();
 
+    console.log('🔍 AppRoutes - Estado atual:', { 
+        user: user?.email, 
+        userType: user?.type, 
+        isLoading,
+        currentPath: window.location.pathname 
+    });
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-screen bg-primary">
@@ -107,17 +123,15 @@ const AppRoutes: React.FC = () => {
                 <Route path="social" element={<SocialAccountsPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="billing" element={<BillingPage />} />
-                <Route path="affiliate" element={<AffiliatePage />} />
-                <Route path="settings" element={<SettingsPage />} />
+                <Route path="affiliate" element={<AffiliatePageFixed />} />
+                <Route path="settings" element={<TargetingAreasPage />} />
+                <Route path="targeting-areas" element={<TargetingAreasPage />} />
                 <Route path="growth-engine" element={<UserGrowthEnginePage />} />
-                <Route path="autopilot" element={<ViralizaAutopilotPage />} />
                 <Route path="advertise" element={<AdvertisePage />} />
                 <Route path="ebook-generator" element={<EbookGeneratorPage />} />
+                <Route path="ai-funnel-builder" element={<AIFunnelBuilderPageComplete />} />
                 <Route path="ai-video-generator" element={<AIVideoGeneratorPage />} />
                 <Route path="revenue-projection" element={<RevenueProjectionPage />} />
-                <Route path="global-promotion" element={<GlobalPromotionPage />} />
-                <Route path="viral-marketing" element={<ViralMarketingPage />} />
-                <Route path="task-monitoring" element={<TaskMonitoringPage />} />
             </Route>
 
             {/* Admin Routes */}
@@ -138,9 +152,23 @@ const AppRoutes: React.FC = () => {
                 <Route path="growth-engine" element={<AdminGrowthEngineConfigPage />} />
                 <Route path="settings" element={<AdminSettingsPage />} />
                 <Route path="maintenance" element={<AdminMaintenancePage />} />
+                <Route path="tools-pricing" element={<AdminToolsPricingPage />} />
                 <Route path="autopilot" element={<ViralizaAutopilotPage />} />
+                <Route path="task-monitoring" element={<AdminTaskMonitoringPage />} />
+                <Route path="viral-marketing" element={<ViralMarketingPage />} />
+                <Route path="global-promotion" element={<GlobalPromotionPage />} />
+                <Route path="ai-video-generator" element={<AIVideoGeneratorPage />} />
+                <Route path="ai-funnel-builder" element={<AIFunnelBuilderPage />} />
+                <Route path="ebook-generator" element={<EbookGeneratorPage />} />
+                <Route path="advertise" element={<AdvertisePage />} />
             </Route>
 
+            {/* Payment Success Route */}
+            <Route path="/payment-success" element={<PaymentSuccessPageUltraRobust />} />
+            
+            {/* Google OAuth Callback Route */}
+            <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
+            
             <Route path="*" element={<Navigate to="/" />} />
         </Routes>
     );
@@ -149,6 +177,14 @@ const AppRoutes: React.FC = () => {
 const App: React.FC = () => {
     useEffect(() => {
         try {
+            // Inicializar sistema de correção emergencial
+            const emergencyFix = EmergencyPaymentFix.getInstance();
+            console.log('🚨 Sistema de correção emergencial ativado:', emergencyFix.isSystemActive());
+            
+            // Inicializar interceptador de retorno do Stripe
+            const stripeHandler = StripeReturnHandler.getInstance();
+            stripeHandler.checkPendingReturns();
+            
             // Suporte a links sem hash (ex.: tracking do e-mail remove o fragment '#').
             // Se chegar em /reset-password?token=..., reescreve para HashRouter.
             if (
