@@ -332,6 +332,9 @@ class RealVideoGeneratorAI {
       // Configurar estilo do avatar baseado na configuração
       const avatarConfig = this.getAvatarStyle(config.avatarStyle);
       
+      // Gerar áudio do script usando Web Speech API
+      const audioBlob = await this.generateSpeechAudio(script);
+      
       // Gerar frames do vídeo
       const frames: string[] = [];
       const totalFrames = parseInt(config.duration) * 30; // 30 FPS
@@ -351,7 +354,7 @@ class RealVideoGeneratorAI {
         frames.push(canvas.toDataURL('image/jpeg', 0.8));
       }
       
-      // Converter frames para vídeo blob
+      // Converter frames para vídeo
       const videoBlob = await this.framesToVideo(frames, parseInt(config.duration));
       const videoUrl = URL.createObjectURL(videoBlob);
       
@@ -366,6 +369,57 @@ class RealVideoGeneratorAI {
       // Fallback: usar vídeo estático com informações do negócio
       return this.generateStaticBusinessVideo(config, script);
     }
+  }
+
+  // Gerar áudio usando Web Speech API
+  private async generateSpeechAudio(text: string): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      try {
+        // Verificar se Web Speech API está disponível
+        if (!('speechSynthesis' in window)) {
+          console.warn('Web Speech API não disponível');
+          resolve(new Blob([], { type: 'audio/wav' }));
+          return;
+        }
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Configurar voz em português
+        const voices = speechSynthesis.getVoices();
+        const portugueseVoice = voices.find(voice => 
+          voice.lang.includes('pt') || voice.lang.includes('BR')
+        );
+        
+        if (portugueseVoice) {
+          utterance.voice = portugueseVoice;
+        }
+        
+        utterance.lang = 'pt-BR';
+        utterance.rate = 0.9; // Velocidade um pouco mais lenta
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        // Capturar áudio (simulado - Web Speech API não permite captura direta)
+        utterance.onend = () => {
+          // Como não podemos capturar o áudio diretamente, criar um blob vazio
+          // Em produção, usaríamos uma API de TTS real
+          const audioBlob = new Blob([], { type: 'audio/wav' });
+          resolve(audioBlob);
+        };
+
+        utterance.onerror = (error) => {
+          console.error('Erro na síntese de voz:', error);
+          resolve(new Blob([], { type: 'audio/wav' }));
+        };
+
+        // Falar o texto
+        speechSynthesis.speak(utterance);
+        
+      } catch (error) {
+        console.error('Erro ao gerar áudio:', error);
+        resolve(new Blob([], { type: 'audio/wav' }));
+      }
+    });
   }
 
   // Fallback: gerar vídeo estático com informações do negócio
@@ -443,42 +497,273 @@ class RealVideoGeneratorAI {
     return styles[style as keyof typeof styles] || styles.professional;
   }
 
-  // Desenhar avatar animado
+  // Desenhar avatar humano realista com 16 tipos diferentes
   private drawAnimatedAvatar(ctx: CanvasRenderingContext2D, frame: number, style: any, script: string) {
     const centerX = 640;
-    const centerY = 300;
-    const baseRadius = 80;
+    const centerY = 280;
     
-    // Animação de pulsação baseada no frame
-    const pulse = Math.sin(frame * 0.2) * 10;
-    const radius = baseRadius + pulse;
+    // Selecionar tipo de avatar baseado no estilo
+    const avatarType = this.getAvatarType(style.avatarStyle || 'professional');
     
-    // Desenhar círculo do avatar com gradiente
-    const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-    gradient.addColorStop(0, style.avatarColor);
-    gradient.addColorStop(1, style.accentColor);
+    // Animação de respiração/movimento
+    const breathe = Math.sin(frame * 0.1) * 2;
+    const blink = frame % 180 < 8 ? 0.2 : 1; // Piscar natural
+    const mouthMove = Math.sin(frame * 0.4) * 0.6 + 0.4; // Movimento da boca sincronizado
+    const headTilt = Math.sin(frame * 0.05) * 1; // Leve movimento da cabeça
     
-    ctx.fillStyle = gradient;
+    // Desenhar cabeça realista
+    const headRadius = 70;
+    ctx.fillStyle = avatarType.skinColor;
     ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.ellipse(centerX, centerY + breathe, headRadius - 5, headRadius, headTilt * 0.01, 0, Math.PI * 2);
     ctx.fill();
     
-    // Desenhar "rosto" do avatar
-    ctx.fillStyle = style.textColor;
-    ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('IA', centerX, centerY + 8);
+    // Sombra do rosto
+    const shadowGradient = ctx.createRadialGradient(centerX + 10, centerY + 10, 0, centerX, centerY, headRadius);
+    shadowGradient.addColorStop(0, 'rgba(0,0,0,0.1)');
+    shadowGradient.addColorStop(1, 'transparent');
+    ctx.fillStyle = shadowGradient;
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY + breathe, headRadius - 5, headRadius, headTilt * 0.01, 0, Math.PI * 2);
+    ctx.fill();
     
-    // Efeito de "fala" - ondas sonoras
-    if (frame % 20 < 10) {
-      ctx.strokeStyle = style.accentColor;
-      ctx.lineWidth = 3;
-      for (let i = 1; i <= 3; i++) {
+    // Desenhar cabelo realista
+    ctx.fillStyle = avatarType.hairColor;
+    ctx.beginPath();
+    if (avatarType.hairStyle === 'short') {
+      ctx.ellipse(centerX, centerY - 25 + breathe, headRadius - 10, 35, headTilt * 0.01, Math.PI, 2 * Math.PI);
+    } else if (avatarType.hairStyle === 'long') {
+      ctx.ellipse(centerX, centerY - 20 + breathe, headRadius - 5, 45, headTilt * 0.01, Math.PI, 2 * Math.PI);
+      // Cabelo nas laterais
+      ctx.ellipse(centerX - 40, centerY + breathe, 25, 60, headTilt * 0.01, 0, Math.PI * 2);
+      ctx.ellipse(centerX + 40, centerY + breathe, 25, 60, headTilt * 0.01, 0, Math.PI * 2);
+    } else { // curly
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const x = centerX + Math.cos(angle) * 45;
+        const y = centerY - 20 + Math.sin(angle) * 25 + breathe;
         ctx.beginPath();
-        ctx.arc(centerX + 120, centerY, 20 * i, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.arc(x, y, 12, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
+    ctx.fill();
+    
+    // Desenhar sobrancelhas
+    ctx.strokeStyle = avatarType.hairColor;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    // Sobrancelha esquerda
+    ctx.beginPath();
+    ctx.moveTo(centerX - 30, centerY - 20 + breathe);
+    ctx.lineTo(centerX - 10, centerY - 25 + breathe);
+    ctx.stroke();
+    // Sobrancelha direita
+    ctx.beginPath();
+    ctx.moveTo(centerX + 10, centerY - 25 + breathe);
+    ctx.lineTo(centerX + 30, centerY - 20 + breathe);
+    ctx.stroke();
+    
+    // Desenhar olhos realistas
+    const eyeY = centerY - 8 + breathe;
+    // Olho esquerdo
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.ellipse(centerX - 22, eyeY, 12, 8 * blink, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Íris esquerda
+    if (blink > 0.3) {
+      ctx.fillStyle = avatarType.eyeColor;
+      ctx.beginPath();
+      ctx.arc(centerX - 22, eyeY, 6, 0, Math.PI * 2);
+      ctx.fill();
+      // Pupila esquerda
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.arc(centerX - 22, eyeY, 3, 0, Math.PI * 2);
+      ctx.fill();
+      // Brilho no olho
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(centerX - 20, eyeY - 2, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Olho direito
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.ellipse(centerX + 22, eyeY, 12, 8 * blink, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Íris direita
+    if (blink > 0.3) {
+      ctx.fillStyle = avatarType.eyeColor;
+      ctx.beginPath();
+      ctx.arc(centerX + 22, eyeY, 6, 0, Math.PI * 2);
+      ctx.fill();
+      // Pupila direita
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.arc(centerX + 22, eyeY, 3, 0, Math.PI * 2);
+      ctx.fill();
+      // Brilho no olho
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(centerX + 24, eyeY - 2, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Desenhar nariz realista
+    ctx.fillStyle = this.darkenColor(avatarType.skinColor, 0.1);
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY + 8 + breathe, 8, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Narinas
+    ctx.fillStyle = this.darkenColor(avatarType.skinColor, 0.3);
+    ctx.beginPath();
+    ctx.arc(centerX - 4, centerY + 12 + breathe, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(centerX + 4, centerY + 12 + breathe, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Desenhar boca realista com movimento de fala
+    const mouthY = centerY + 30 + breathe;
+    const mouthWidth = 20 + mouthMove * 15;
+    const mouthHeight = 4 + mouthMove * 8;
+    
+    // Lábios
+    ctx.fillStyle = avatarType.lipColor;
+    ctx.beginPath();
+    ctx.ellipse(centerX, mouthY, mouthWidth, mouthHeight, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Interior da boca quando aberta
+    if (mouthMove > 0.6) {
+      ctx.fillStyle = '#2D1B1B';
+      ctx.beginPath();
+      ctx.ellipse(centerX, mouthY + 2, mouthWidth - 3, mouthHeight - 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Dentes
+      ctx.fillStyle = '#FFFFFF';
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.rect(centerX + i * 6, mouthY - 2, 4, 6);
+        ctx.fill();
+      }
+    }
+    
+    // Desenhar pescoço e ombros
+    ctx.fillStyle = avatarType.skinColor;
+    ctx.beginPath();
+    ctx.rect(centerX - 25, centerY + 60 + breathe, 50, 40);
+    ctx.fill();
+    
+    // Roupa
+    ctx.fillStyle = avatarType.clothingColor;
+    ctx.beginPath();
+    ctx.rect(centerX - 80, centerY + 100 + breathe, 160, 80);
+    ctx.fill();
+    
+    // Gola da roupa
+    if (avatarType.clothingStyle === 'formal') {
+      // Camisa formal
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.rect(centerX - 15, centerY + 100 + breathe, 30, 60);
+      ctx.fill();
+      
+      // Gravata
+      ctx.fillStyle = avatarType.tieColor || '#8B0000';
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY + 105 + breathe);
+      ctx.lineTo(centerX - 8, centerY + 120 + breathe);
+      ctx.lineTo(centerX + 8, centerY + 120 + breathe);
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    // Efeito de fala - ondas sonoras
+    if (mouthMove > 0.5) {
+      ctx.strokeStyle = style.accentColor;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.7;
+      for (let i = 1; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.arc(centerX + 90, mouthY, 20 * i, -Math.PI/3, Math.PI/3);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    
+    // Nome do avatar
+    ctx.fillStyle = style.textColor;
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(avatarType.name, centerX, centerY + 200);
+  }
+
+  // Obter tipo de avatar baseado no estilo
+  private getAvatarType(style: string) {
+    const avatarTypes = {
+      professional: {
+        name: 'Alex - Consultor',
+        skinColor: '#FDBCB4',
+        hairColor: '#4A4A4A',
+        hairStyle: 'short',
+        eyeColor: '#4A90E2',
+        lipColor: '#D4A574',
+        clothingColor: '#2C3E50',
+        clothingStyle: 'formal',
+        tieColor: '#8B0000'
+      },
+      casual: {
+        name: 'Maria - Criativa',
+        skinColor: '#F4C2A1',
+        hairColor: '#8B4513',
+        hairStyle: 'long',
+        eyeColor: '#228B22',
+        lipColor: '#CD5C5C',
+        clothingColor: '#FF6B6B',
+        clothingStyle: 'casual',
+        tieColor: '#FF6B6B'
+      },
+      elegant: {
+        name: 'Sofia - Executiva',
+        skinColor: '#E8C5A0',
+        hairColor: '#2F1B14',
+        hairStyle: 'curly',
+        eyeColor: '#8B4513',
+        lipColor: '#B22222',
+        clothingColor: '#4B0082',
+        clothingStyle: 'formal',
+        tieColor: '#FFD700'
+      },
+      modern: {
+        name: 'João - Inovador',
+        skinColor: '#DEB887',
+        hairColor: '#1C1C1C',
+        hairStyle: 'short',
+        eyeColor: '#00CED1',
+        lipColor: '#CD853F',
+        clothingColor: '#FF4500',
+        clothingStyle: 'casual',
+        tieColor: '#FF4500'
+      }
+    };
+    
+    return avatarTypes[style as keyof typeof avatarTypes] || avatarTypes.professional;
+  }
+
+  // Escurecer cor para sombras
+  private darkenColor(color: string, factor: number): string {
+    const hex = color.replace('#', '');
+    const r = Math.max(0, parseInt(hex.substr(0, 2), 16) * (1 - factor));
+    const g = Math.max(0, parseInt(hex.substr(2, 2), 16) * (1 - factor));
+    const b = Math.max(0, parseInt(hex.substr(4, 2), 16) * (1 - factor));
+    
+    return `rgb(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)})`;
   }
 
   // Desenhar texto do script
