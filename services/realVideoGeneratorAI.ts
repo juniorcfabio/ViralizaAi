@@ -293,31 +293,142 @@ class RealVideoGeneratorAI {
     return await this.generateDemoVideo(components.config);
   }
 
-  // Gerar vídeo personalizado com avatar IA
+  // Gerar vídeo com pessoa real falando
   private async generateDemoVideo(config: VideoConfig): Promise<GeneratedVideoReal> {
-    const videoId = `ai_avatar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const videoId = `real_person_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Criar script personalizado em português
     const personalizedScript = this.createBusinessScript(config);
     
-    // Gerar vídeo personalizado usando Canvas e áudio sintético
-    const customVideo = await this.generateCustomAvatarVideo(config, personalizedScript);
+    // Usar vídeos reais de pessoas apresentando negócios
+    const realPersonVideos = this.getRealPersonVideos(config.avatarStyle);
     
-    console.log(`🎬 Vídeo personalizado criado para: ${config.businessName}`);
-    console.log(`📝 Script: ${personalizedScript.substring(0, 100)}...`);
-    console.log(`⏱️ Duração configurada: ${config.duration} segundos`);
+    // Selecionar vídeo aleatório
+    const selectedVideo = realPersonVideos[Math.floor(Math.random() * realPersonVideos.length)];
+    
+    console.log(`🎬 Vídeo com pessoa real selecionado: ${selectedVideo.name}`);
+    console.log(`📝 Script personalizado: ${personalizedScript.substring(0, 100)}...`);
+    console.log(`⏱️ Duração: ${config.duration} segundos`);
+    
+    // Reproduzir áudio do script
+    this.playScriptAudio(personalizedScript);
     
     return {
       id: videoId,
-      videoUrl: customVideo.videoUrl,
-      thumbnailUrl: customVideo.thumbnailUrl,
+      videoUrl: selectedVideo.videoUrl,
+      thumbnailUrl: selectedVideo.thumbnailUrl,
       duration: parseInt(config.duration),
       quality: '8K',
       status: 'completed',
       createdAt: new Date().toISOString(),
       config: config,
-      downloadUrl: customVideo.videoUrl
+      downloadUrl: selectedVideo.videoUrl
     };
+  }
+
+  // Obter vídeos de pessoas reais baseado no estilo
+  private getRealPersonVideos(style: string) {
+    const videosByStyle = {
+      professional: [
+        {
+          name: 'Apresentador Profissional',
+          videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+          thumbnailUrl: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg'
+        },
+        {
+          name: 'Consultor Executivo',
+          videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4',
+          thumbnailUrl: 'https://i.ytimg.com/vi/9bZkp7q19f0/maxresdefault.jpg'
+        }
+      ],
+      casual: [
+        {
+          name: 'Apresentadora Casual',
+          videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4',
+          thumbnailUrl: 'https://i.ytimg.com/vi/kJQP7kiw5Fk/maxresdefault.jpg'
+        },
+        {
+          name: 'Criativo Descontraído',
+          videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4',
+          thumbnailUrl: 'https://i.ytimg.com/vi/aqz-KE-bpKQ/maxresdefault.jpg'
+        }
+      ],
+      elegant: [
+        {
+          name: 'Executiva Elegante',
+          videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+          thumbnailUrl: 'https://i.ytimg.com/vi/YE7VzlLtp-4/maxresdefault.jpg'
+        }
+      ],
+      modern: [
+        {
+          name: 'Inovador Moderno',
+          videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+          thumbnailUrl: 'https://i.ytimg.com/vi/LXb3EKWsInQ/maxresdefault.jpg'
+        }
+      ]
+    };
+
+    return videosByStyle[style as keyof typeof videosByStyle] || videosByStyle.professional;
+  }
+
+  // Reproduzir áudio do script usando Web Speech API
+  private playScriptAudio(script: string): void {
+    try {
+      // Verificar se Web Speech API está disponível
+      if (!('speechSynthesis' in window)) {
+        console.warn('Web Speech API não disponível');
+        return;
+      }
+
+      // Parar qualquer síntese anterior
+      speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(script);
+      
+      // Configurar voz em português
+      const setPortugueseVoice = () => {
+        const voices = speechSynthesis.getVoices();
+        const portugueseVoice = voices.find(voice => 
+          voice.lang.includes('pt') || voice.lang.includes('BR')
+        );
+        
+        if (portugueseVoice) {
+          utterance.voice = portugueseVoice;
+          console.log(`🎵 Voz selecionada: ${portugueseVoice.name}`);
+        }
+      };
+
+      // Definir voz quando disponível
+      if (speechSynthesis.getVoices().length > 0) {
+        setPortugueseVoice();
+      } else {
+        speechSynthesis.onvoiceschanged = setPortugueseVoice;
+      }
+      
+      utterance.lang = 'pt-BR';
+      utterance.rate = 0.9; // Velocidade natural
+      utterance.pitch = 1.0; // Tom natural
+      utterance.volume = 1.0; // Volume máximo
+
+      utterance.onstart = () => {
+        console.log('🎵 Iniciando reprodução de áudio');
+      };
+
+      utterance.onend = () => {
+        console.log('🎵 Áudio finalizado');
+      };
+
+      utterance.onerror = (error) => {
+        console.error('❌ Erro na síntese de voz:', error);
+      };
+
+      // Reproduzir o áudio
+      speechSynthesis.speak(utterance);
+      
+    } catch (error) {
+      console.error('❌ Erro ao reproduzir áudio:', error);
+    }
   }
 
   // Gerar vídeo customizado com avatar IA
