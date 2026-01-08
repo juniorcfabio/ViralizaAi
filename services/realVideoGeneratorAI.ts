@@ -600,20 +600,65 @@ class RealVideoGeneratorAI {
       }
     };
     
+    // Validação robusta com logs de debug
     const selectedGender = config.avatarGender || 'masculino';
     const selectedStyle = config.avatarStyle || 'professional';
     
+    console.log(`🔍 Debug avatar - Gênero: ${selectedGender}, Estilo: ${selectedStyle}`);
+    console.log(`🔍 Config completo:`, config);
+    
+    // Verificar se o gênero existe
+    if (!avatars[selectedGender as keyof typeof avatars]) {
+      console.warn(`⚠️ Gênero '${selectedGender}' não encontrado, usando 'masculino'`);
+      const fallbackGender = 'masculino';
+      const genderAvatars = avatars[fallbackGender];
+      return genderAvatars[selectedStyle as keyof typeof genderAvatars] || genderAvatars.professional;
+    }
+    
     const genderAvatars = avatars[selectedGender as keyof typeof avatars];
-    return genderAvatars[selectedStyle as keyof typeof genderAvatars];
+    
+    // Verificar se o estilo existe
+    if (!genderAvatars[selectedStyle as keyof typeof genderAvatars]) {
+      console.warn(`⚠️ Estilo '${selectedStyle}' não encontrado para gênero '${selectedGender}', usando 'professional'`);
+      return genderAvatars.professional;
+    }
+    
+    const selectedAvatar = genderAvatars[selectedStyle as keyof typeof genderAvatars];
+    console.log(`✅ Avatar selecionado: ${selectedAvatar.name}`);
+    
+    return selectedAvatar;
   }
 
   // Desenhar avatar ultra realista
   private drawUltraRealisticHuman(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, avatarData: any, frame: number, progress: number) {
+    // Validação de dados do avatar
+    if (!avatarData) {
+      console.error('❌ Dados do avatar não encontrados, usando dados padrão');
+      avatarData = {
+        name: 'Avatar Padrão',
+        skinColor: '#FDBCB4',
+        hairColor: '#4A4A4A',
+        eyeColor: '#2E4057',
+        suitColor: '#2C3E50'
+      };
+    }
+    
+    // Garantir que todas as propriedades existam
+    const safeAvatarData = {
+      name: avatarData.name || 'Avatar Padrão',
+      skinColor: avatarData.skinColor || '#FDBCB4',
+      hairColor: avatarData.hairColor || '#4A4A4A',
+      eyeColor: avatarData.eyeColor || '#2E4057',
+      suitColor: avatarData.suitColor || avatarData.blazerColor || avatarData.shirtColor || avatarData.blouseColor || avatarData.dressColor || avatarData.topColor || avatarData.jacketColor || '#2C3E50',
+      lipColor: avatarData.lipColor || '#D4A574',
+      tieColor: avatarData.tieColor || '#3498db'
+    };
+    
     // Cabeça ultra realista com sombras
     const headGradient = ctx.createRadialGradient(centerX, centerY - 50, 0, centerX, centerY - 50, 120);
-    headGradient.addColorStop(0, avatarData.skinColor);
-    headGradient.addColorStop(0.7, this.darkenColor(avatarData.skinColor, 0.1));
-    headGradient.addColorStop(1, this.darkenColor(avatarData.skinColor, 0.3));
+    headGradient.addColorStop(0, safeAvatarData.skinColor);
+    headGradient.addColorStop(0.7, this.darkenColor(safeAvatarData.skinColor, 0.1));
+    headGradient.addColorStop(1, this.darkenColor(safeAvatarData.skinColor, 0.3));
     
     ctx.fillStyle = headGradient;
     ctx.beginPath();
@@ -621,19 +666,19 @@ class RealVideoGeneratorAI {
     ctx.fill();
     
     // Olhos ultra realistas com reflexos
-    this.drawRealisticEyes(ctx, centerX, centerY - 80, avatarData.eyeColor, frame);
+    this.drawRealisticEyes(ctx, centerX, centerY - 80, safeAvatarData.eyeColor, frame);
     
     // Nariz com sombras
-    this.drawRealisticNose(ctx, centerX, centerY - 40, avatarData.skinColor);
+    this.drawRealisticNose(ctx, centerX, centerY - 40, safeAvatarData.skinColor);
     
     // Boca com movimento sincronizado
-    this.drawSyncedRealisticMouth(ctx, centerX, centerY - 10, frame, progress, avatarData);
+    this.drawSyncedRealisticMouth(ctx, centerX, centerY - 10, frame, progress, safeAvatarData);
     
     // Cabelo ultra detalhado
-    this.drawRealisticHair(ctx, centerX, centerY - 130, avatarData.hairColor, avatarData.name.includes('Ana') || avatarData.name.includes('Maria') || avatarData.name.includes('Sofia') || avatarData.name.includes('Luana'));
+    this.drawRealisticHair(ctx, centerX, centerY - 130, safeAvatarData.hairColor, safeAvatarData.name.includes('Ana') || safeAvatarData.name.includes('Maria') || safeAvatarData.name.includes('Sofia') || safeAvatarData.name.includes('Luana'));
     
     // Roupas profissionais
-    this.drawProfessionalClothing(ctx, centerX, centerY + 80, avatarData);
+    this.drawProfessionalClothing(ctx, centerX, centerY + 80, safeAvatarData);
   }
 
   // Desenhar olhos realistas
@@ -764,10 +809,15 @@ class RealVideoGeneratorAI {
 
   // Desenhar roupas profissionais
   private drawProfessionalClothing(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, avatarData: any) {
-    const clothingColor = avatarData.suitColor || avatarData.blazerColor || avatarData.shirtColor || avatarData.blouseColor || avatarData.dressColor || avatarData.topColor || avatarData.jacketColor;
+    // Validação de dados
+    const safeData = {
+      suitColor: avatarData.suitColor || avatarData.blazerColor || avatarData.shirtColor || avatarData.blouseColor || avatarData.dressColor || avatarData.topColor || avatarData.jacketColor || '#2C3E50',
+      tieColor: avatarData.tieColor || '#3498db',
+      name: avatarData.name || 'Avatar Padrão'
+    };
     
     // Corpo da roupa
-    ctx.fillStyle = clothingColor;
+    ctx.fillStyle = safeData.suitColor;
     ctx.fillRect(centerX - 100, centerY, 200, 150);
     
     // Gola
@@ -775,8 +825,8 @@ class RealVideoGeneratorAI {
     ctx.fillRect(centerX - 30, centerY - 20, 60, 40);
     
     // Gravata (se masculino e tiver)
-    if (avatarData.tieColor && !avatarData.name.includes('Ana') && !avatarData.name.includes('Maria') && !avatarData.name.includes('Sofia') && !avatarData.name.includes('Luana')) {
-      ctx.fillStyle = avatarData.tieColor;
+    if (safeData.tieColor && !safeData.name.includes('Ana') && !safeData.name.includes('Maria') && !safeData.name.includes('Sofia') && !safeData.name.includes('Luana')) {
+      ctx.fillStyle = safeData.tieColor;
       ctx.fillRect(centerX - 8, centerY - 10, 16, 80);
     }
   }
