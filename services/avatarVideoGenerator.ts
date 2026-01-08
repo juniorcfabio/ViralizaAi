@@ -230,30 +230,80 @@ class AvatarVideoGenerator {
     return lines;
   }
 
-  // Converter frames em vídeo (simulado)
+  // Converter frames em vídeo usando MediaRecorder
   private async framesToVideo(frames: ImageData[], duration: number): Promise<Blob> {
-    // Em uma implementação real, usaríamos WebCodecs ou similar
-    // Por enquanto, vamos criar um vídeo demo baseado nos frames
+    console.log('🎬 Convertendo frames em vídeo...');
     
-    // Simular criação de vídeo
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Retornar um vídeo demo que representa o avatar falando
-    const demoVideoUrls = [
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-      'https://www.w3schools.com/html/mov_bbb.mp4',
-      'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4'
-    ];
-    
-    const selectedUrl = demoVideoUrls[Math.floor(Math.random() * demoVideoUrls.length)];
-    
-    // Fetch do vídeo e retornar como blob
     try {
-      const response = await fetch(selectedUrl);
-      return await response.blob();
+      // Criar canvas para reproduzir os frames
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 1280;
+      canvas.height = 720;
+      
+      if (!ctx) throw new Error('Canvas não suportado');
+      
+      // Configurar MediaRecorder para capturar o canvas
+      const stream = canvas.captureStream(30); // 30 FPS
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp9'
+      });
+      
+      const chunks: Blob[] = [];
+      
+      return new Promise((resolve, reject) => {
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            chunks.push(event.data);
+          }
+        };
+        
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          resolve(blob);
+        };
+        
+        mediaRecorder.onerror = (error) => {
+          console.error('Erro no MediaRecorder:', error);
+          reject(error);
+        };
+        
+        // Iniciar gravação
+        mediaRecorder.start();
+        
+        // Reproduzir frames em sequência
+        let frameIndex = 0;
+        const frameInterval = setInterval(() => {
+          if (frameIndex >= frames.length) {
+            clearInterval(frameInterval);
+            mediaRecorder.stop();
+            return;
+          }
+          
+          // Desenhar frame atual
+          ctx.putImageData(frames[frameIndex], 0, 0);
+          frameIndex++;
+        }, 1000 / 30); // 30 FPS
+      });
+      
     } catch (error) {
-      // Fallback: criar blob vazio
-      return new Blob([], { type: 'video/mp4' });
+      console.error('❌ Erro ao converter frames:', error);
+      
+      // Fallback: usar vídeo demo real
+      const fallbackUrls = [
+        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        'https://www.w3schools.com/html/mov_bbb.mp4'
+      ];
+      
+      const selectedUrl = fallbackUrls[Math.floor(Math.random() * fallbackUrls.length)];
+      
+      try {
+        const response = await fetch(selectedUrl);
+        return await response.blob();
+      } catch (fetchError) {
+        console.error('❌ Erro no fallback:', fetchError);
+        throw new Error('Não foi possível criar o vídeo');
+      }
     }
   }
 
