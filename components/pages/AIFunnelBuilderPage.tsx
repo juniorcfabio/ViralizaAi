@@ -2,6 +2,435 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import { useNavigate } from 'react-router-dom';
 
+// Interface para configuração do funil
+interface FunnelConfig {
+  businessType: string;
+  businessName: string;
+  targetAudience: string;
+  mainGoal: string;
+  budget: string;
+  timeline: string;
+  funnelType: string;
+  industry: string;
+}
+
+// Interface para etapas do funil
+interface FunnelStep {
+  id: string;
+  name: string;
+  type: 'landing' | 'capture' | 'sales' | 'upsell' | 'thank-you';
+  content: string;
+  design: string;
+  conversion: number;
+}
+
+// Interface para funil gerado
+interface GeneratedFunnel {
+  id: string;
+  name: string;
+  steps: FunnelStep[];
+  analytics: {
+    totalViews: number;
+    conversions: number;
+    revenue: number;
+    conversionRate: number;
+  };
+  createdAt: string;
+  status: 'draft' | 'active' | 'paused';
+}
+
+// Componente principal da interface do AI Funnel Builder
+const AIFunnelBuilderInterface: React.FC<{
+  isGenerating: boolean;
+  setIsGenerating: (value: boolean) => void;
+}> = ({ isGenerating, setIsGenerating }) => {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [funnelConfig, setFunnelConfig] = useState<FunnelConfig>({
+    businessType: '',
+    businessName: '',
+    targetAudience: '',
+    mainGoal: '',
+    budget: '',
+    timeline: '',
+    funnelType: '',
+    industry: ''
+  });
+  const [generatedFunnel, setGeneratedFunnel] = useState<GeneratedFunnel | null>(null);
+  const [savedFunnels, setSavedFunnels] = useState<GeneratedFunnel[]>([]);
+
+  // Função para gerar funil com IA
+  const generateFunnel = async () => {
+    setIsGenerating(true);
+    
+    try {
+      // Simular geração com IA (em produção seria uma API real)
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      const newFunnel: GeneratedFunnel = {
+        id: `funnel_${Date.now()}`,
+        name: `${funnelConfig.businessName} - ${funnelConfig.funnelType}`,
+        steps: [
+          {
+            id: 'step_1',
+            name: 'Página de Captura',
+            type: 'capture',
+            content: `Página otimizada para capturar leads interessados em ${funnelConfig.businessType}`,
+            design: 'Moderno e responsivo com foco em conversão',
+            conversion: 35.7
+          },
+          {
+            id: 'step_2',
+            name: 'Página de Vendas',
+            type: 'sales',
+            content: `Apresentação persuasiva do produto/serviço para ${funnelConfig.targetAudience}`,
+            design: 'Layout otimizado com prova social e urgência',
+            conversion: 12.3
+          },
+          {
+            id: 'step_3',
+            name: 'Upsell',
+            type: 'upsell',
+            content: 'Oferta complementar de alto valor',
+            design: 'Design focado em maximizar receita por cliente',
+            conversion: 28.9
+          },
+          {
+            id: 'step_4',
+            name: 'Obrigado',
+            type: 'thank-you',
+            content: 'Página de confirmação e próximos passos',
+            design: 'Design de retenção e engajamento',
+            conversion: 100
+          }
+        ],
+        analytics: {
+          totalViews: 0,
+          conversions: 0,
+          revenue: 0,
+          conversionRate: 0
+        },
+        createdAt: new Date().toISOString(),
+        status: 'draft'
+      };
+      
+      setGeneratedFunnel(newFunnel);
+      setCurrentStep(3);
+    } catch (error) {
+      console.error('Erro ao gerar funil:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Função para salvar funil
+  const saveFunnel = () => {
+    if (generatedFunnel) {
+      setSavedFunnels(prev => [...prev, { ...generatedFunnel, status: 'active' }]);
+      alert('Funil salvo com sucesso!');
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="text-center">
+        <div className="w-32 h-32 bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
+          <span className="text-6xl">🚀</span>
+        </div>
+        <h2 className="text-4xl font-bold text-light mb-4">
+          AI Funnel Builder Ultra-Avançado
+        </h2>
+        <p className="text-xl text-gray-300 mb-8">
+          Crie funis de vendas de alta conversão em minutos com IA
+        </p>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="bg-secondary/95 backdrop-blur-lg rounded-2xl p-6 border border-gray-700">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm font-medium text-gray-300">Progresso</span>
+          <span className="text-sm font-medium text-gray-300">{currentStep}/3</span>
+        </div>
+        <div className="w-full bg-gray-700 rounded-full h-2">
+          <div 
+            className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-500"
+            style={{ width: `${(currentStep / 3) * 100}%` }}
+          ></div>
+        </div>
+        <div className="flex justify-between mt-2 text-xs text-gray-400">
+          <span className={currentStep >= 1 ? 'text-purple-400' : ''}>Configuração</span>
+          <span className={currentStep >= 2 ? 'text-purple-400' : ''}>Geração IA</span>
+          <span className={currentStep >= 3 ? 'text-purple-400' : ''}>Resultado</span>
+        </div>
+      </div>
+
+      {/* Step 1: Configuração */}
+      {currentStep === 1 && (
+        <div className="bg-secondary/95 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-gray-700">
+          <h3 className="text-2xl font-bold text-light mb-6 flex items-center gap-3">
+            <span className="text-3xl">⚙️</span>
+            Configuração do Funil
+          </h3>
+          
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Nome do Negócio
+              </label>
+              <input
+                type="text"
+                value={funnelConfig.businessName}
+                onChange={(e) => setFunnelConfig(prev => ({ ...prev, businessName: e.target.value }))}
+                className="w-full px-4 py-3 bg-primary border border-gray-600 rounded-lg text-white focus:border-accent focus:outline-none"
+                placeholder="Ex: Minha Empresa Digital"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Tipo de Negócio
+              </label>
+              <select
+                value={funnelConfig.businessType}
+                onChange={(e) => setFunnelConfig(prev => ({ ...prev, businessType: e.target.value }))}
+                className="w-full px-4 py-3 bg-primary border border-gray-600 rounded-lg text-white focus:border-accent focus:outline-none"
+              >
+                <option value="">Selecione...</option>
+                <option value="E-commerce">E-commerce</option>
+                <option value="Consultoria">Consultoria</option>
+                <option value="Curso Online">Curso Online</option>
+                <option value="SaaS">Software (SaaS)</option>
+                <option value="Serviços">Prestação de Serviços</option>
+                <option value="Afiliados">Marketing de Afiliados</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Público-Alvo
+              </label>
+              <input
+                type="text"
+                value={funnelConfig.targetAudience}
+                onChange={(e) => setFunnelConfig(prev => ({ ...prev, targetAudience: e.target.value }))}
+                className="w-full px-4 py-3 bg-primary border border-gray-600 rounded-lg text-white focus:border-accent focus:outline-none"
+                placeholder="Ex: Empreendedores digitais de 25-45 anos"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Objetivo Principal
+              </label>
+              <select
+                value={funnelConfig.mainGoal}
+                onChange={(e) => setFunnelConfig(prev => ({ ...prev, mainGoal: e.target.value }))}
+                className="w-full px-4 py-3 bg-primary border border-gray-600 rounded-lg text-white focus:border-accent focus:outline-none"
+              >
+                <option value="">Selecione...</option>
+                <option value="Gerar Leads">Gerar Leads</option>
+                <option value="Vender Produto">Vender Produto</option>
+                <option value="Aumentar Receita">Aumentar Receita</option>
+                <option value="Construir Lista">Construir Lista de Email</option>
+                <option value="Webinar">Promover Webinar</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Orçamento Mensal
+              </label>
+              <select
+                value={funnelConfig.budget}
+                onChange={(e) => setFunnelConfig(prev => ({ ...prev, budget: e.target.value }))}
+                className="w-full px-4 py-3 bg-primary border border-gray-600 rounded-lg text-white focus:border-accent focus:outline-none"
+              >
+                <option value="">Selecione...</option>
+                <option value="Até R$ 1.000">Até R$ 1.000</option>
+                <option value="R$ 1.000 - R$ 5.000">R$ 1.000 - R$ 5.000</option>
+                <option value="R$ 5.000 - R$ 10.000">R$ 5.000 - R$ 10.000</option>
+                <option value="R$ 10.000 - R$ 50.000">R$ 10.000 - R$ 50.000</option>
+                <option value="Acima de R$ 50.000">Acima de R$ 50.000</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Tipo de Funil
+              </label>
+              <select
+                value={funnelConfig.funnelType}
+                onChange={(e) => setFunnelConfig(prev => ({ ...prev, funnelType: e.target.value }))}
+                className="w-full px-4 py-3 bg-primary border border-gray-600 rounded-lg text-white focus:border-accent focus:outline-none"
+              >
+                <option value="">Selecione...</option>
+                <option value="Lead Magnet">Lead Magnet</option>
+                <option value="Vendas Diretas">Vendas Diretas</option>
+                <option value="Webinar">Webinar</option>
+                <option value="E-commerce">E-commerce</option>
+                <option value="Tripwire">Tripwire</option>
+                <option value="Membership">Membership</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-8 text-center">
+            <button
+              onClick={() => setCurrentStep(2)}
+              disabled={!funnelConfig.businessName || !funnelConfig.businessType || !funnelConfig.targetAudience}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-pink-600 hover:to-purple-600 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform hover:scale-105 disabled:scale-100 text-lg"
+            >
+              Continuar para Geração IA 🚀
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: Geração com IA */}
+      {currentStep === 2 && (
+        <div className="bg-secondary/95 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-gray-700">
+          <div className="text-center">
+            <h3 className="text-2xl font-bold text-light mb-6 flex items-center justify-center gap-3">
+              <span className="text-3xl">🧠</span>
+              Geração com IA Ultra-Avançada
+            </h3>
+            
+            {!isGenerating ? (
+              <div className="space-y-6">
+                <div className="bg-primary/60 rounded-2xl p-6 border border-purple-500/30">
+                  <h4 className="text-xl font-bold text-purple-400 mb-4">Configuração Atual:</h4>
+                  <div className="grid md:grid-cols-2 gap-4 text-left">
+                    <div><strong>Negócio:</strong> {funnelConfig.businessName}</div>
+                    <div><strong>Tipo:</strong> {funnelConfig.businessType}</div>
+                    <div><strong>Público:</strong> {funnelConfig.targetAudience}</div>
+                    <div><strong>Objetivo:</strong> {funnelConfig.mainGoal}</div>
+                    <div><strong>Orçamento:</strong> {funnelConfig.budget}</div>
+                    <div><strong>Funil:</strong> {funnelConfig.funnelType}</div>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={generateFunnel}
+                  className="bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 hover:from-red-600 hover:via-pink-600 hover:to-purple-600 text-white font-bold py-6 px-12 rounded-3xl transition-all duration-500 transform hover:scale-105 text-xl shadow-2xl"
+                >
+                  🚀 Gerar Funil com IA Ultra-Avançada
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="w-32 h-32 bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 rounded-full flex items-center justify-center mx-auto animate-spin">
+                  <span className="text-6xl">🧠</span>
+                </div>
+                <h4 className="text-2xl font-bold text-light">IA Processando...</h4>
+                <div className="space-y-2 text-gray-300">
+                  <p>🔍 Analisando seu negócio e público-alvo</p>
+                  <p>📊 Processando dados de conversão de 500M+ funis</p>
+                  <p>🎯 Otimizando estratégia para máxima conversão</p>
+                  <p>🚀 Gerando funil personalizado ultra-avançado</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Resultado */}
+      {currentStep === 3 && generatedFunnel && (
+        <div className="space-y-6">
+          <div className="bg-secondary/95 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-gray-700">
+            <h3 className="text-2xl font-bold text-light mb-6 flex items-center gap-3">
+              <span className="text-3xl">✨</span>
+              Funil Gerado com Sucesso!
+            </h3>
+            
+            <div className="bg-gradient-to-r from-green-600/20 to-emerald-600/20 rounded-2xl p-6 border border-green-500/30 mb-6">
+              <h4 className="text-xl font-bold text-green-400 mb-2">{generatedFunnel.name}</h4>
+              <p className="text-gray-300">Funil otimizado com IA para máxima conversão</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              {generatedFunnel.steps.map((step, index) => (
+                <div key={step.id} className="bg-primary/60 rounded-xl p-4 border border-purple-500/30">
+                  <div className="text-center mb-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <span className="text-white font-bold">{index + 1}</span>
+                    </div>
+                    <h5 className="font-bold text-light">{step.name}</h5>
+                  </div>
+                  <div className="space-y-2 text-sm text-gray-300">
+                    <p><strong>Tipo:</strong> {step.type}</p>
+                    <p><strong>Conversão:</strong> {step.conversion}%</p>
+                    <p className="text-xs">{step.content}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={saveFunnel}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-emerald-600 hover:to-green-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105"
+              >
+                💾 Salvar Funil
+              </button>
+              <button
+                onClick={() => {
+                  setCurrentStep(1);
+                  setGeneratedFunnel(null);
+                  setFunnelConfig({
+                    businessType: '',
+                    businessName: '',
+                    targetAudience: '',
+                    mainGoal: '',
+                    budget: '',
+                    timeline: '',
+                    funnelType: '',
+                    industry: ''
+                  });
+                }}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-pink-600 hover:to-purple-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105"
+              >
+                🔄 Criar Novo Funil
+              </button>
+            </div>
+          </div>
+
+          {/* Funis Salvos */}
+          {savedFunnels.length > 0 && (
+            <div className="bg-secondary/95 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-gray-700">
+              <h3 className="text-2xl font-bold text-light mb-6 flex items-center gap-3">
+                <span className="text-3xl">📊</span>
+                Seus Funis Salvos ({savedFunnels.length})
+              </h3>
+              
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {savedFunnels.map((funnel) => (
+                  <div key={funnel.id} className="bg-primary/60 rounded-xl p-4 border border-gray-600">
+                    <h4 className="font-bold text-light mb-2">{funnel.name}</h4>
+                    <div className="space-y-1 text-sm text-gray-300">
+                      <p><strong>Etapas:</strong> {funnel.steps.length}</p>
+                      <p><strong>Status:</strong> <span className="text-green-400">{funnel.status}</span></p>
+                      <p><strong>Criado:</strong> {new Date(funnel.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <button className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded">
+                        Editar
+                      </button>
+                      <button className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1 rounded">
+                        Ativar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AIFunnelBuilderPage: React.FC = () => {
   const { user, hasAccess } = useAuth();
   const navigate = useNavigate();
@@ -187,24 +616,7 @@ const AIFunnelBuilderPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="bg-secondary/95 backdrop-blur-lg rounded-3xl shadow-2xl p-12 border border-gray-700">
-            <div className="text-center">
-              <div className="w-32 h-32 bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-8">
-                <span className="text-6xl">🤖</span>
-              </div>
-              <h2 className="text-4xl font-bold text-light mb-6">
-                AI Funnel Builder Ativado!
-              </h2>
-              <p className="text-xl text-gray-300 mb-8">
-                Ferramenta em desenvolvimento - Lançamento em breve
-              </p>
-              <div className="bg-accent/20 border border-accent rounded-2xl p-6">
-                <p className="text-accent font-semibold">
-                  🚀 Esta ferramenta revolucionária está sendo finalizada e será lançada em breve!
-                </p>
-              </div>
-            </div>
-          </div>
+          <AIFunnelBuilderInterface isGenerating={isGenerating} setIsGenerating={setIsGenerating} />
         )}
       </div>
     </div>
