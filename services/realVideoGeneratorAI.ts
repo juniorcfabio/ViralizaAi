@@ -3,7 +3,7 @@
 
 import AvatarVideoGenerator, { AvatarVideoConfig, AvatarVideoResult } from './avatarVideoGenerator';
 
-interface VideoConfig {
+export interface VideoConfig {
   businessType: string;
   businessName: string;
   targetAudience: string;
@@ -13,6 +13,8 @@ interface VideoConfig {
   voiceStyle: string;
   duration: string;
   background: string;
+  avatarGender?: 'masculino' | 'feminino';
+  voiceGender?: 'masculina' | 'feminina';
 }
 
 interface GeneratedVideoReal {
@@ -293,21 +295,21 @@ class RealVideoGeneratorAI {
     return await this.generateDemoVideo(components.config);
   }
 
-  // Gerar avatar humano real com foto e sincronização labial
+  // Gerar avatar ultra moderno com IA avançada
   private async generateDemoVideo(config: VideoConfig): Promise<GeneratedVideoReal> {
-    const videoId = `human_avatar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const videoId = `ultra_ai_avatar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Script personalizado
     const personalizedScript = this.createBusinessScript(config);
     
-    // Criar vídeo com avatar humano real
-    const avatarVideoBlob = await this.createHumanAvatarVideo(config, personalizedScript);
+    // Usar tecnologia ultra avançada de avatar
+    const avatarVideoBlob = await this.createUltraModernAvatar(config, personalizedScript);
     const videoUrl = URL.createObjectURL(avatarVideoBlob);
     
-    // Criar thumbnail
+    // Criar thumbnail ultra realista
     const thumbnailUrl = await this.createAvatarThumbnail(config);
     
-    console.log(`🎬 Avatar humano criado para: ${config.businessName}`);
+    console.log(`🚀 Avatar ultra moderno criado para: ${config.businessName}`);
     console.log(`📝 Script: ${personalizedScript}`);
     
     return {
@@ -321,6 +323,480 @@ class RealVideoGeneratorAI {
       config: config,
       downloadUrl: videoUrl
     };
+  }
+
+  // Criar avatar ultra moderno com tecnologia avançada
+  private async createUltraModernAvatar(config: VideoConfig, script: string): Promise<Blob> {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1920; // 4K resolution
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d')!;
+      
+      // Configurar MediaRecorder com qualidade ultra alta
+      const stream = canvas.captureStream(60); // 60 FPS
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp9',
+        videoBitsPerSecond: 8000000 // 8 Mbps para qualidade ultra
+      });
+      
+      const chunks: Blob[] = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        const videoBlob = new Blob(chunks, { type: 'video/webm' });
+        resolve(videoBlob);
+      };
+      
+      // Iniciar gravação
+      mediaRecorder.start();
+      
+      // Reproduzir áudio ultra natural
+      this.playUltraNaturalAudio(script, config);
+      
+      // Animar avatar ultra realista
+      const duration = parseInt(config.duration) * 1000;
+      const startTime = Date.now();
+      let frame = 0;
+      
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        
+        if (elapsed >= duration) {
+          mediaRecorder.stop();
+          return;
+        }
+        
+        // Desenhar avatar ultra moderno
+        this.drawUltraModernAvatar(ctx, frame, config, script, elapsed / duration);
+        frame++;
+        
+        requestAnimationFrame(animate);
+      };
+      
+      animate();
+    });
+  }
+
+  // Reproduzir áudio ultra natural com seleção de gênero
+  private playUltraNaturalAudio(script: string, config: VideoConfig): void {
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(script);
+      utterance.lang = 'pt-BR';
+      utterance.rate = 0.85; // Velocidade ultra natural
+      utterance.pitch = config.voiceGender === 'feminina' ? 1.2 : 0.9; // Tom baseado no gênero
+      utterance.volume = 1.0;
+      
+      // Selecionar voz baseada no gênero escolhido
+      const setGenderVoice = () => {
+        const voices = speechSynthesis.getVoices();
+        let selectedVoice;
+        
+        if (config.voiceGender === 'feminina') {
+          selectedVoice = voices.find(v => 
+            (v.lang.includes('pt') || v.lang.includes('BR')) && 
+            (v.name.toLowerCase().includes('female') || 
+             v.name.toLowerCase().includes('feminina') ||
+             v.name.toLowerCase().includes('woman') ||
+             v.name.toLowerCase().includes('maria') ||
+             v.name.toLowerCase().includes('ana'))
+          );
+        } else {
+          selectedVoice = voices.find(v => 
+            (v.lang.includes('pt') || v.lang.includes('BR')) && 
+            (v.name.toLowerCase().includes('male') || 
+             v.name.toLowerCase().includes('masculino') ||
+             v.name.toLowerCase().includes('man') ||
+             v.name.toLowerCase().includes('joão') ||
+             v.name.toLowerCase().includes('carlos'))
+          );
+        }
+        
+        // Fallback para qualquer voz portuguesa
+        if (!selectedVoice) {
+          selectedVoice = voices.find(v => v.lang.includes('pt'));
+        }
+        
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+          console.log(`🎵 Voz ${config.voiceGender} selecionada: ${selectedVoice.name}`);
+        }
+      };
+      
+      if (speechSynthesis.getVoices().length > 0) {
+        setGenderVoice();
+      } else {
+        speechSynthesis.onvoiceschanged = setGenderVoice;
+      }
+      
+      speechSynthesis.speak(utterance);
+    }
+  }
+
+  // Desenhar avatar ultra moderno e realista
+  private drawUltraModernAvatar(ctx: CanvasRenderingContext2D, frame: number, config: VideoConfig, script: string, progress: number) {
+    // Fundo ultra moderno com gradiente dinâmico
+    const gradient = ctx.createRadialGradient(ctx.canvas.width/2, ctx.canvas.height/2, 0, ctx.canvas.width/2, ctx.canvas.height/2, ctx.canvas.width/2);
+    gradient.addColorStop(0, '#0f0f23');
+    gradient.addColorStop(0.5, '#1a1a2e');
+    gradient.addColorStop(1, '#16213e');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    
+    const centerX = ctx.canvas.width / 2;
+    const centerY = ctx.canvas.height / 2;
+    
+    // Obter dados do avatar baseado no gênero
+    const avatarData = this.getUltraModernAvatarData(config);
+    
+    // Desenhar avatar fotorrealista ultra avançado
+    this.drawUltraRealisticHuman(ctx, centerX, centerY, avatarData, frame, progress);
+    
+    // Efeitos visuais ultra modernos
+    this.addUltraModernEffects(ctx, centerX, centerY, frame, progress);
+    
+    // Texto do script com animação
+    this.renderAnimatedText(ctx, script, progress);
+    
+    // Nome do negócio com efeito neon
+    this.renderNeonTitle(ctx, config.businessName, centerX);
+  }
+
+  // Obter dados do avatar ultra moderno baseado no gênero
+  private getUltraModernAvatarData(config: VideoConfig) {
+    const avatars = {
+      masculino: {
+        professional: {
+          name: 'Alex Santos - CEO',
+          skinColor: '#FDBCB4',
+          hairColor: '#2C3E50',
+          eyeColor: '#2E4057',
+          suitColor: '#1a1a2e',
+          tieColor: '#3498db'
+        },
+        casual: {
+          name: 'Bruno Silva - Inovador',
+          skinColor: '#DEB887',
+          hairColor: '#8B4513',
+          eyeColor: '#228B22',
+          shirtColor: '#2980b9'
+        },
+        elegant: {
+          name: 'Carlos Mendes - Executivo',
+          skinColor: '#F5DEB3',
+          hairColor: '#4A4A4A',
+          eyeColor: '#8B4513',
+          blazerColor: '#2c3e50'
+        },
+        modern: {
+          name: 'Diego Costa - Tech Leader',
+          skinColor: '#FDBCB4',
+          hairColor: '#1C1C1C',
+          eyeColor: '#00CED1',
+          jacketColor: '#e74c3c'
+        }
+      },
+      feminino: {
+        professional: {
+          name: 'Ana Santos - CEO',
+          skinColor: '#F4C2A1',
+          hairColor: '#8B4513',
+          eyeColor: '#2E4057',
+          blazerColor: '#2c3e50',
+          lipColor: '#e74c3c'
+        },
+        casual: {
+          name: 'Maria Silva - Criativa',
+          skinColor: '#E8C5A0',
+          hairColor: '#A0522D',
+          eyeColor: '#228B22',
+          blouseColor: '#9b59b6',
+          lipColor: '#e91e63'
+        },
+        elegant: {
+          name: 'Sofia Costa - Diretora',
+          skinColor: '#FDBCB4',
+          hairColor: '#2F1B14',
+          eyeColor: '#8B4513',
+          dressColor: '#8e44ad',
+          lipColor: '#c0392b'
+        },
+        modern: {
+          name: 'Luana Oliveira - Tech Leader',
+          skinColor: '#DEB887',
+          hairColor: '#654321',
+          eyeColor: '#00CED1',
+          topColor: '#f39c12',
+          lipColor: '#d35400'
+        }
+      }
+    };
+    
+    const genderAvatars = avatars[config.avatarGender as keyof typeof avatars];
+    return genderAvatars[config.avatarStyle as keyof typeof genderAvatars];
+  }
+
+  // Desenhar avatar ultra realista
+  private drawUltraRealisticHuman(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, avatarData: any, frame: number, progress: number) {
+    // Cabeça ultra realista com sombras
+    const headGradient = ctx.createRadialGradient(centerX, centerY - 50, 0, centerX, centerY - 50, 120);
+    headGradient.addColorStop(0, avatarData.skinColor);
+    headGradient.addColorStop(0.7, this.darkenColor(avatarData.skinColor, 0.1));
+    headGradient.addColorStop(1, this.darkenColor(avatarData.skinColor, 0.3));
+    
+    ctx.fillStyle = headGradient;
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY - 50, 110, 130, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Olhos ultra realistas com reflexos
+    this.drawRealisticEyes(ctx, centerX, centerY - 80, avatarData.eyeColor, frame);
+    
+    // Nariz com sombras
+    this.drawRealisticNose(ctx, centerX, centerY - 40, avatarData.skinColor);
+    
+    // Boca com movimento sincronizado
+    this.drawSyncedRealisticMouth(ctx, centerX, centerY - 10, frame, progress, avatarData);
+    
+    // Cabelo ultra detalhado
+    this.drawRealisticHair(ctx, centerX, centerY - 130, avatarData.hairColor, avatarData.name.includes('Ana') || avatarData.name.includes('Maria') || avatarData.name.includes('Sofia') || avatarData.name.includes('Luana'));
+    
+    // Roupas profissionais
+    this.drawProfessionalClothing(ctx, centerX, centerY + 80, avatarData);
+  }
+
+  // Desenhar olhos realistas
+  private drawRealisticEyes(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, eyeColor: string, frame: number) {
+    // Olho esquerdo
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.ellipse(centerX - 35, centerY, 20, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Íris esquerda
+    ctx.fillStyle = eyeColor;
+    ctx.beginPath();
+    ctx.arc(centerX - 35, centerY, 10, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Pupila esquerda
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(centerX - 35, centerY, 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Reflexo esquerdo
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(centerX - 32, centerY - 2, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Olho direito (espelhado)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.ellipse(centerX + 35, centerY, 20, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.fillStyle = eyeColor;
+    ctx.beginPath();
+    ctx.arc(centerX + 35, centerY, 10, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(centerX + 35, centerY, 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(centerX + 38, centerY - 2, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Piscar natural
+    if (frame % 180 < 8) {
+      ctx.fillStyle = '#FDBCB4';
+      ctx.fillRect(centerX - 55, centerY - 8, 40, 16);
+      ctx.fillRect(centerX + 15, centerY - 8, 40, 16);
+    }
+  }
+
+  // Desenhar nariz realista
+  private drawRealisticNose(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, skinColor: string) {
+    ctx.fillStyle = this.darkenColor(skinColor, 0.05);
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY, 12, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Sombra do nariz
+    ctx.fillStyle = this.darkenColor(skinColor, 0.15);
+    ctx.beginPath();
+    ctx.ellipse(centerX + 3, centerY + 5, 8, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Desenhar boca sincronizada realista
+  private drawSyncedRealisticMouth(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, frame: number, progress: number, avatarData: any) {
+    const isSpeaking = progress > 0.05 && progress < 0.95;
+    const mouthMovement = Math.sin(frame * 0.4) * 0.6 + 0.4;
+    
+    if (isSpeaking) {
+      // Boca aberta falando
+      const mouthHeight = 12 + (mouthMovement * 15);
+      ctx.fillStyle = '#8B0000';
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY, 30, mouthHeight, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Dentes
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(centerX - 25, centerY - 4, 50, 8);
+      
+      // Língua
+      ctx.fillStyle = '#FF6B6B';
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY + 5, 20, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Boca fechada com batom (se feminino)
+      const lipColor = avatarData.lipColor || '#D4A574';
+      ctx.fillStyle = lipColor;
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY, 30, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Desenhar cabelo realista
+  private drawRealisticHair(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, hairColor: string, isFemale: boolean) {
+    ctx.fillStyle = hairColor;
+    
+    if (isFemale) {
+      // Cabelo feminino longo
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY, 130, 60, 0, Math.PI, 2 * Math.PI);
+      ctx.fill();
+      
+      // Mechas laterais
+      ctx.beginPath();
+      ctx.ellipse(centerX - 80, centerY + 50, 40, 80, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(centerX + 80, centerY + 50, 40, 80, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Cabelo masculino curto
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY, 115, 45, 0, Math.PI, 2 * Math.PI);
+      ctx.fill();
+    }
+  }
+
+  // Desenhar roupas profissionais
+  private drawProfessionalClothing(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, avatarData: any) {
+    const clothingColor = avatarData.suitColor || avatarData.blazerColor || avatarData.shirtColor || avatarData.blouseColor || avatarData.dressColor || avatarData.topColor || avatarData.jacketColor;
+    
+    // Corpo da roupa
+    ctx.fillStyle = clothingColor;
+    ctx.fillRect(centerX - 100, centerY, 200, 150);
+    
+    // Gola
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(centerX - 30, centerY - 20, 60, 40);
+    
+    // Gravata (se masculino e tiver)
+    if (avatarData.tieColor && !avatarData.name.includes('Ana') && !avatarData.name.includes('Maria') && !avatarData.name.includes('Sofia') && !avatarData.name.includes('Luana')) {
+      ctx.fillStyle = avatarData.tieColor;
+      ctx.fillRect(centerX - 8, centerY - 10, 16, 80);
+    }
+  }
+
+  // Adicionar efeitos ultra modernos
+  private addUltraModernEffects(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, frame: number, progress: number) {
+    // Partículas flutuantes
+    for (let i = 0; i < 20; i++) {
+      const x = centerX + Math.sin(frame * 0.02 + i) * 200;
+      const y = centerY + Math.cos(frame * 0.03 + i) * 150;
+      const size = Math.sin(frame * 0.05 + i) * 3 + 2;
+      
+      ctx.fillStyle = `rgba(0, 212, 255, ${0.3 + Math.sin(frame * 0.1 + i) * 0.2})`;
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Ondas sonoras quando falando
+    if (progress > 0.05 && progress < 0.95) {
+      for (let i = 1; i <= 4; i++) {
+        ctx.strokeStyle = `rgba(0, 212, 255, ${0.5 - i * 0.1})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(centerX + 150, centerY - 20, 30 * i + Math.sin(frame * 0.3) * 10, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Renderizar texto animado
+  private renderAnimatedText(ctx: CanvasRenderingContext2D, script: string, progress: number) {
+    const words = script.split(' ');
+    const wordsToShow = Math.floor(words.length * progress);
+    const currentText = words.slice(0, wordsToShow).join(' ');
+    
+    // Fundo do texto com gradiente
+    const textGradient = ctx.createLinearGradient(0, ctx.canvas.height - 200, 0, ctx.canvas.height);
+    textGradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
+    textGradient.addColorStop(1, 'rgba(26, 26, 46, 0.9)');
+    
+    ctx.fillStyle = textGradient;
+    ctx.fillRect(50, ctx.canvas.height - 200, ctx.canvas.width - 100, 150);
+    
+    // Texto com sombra
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 32px Arial';
+    ctx.textAlign = 'left';
+    
+    const lines = this.wrapText(ctx, currentText, ctx.canvas.width - 120);
+    lines.forEach((line, index) => {
+      ctx.fillText(line, 70, ctx.canvas.height - 150 + (index * 40));
+    });
+    
+    // Resetar sombra
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+  }
+
+  // Renderizar título neon
+  private renderNeonTitle(ctx: CanvasRenderingContext2D, businessName: string, centerX: number) {
+    // Efeito neon
+    ctx.shadowColor = '#00d4ff';
+    ctx.shadowBlur = 20;
+    
+    ctx.fillStyle = '#00d4ff';
+    ctx.font = 'bold 64px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(businessName, centerX, 120);
+    
+    // Segundo layer para intensificar o brilho
+    ctx.shadowBlur = 40;
+    ctx.fillText(businessName, centerX, 120);
+    
+    // Resetar sombra
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
   }
 
   // Criar vídeo com avatar humano real

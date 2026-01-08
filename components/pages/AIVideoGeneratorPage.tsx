@@ -13,6 +13,8 @@ interface VideoConfig {
   voiceStyle: 'energetic' | 'calm' | 'authoritative' | 'friendly';
   duration: '30' | '60' | '90' | '120';
   background: 'office' | 'studio' | 'outdoor' | 'custom';
+  avatarGender: 'masculino' | 'feminino';
+  voiceGender: 'masculina' | 'feminina';
 }
 
 const AIVideoGeneratorPage: React.FC = () => {
@@ -27,15 +29,17 @@ const AIVideoGeneratorPage: React.FC = () => {
   const [priceService] = useState(() => RealTimePriceSyncService.getInstance());
   const [currentPrice, setCurrentPrice] = useState(197.00);
   const [config, setConfig] = useState<VideoConfig>({
-    businessType: '',
+    businessType: 'Tecnologia',
     businessName: '',
-    targetAudience: '',
+    targetAudience: 'Empresários',
     mainMessage: '',
-    callToAction: '',
+    callToAction: 'Entre em contato conosco',
     avatarStyle: 'professional',
-    voiceStyle: 'friendly',
-    duration: '60',
-    background: 'studio'
+    voiceStyle: 'natural',
+    duration: '30',
+    background: 'office',
+    avatarGender: 'masculino',
+    voiceGender: 'feminina'
   });
 
   useEffect(() => {
@@ -256,7 +260,33 @@ const AIVideoGeneratorPage: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-300 mb-2">Avatar</label>
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">Gênero do Avatar</label>
+                    <select
+                      value={config.avatarGender}
+                      onChange={(e) => handleInputChange('avatarGender', e.target.value)}
+                      className="w-full bg-primary border border-gray-600 rounded-lg p-3 text-white"
+                    >
+                      <option value="masculino">👨 Masculino</option>
+                      <option value="feminino">👩 Feminino</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">Voz</label>
+                    <select
+                      value={config.voiceGender}
+                      onChange={(e) => handleInputChange('voiceGender', e.target.value)}
+                      className="w-full bg-primary border border-gray-600 rounded-lg p-3 text-white"
+                    >
+                      <option value="feminina">🎵 Voz Feminina</option>
+                      <option value="masculina">🎵 Voz Masculina</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">Estilo</label>
                     <select
                       value={config.avatarStyle}
                       onChange={(e) => handleInputChange('avatarStyle', e.target.value as any)}
