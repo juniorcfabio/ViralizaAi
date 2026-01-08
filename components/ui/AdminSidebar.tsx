@@ -55,7 +55,11 @@ const mockNotifications = [
     { id: 4, text: 'Novo usuário "Café Aconchego" cadastrado.', time: '5 horas atrás' }
 ];
 
-const AdminSidebar: React.FC = () => {
+interface AdminSidebarProps {
+    onClose?: () => void;
+}
+
+const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
     const { logout, user } = useAuth();
     const { t } = useLanguage();
     const navigate = useNavigate();
@@ -84,8 +88,26 @@ const AdminSidebar: React.FC = () => {
             isActive ? 'bg-accent text-light' : 'hover:bg-primary text-gray-dark hover:text-light'
         }`;
 
+    const handleNavClick = () => {
+        if (onClose) {
+            onClose();
+        }
+    };
+
     return (
-        <aside className="w-64 bg-secondary p-6 hidden md:flex flex-col justify-between">
+        <aside className="w-64 bg-secondary p-4 sm:p-6 flex flex-col justify-between h-full overflow-y-auto">
+            {/* Close button for mobile */}
+            <div className="lg:hidden flex justify-end mb-4">
+                <button
+                    onClick={onClose}
+                    className="text-gray-400 hover:text-white p-2"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
             <div>
                 {/* Informações do Usuário no Topo */}
                 <div className="mb-6 border-b border-primary/50 pb-4">
@@ -136,7 +158,7 @@ const AdminSidebar: React.FC = () => {
 
                 <nav className="space-y-1">
                     {/* PAINEL PRINCIPAL */}
-                    <NavLink to="/admin" end className={navLinkClasses}>
+                    <NavLink to="/admin" end className={navLinkClasses} onClick={handleNavClick}>
                         <span className="text-lg">📊</span>
                         <span className="font-medium">Dashboard</span>
                     </NavLink>
@@ -144,15 +166,15 @@ const AdminSidebar: React.FC = () => {
                     {/* GESTÃO DE USUÁRIOS */}
                     <div className="pt-3">
                         <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">Gestão de Usuários</h3>
-                        <NavLink to="/admin/users" className={navLinkClasses}>
+                        <NavLink to="/admin/users" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">👥</span>
                             <span className="font-medium">Usuários</span>
                         </NavLink>
-                        <NavLink to="/admin/withdrawals" className={navLinkClasses}>
+                        <NavLink to="/admin/withdrawals" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🛡️</span>
                             <span className="font-medium">Gerenciar Saques</span>
                         </NavLink>
-                        <NavLink to="/admin/affiliates" className={navLinkClasses}>
+                        <NavLink to="/admin/affiliates" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🤝</span>
                             <span className="font-medium">Afiliados</span>
                         </NavLink>
@@ -161,19 +183,19 @@ const AdminSidebar: React.FC = () => {
                     {/* FERRAMENTAS IA - ACESSO GRATUITO */}
                     <div className="pt-3">
                         <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider mb-2 px-3">🆓 Ferramentas IA (Gratuito)</h3>
-                        <NavLink to="/admin/ai-video-generator" className={navLinkClasses}>
+                        <NavLink to="/admin/ai-video-generator" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🎬</span>
                             <span className="font-medium">Gerador de Vídeo IA 8K</span>
                         </NavLink>
-                        <NavLink to="/admin/ai-funnel-builder" className={navLinkClasses}>
+                        <NavLink to="/admin/ai-funnel-builder" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🔧</span>
                             <span className="font-medium">AI Funnel Builder</span>
                         </NavLink>
-                        <NavLink to="/admin/ebook-generator" className={navLinkClasses}>
+                        <NavLink to="/admin/ebook-generator" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">📚</span>
                             <span className="font-medium">Ebook Generator</span>
                         </NavLink>
-                        <NavLink to="/admin/growth-engine" className={navLinkClasses}>
+                        <NavLink to="/admin/growth-engine" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🚀</span>
                             <span className="font-medium">Motor de Crescimento</span>
                         </NavLink>
@@ -182,19 +204,19 @@ const AdminSidebar: React.FC = () => {
                     {/* MARKETING E PROMOÇÃO */}
                     <div className="pt-3">
                         <h3 className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2 px-3">Marketing & Promoção</h3>
-                        <NavLink to="/admin/autonomous-promotion" className={navLinkClasses}>
+                        <NavLink to="/admin/autonomous-promotion" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">⚡</span>
                             <span className="font-medium">Promoção Autônoma 24/7</span>
                         </NavLink>
-                        <NavLink to="/admin/viral-marketing" className={navLinkClasses}>
+                        <NavLink to="/admin/viral-marketing" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">📈</span>
                             <span className="font-medium">Marketing Viral Gratuito</span>
                         </NavLink>
-                        <NavLink to="/admin/global-promotion" className={navLinkClasses}>
+                        <NavLink to="/admin/global-promotion" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🌍</span>
                             <span className="font-medium">Promoção Global</span>
                         </NavLink>
-                        <NavLink to="/admin/ads" className={navLinkClasses}>
+                        <NavLink to="/admin/ads" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">📢</span>
                             <span className="font-medium">Gestão de Anúncios</span>
                         </NavLink>
@@ -203,15 +225,15 @@ const AdminSidebar: React.FC = () => {
                     {/* FINANCEIRO */}
                     <div className="pt-3">
                         <h3 className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-2 px-3">Financeiro</h3>
-                        <NavLink to="/admin/financial" className={navLinkClasses}>
+                        <NavLink to="/admin/financial" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">💰</span>
                             <span className="font-medium">Relatórios Financeiros</span>
                         </NavLink>
-                        <NavLink to="/admin/payments" className={navLinkClasses}>
+                        <NavLink to="/admin/payments" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">💳</span>
                             <span className="font-medium">Pagamentos</span>
                         </NavLink>
-                        <NavLink to="/admin/tools-pricing" className={navLinkClasses}>
+                        <NavLink to="/admin/tools-pricing" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🏷️</span>
                             <span className="font-medium">Gerenciar Preços</span>
                         </NavLink>
@@ -220,15 +242,15 @@ const AdminSidebar: React.FC = () => {
                     {/* SISTEMA */}
                     <div className="pt-3">
                         <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2 px-3">Sistema</h3>
-                        <NavLink to="/admin/task-monitoring" className={navLinkClasses}>
+                        <NavLink to="/admin/task-monitoring" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🤖</span>
                             <span className="font-medium">Monitor Ultra-Avançado</span>
                         </NavLink>
-                        <NavLink to="/admin/maintenance" className={navLinkClasses}>
+                        <NavLink to="/admin/maintenance" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🔧</span>
                             <span className="font-medium">Manutenção</span>
                         </NavLink>
-                        <NavLink to="/admin/settings" className={navLinkClasses}>
+                        <NavLink to="/admin/settings" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">⚙️</span>
                             <span className="font-medium">Configurações</span>
                         </NavLink>
@@ -237,11 +259,11 @@ const AdminSidebar: React.FC = () => {
                     {/* PARCERIAS */}
                     <div className="pt-3">
                         <h3 className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-2 px-3">Parcerias</h3>
-                        <NavLink to="/admin/trusted-companies" className={navLinkClasses}>
+                        <NavLink to="/admin/trusted-companies" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🏢</span>
                             <span className="font-medium">Empresas Parceiras</span>
                         </NavLink>
-                        <NavLink to="/admin/advertise" className={navLinkClasses}>
+                        <NavLink to="/admin/advertise" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">📺</span>
                             <span className="font-medium">Anuncie no Viraliza.ai</span>
                         </NavLink>

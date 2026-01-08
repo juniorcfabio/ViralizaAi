@@ -17,16 +17,16 @@ const ClientLayout: React.FC = () => {
                 {/* Expiration Banner - Visible only if inactive */}
                 {!active && (
                     <div className="bg-red-500/10 border-b border-red-500/30 p-3 text-center backdrop-blur-md z-40">
-                        <p className="text-sm text-red-200 font-medium flex items-center justify-center gap-2">
+                        <p className="text-xs sm:text-sm text-red-200 font-medium flex items-center justify-center gap-2 flex-wrap">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                            Modo Visualização: Sua assinatura ou teste expirou. 
-                            <Link to="/dashboard/billing" className="underline font-bold hover:text-white ml-1">Renovar Acesso</Link>
+                            <span className="text-center">Modo Visualização: Sua assinatura ou teste expirou.</span>
+                            <Link to="/dashboard/billing" className="underline font-bold hover:text-white">Renovar Acesso</Link>
                         </p>
                     </div>
                 )}
 
                 <div className="flex-1 overflow-y-auto relative pb-20 md:pb-0">
-                    <main className="p-6 lg:p-10">
+                    <main className="p-3 sm:p-4 md:p-6 lg:p-10">
                         <div className="flex-1 overflow-y-auto scroll-smooth" style={{scrollBehavior: 'smooth'}}>
                             <Outlet />
                         </div>

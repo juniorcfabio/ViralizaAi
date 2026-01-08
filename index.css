@@ -2,6 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Responsividade global para dispositivos móveis */
+html {
+  font-size: 16px;
+}
+
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* Garantir que elementos não quebrem o layout em mobile */
+* {
+  box-sizing: border-box;
+}
+
+/* Prevent zoom on iOS */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  font-size: 16px !important;
+}
+
+@media (max-width: 640px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 html {
   scroll-behavior: smooth;
 }
