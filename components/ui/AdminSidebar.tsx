@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 // Icons
@@ -134,85 +134,116 @@ const AdminSidebar: React.FC = () => {
                     )}
                 </div>
 
-                <nav className="space-y-2">
+                <nav className="space-y-1">
+                    {/* PAINEL PRINCIPAL */}
                     <NavLink to="/admin" end className={navLinkClasses}>
-                        <span>{t('sidebar.dashboard')}</span>
-                    </NavLink>
-                    <NavLink to="/admin/users" className={navLinkClasses}>
-                        <span>{t('sidebar.admin_users')}</span>
-                    </NavLink>
-                    <NavLink to="/admin/withdrawals" className={navLinkClasses}>
-                        <ShieldIcon className="w-5 h-5" />
-                        <span>🛡️ Gerenciar Saques</span>
-                    </NavLink>
-                    <NavLink to="/admin/autonomous-promotion" className={navLinkClasses}>
-                        <RocketIcon className="w-5 h-5" />
-                        <span>🚀 Promoção Autônoma 24/7</span>
-                    </NavLink>
-                    <NavLink to="/admin/financial" className={navLinkClasses}>
-                        <span>{t('sidebar.admin_financial')}</span>
-                    </NavLink>
-                    <NavLink to="/admin/payments" className={navLinkClasses}>
-                        <span>{t('sidebar.admin_payments')}</span>
-                    </NavLink>
-                    <NavLink to="/admin/marketing" className={navLinkClasses}>
-                        <span>{t('sidebar.admin_marketing')}</span>
-                    </NavLink>
-                    <NavLink to="/admin/affiliates" className={navLinkClasses}>
-                        <span>{t('sidebar.affiliate')}</span>
-                    </NavLink>
-                    <NavLink to="/admin/ads" className={navLinkClasses}>
-                        <MegaphoneIcon className="w-5 h-5" />
-                        <span>{t('sidebar.admin_ads')}</span>
-                    </NavLink>
-                    <NavLink to="/admin/trusted-companies" className={navLinkClasses}>
-                        <BriefcaseIcon className="w-5 h-5" />
-                        <span>Empresas Parceiras</span>
-                    </NavLink>
-                    <NavLink to="/admin/growth-engine" className={navLinkClasses}>
-                        <RocketIcon className="w-5 h-5" />
-                        <span>Motor de Crescimento</span>
-                    </NavLink>
-                    <NavLink to="/admin/settings" className={navLinkClasses}>
-                        <span>{t('sidebar.settings')}</span>
+                        <span className="text-lg">📊</span>
+                        <span className="font-medium">Dashboard</span>
                     </NavLink>
                     
-                    <div className="pt-2 mt-2 border-t border-primary/50">
-                        <NavLink to="/admin/maintenance" className={navLinkClasses}>
-                            <ServerCogIcon className="w-5 h-5" />
-                            <span>{t('sidebar.admin_maintenance')}</span>
+                    {/* GESTÃO DE USUÁRIOS */}
+                    <div className="pt-3">
+                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">Gestão de Usuários</h3>
+                        <NavLink to="/admin/users" className={navLinkClasses}>
+                            <span className="text-lg">👥</span>
+                            <span className="font-medium">Usuários</span>
                         </NavLink>
-                        <NavLink to="/admin/tools-pricing" className={navLinkClasses}>
-                            <span className="text-xl">💰</span>
-                            <span className="font-semibold">Gerenciar Preços</span>
+                        <NavLink to="/admin/withdrawals" className={navLinkClasses}>
+                            <span className="text-lg">🛡️</span>
+                            <span className="font-medium">Gerenciar Saques</span>
                         </NavLink>
-                        <NavLink to="/admin/task-monitoring" className={navLinkClasses}>
-                            <span className="text-xl">🤖</span>
-                            <span className="font-semibold">Monitor Ultra-Avançado</span>
+                        <NavLink to="/admin/affiliates" className={navLinkClasses}>
+                            <span className="text-lg">🤝</span>
+                            <span className="font-medium">Afiliados</span>
                         </NavLink>
-                        <NavLink to="/admin/viral-marketing" className={navLinkClasses}>
-                            <span className="text-xl">🚀</span>
-                            <span className="font-semibold">Marketing Viral Gratuito</span>
-                        </NavLink>
-                        <NavLink to="/admin/global-promotion" className={navLinkClasses}>
-                            <span className="text-xl">🌍</span>
-                            <span className="font-semibold">Promoção Global</span>
-                        </NavLink>
+                    </div>
+
+                    {/* FERRAMENTAS IA - ACESSO GRATUITO */}
+                    <div className="pt-3">
+                        <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider mb-2 px-3">🆓 Ferramentas IA (Gratuito)</h3>
                         <NavLink to="/admin/ai-video-generator" className={navLinkClasses}>
-                            <span className="text-xl">🎬</span>
-                            <span className="font-semibold">Gerador de Vídeo IA 8K</span>
+                            <span className="text-lg">🎬</span>
+                            <span className="font-medium">Gerador de Vídeo IA 8K</span>
                         </NavLink>
                         <NavLink to="/admin/ai-funnel-builder" className={navLinkClasses}>
-                            <span className="text-xl">🔧</span>
-                            <span className="font-semibold">AI Funnel Builder</span>
+                            <span className="text-lg">🔧</span>
+                            <span className="font-medium">AI Funnel Builder</span>
                         </NavLink>
                         <NavLink to="/admin/ebook-generator" className={navLinkClasses}>
-                            <span className="text-xl">📚</span>
-                            <span className="font-semibold">Ebook Generator</span>
+                            <span className="text-lg">📚</span>
+                            <span className="font-medium">Ebook Generator</span>
+                        </NavLink>
+                        <NavLink to="/admin/growth-engine" className={navLinkClasses}>
+                            <span className="text-lg">🚀</span>
+                            <span className="font-medium">Motor de Crescimento</span>
+                        </NavLink>
+                    </div>
+
+                    {/* MARKETING E PROMOÇÃO */}
+                    <div className="pt-3">
+                        <h3 className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2 px-3">Marketing & Promoção</h3>
+                        <NavLink to="/admin/autonomous-promotion" className={navLinkClasses}>
+                            <span className="text-lg">⚡</span>
+                            <span className="font-medium">Promoção Autônoma 24/7</span>
+                        </NavLink>
+                        <NavLink to="/admin/viral-marketing" className={navLinkClasses}>
+                            <span className="text-lg">📈</span>
+                            <span className="font-medium">Marketing Viral Gratuito</span>
+                        </NavLink>
+                        <NavLink to="/admin/global-promotion" className={navLinkClasses}>
+                            <span className="text-lg">🌍</span>
+                            <span className="font-medium">Promoção Global</span>
+                        </NavLink>
+                        <NavLink to="/admin/ads" className={navLinkClasses}>
+                            <span className="text-lg">📢</span>
+                            <span className="font-medium">Gestão de Anúncios</span>
+                        </NavLink>
+                    </div>
+
+                    {/* FINANCEIRO */}
+                    <div className="pt-3">
+                        <h3 className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-2 px-3">Financeiro</h3>
+                        <NavLink to="/admin/financial" className={navLinkClasses}>
+                            <span className="text-lg">💰</span>
+                            <span className="font-medium">Relatórios Financeiros</span>
+                        </NavLink>
+                        <NavLink to="/admin/payments" className={navLinkClasses}>
+                            <span className="text-lg">💳</span>
+                            <span className="font-medium">Pagamentos</span>
+                        </NavLink>
+                        <NavLink to="/admin/tools-pricing" className={navLinkClasses}>
+                            <span className="text-lg">🏷️</span>
+                            <span className="font-medium">Gerenciar Preços</span>
+                        </NavLink>
+                    </div>
+
+                    {/* SISTEMA */}
+                    <div className="pt-3">
+                        <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2 px-3">Sistema</h3>
+                        <NavLink to="/admin/task-monitoring" className={navLinkClasses}>
+                            <span className="text-lg">🤖</span>
+                            <span className="font-medium">Monitor Ultra-Avançado</span>
+                        </NavLink>
+                        <NavLink to="/admin/maintenance" className={navLinkClasses}>
+                            <span className="text-lg">🔧</span>
+                            <span className="font-medium">Manutenção</span>
+                        </NavLink>
+                        <NavLink to="/admin/settings" className={navLinkClasses}>
+                            <span className="text-lg">⚙️</span>
+                            <span className="font-medium">Configurações</span>
+                        </NavLink>
+                    </div>
+
+                    {/* PARCERIAS */}
+                    <div className="pt-3">
+                        <h3 className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-2 px-3">Parcerias</h3>
+                        <NavLink to="/admin/trusted-companies" className={navLinkClasses}>
+                            <span className="text-lg">🏢</span>
+                            <span className="font-medium">Empresas Parceiras</span>
                         </NavLink>
                         <NavLink to="/admin/advertise" className={navLinkClasses}>
-                            <span className="text-xl">📢</span>
-                            <span className="font-semibold">Anuncie no Viraliza.ai</span>
+                            <span className="text-lg">📺</span>
+                            <span className="font-medium">Anuncie no Viraliza.ai</span>
                         </NavLink>
                     </div>
                 </nav>
