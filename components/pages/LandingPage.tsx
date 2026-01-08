@@ -1016,10 +1016,11 @@ const PartnerAdsSection: React.FC<{ onRegister: () => void }> = ({ onRegister })
                             )}
 
                             <div className="mt-auto w-full">
-                                            <InstagramIcon className="w-3 h-3" /> Instagram
-                                        </a>
-                                    )}
-                                </div>
+                                {partner.instagram && (
+                                    <a href={partner.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-accent transition-colors">
+                                        <InstagramIcon className="w-3 h-3" /> Instagram
+                                    </a>
+                                )}
                             </div>
                         </div>
                     ))}
