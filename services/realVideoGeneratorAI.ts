@@ -327,95 +327,16 @@ class RealVideoGeneratorAI {
 
   // Criar avatar ultra moderno com tecnologia avançada
   private async createUltraModernAvatar(config: VideoConfig, script: string): Promise<Blob> {
-    return new Promise((resolve, reject) => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1280; // Resolução mais compatível
-        canvas.height = 720;
-        const ctx = canvas.getContext('2d')!;
-        
-        // Configurar MediaRecorder com configurações mais compatíveis
-        const stream = canvas.captureStream(30);
-        let mediaRecorder: MediaRecorder;
-        
-        // Tentar diferentes formatos para compatibilidade
-        try {
-          mediaRecorder = new MediaRecorder(stream, {
-            mimeType: 'video/webm;codecs=vp9'
-          });
-        } catch (e) {
-          try {
-            mediaRecorder = new MediaRecorder(stream, {
-              mimeType: 'video/webm'
-            });
-          } catch (e2) {
-            mediaRecorder = new MediaRecorder(stream);
-          }
-        }
-        
-        const chunks: Blob[] = [];
-        
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            chunks.push(event.data);
-          }
-        };
-        
-        mediaRecorder.onstop = () => {
-          try {
-            const videoBlob = new Blob(chunks, { type: 'video/webm' });
-            console.log('✅ Vídeo criado com sucesso:', videoBlob.size, 'bytes');
-            resolve(videoBlob);
-          } catch (error) {
-            console.error('❌ Erro ao criar blob do vídeo:', error);
-            reject(error);
-          }
-        };
-        
-        mediaRecorder.onerror = (event) => {
-          console.error('❌ Erro no MediaRecorder:', event);
-          reject(new Error('Erro na gravação do vídeo'));
-        };
-        
-        // Iniciar gravação
-        console.log('🎬 Iniciando gravação do vídeo...');
-        mediaRecorder.start(1000); // Capturar dados a cada 1 segundo
-        
-        // Reproduzir áudio ultra natural
-        setTimeout(() => {
-          this.playUltraNaturalAudio(script, config);
-        }, 500);
-        
-        // Animar avatar ultra realista
-        const duration = parseInt(config.duration) * 1000;
-        const startTime = Date.now();
-        let frame = 0;
-        
-        const animate = () => {
-          const elapsed = Date.now() - startTime;
-          const progress = elapsed / duration;
-          
-          if (elapsed >= duration) {
-            console.log('🏁 Finalizando gravação do vídeo...');
-            mediaRecorder.stop();
-            return;
-          }
-          
-          // Desenhar avatar ultra moderno
-          this.drawUltraModernAvatar(ctx, frame, config, script, progress);
-          frame++;
-          
-          requestAnimationFrame(animate);
-        };
-        
-        // Iniciar animação
-        animate();
-        
-      } catch (error) {
-        console.error('❌ Erro na criação do avatar:', error);
-        reject(error);
-      }
-    });
+    console.log('🚀 Usando sistema ultra moderno de avatar real com fotos...');
+    
+    try {
+      // Tentar primeiro o sistema de foto real
+      return await this.createRealPhotoAvatar(config, script);
+    } catch (error) {
+      console.warn('⚠️ Erro no avatar com foto, usando fallback simples:', error);
+      // Fallback para avatar simples
+      return await this.createSimpleAvatar(config, script);
+    }
   }
 
   // Reproduzir áudio ultra natural com seleção de gênero
@@ -544,12 +465,6 @@ class RealVideoGeneratorAI {
     
     // Obter dados do avatar baseado no gênero
     const avatarData = this.getUltraModernAvatarData(config);
-    
-    // Desenhar avatar fotorrealista ultra avançado
-    this.drawUltraRealisticHuman(ctx, centerX, centerY, avatarData, frame, progress);
-    
-    // Efeitos visuais ultra modernos
-    this.addUltraModernEffects(ctx, centerX, centerY, frame, progress);
     
     // Texto do script com animação
     this.renderAnimatedText(ctx, script, progress);
@@ -859,31 +774,325 @@ class RealVideoGeneratorAI {
     }
   }
 
-  // Adicionar efeitos ultra modernos
-  private addUltraModernEffects(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, frame: number, progress: number) {
-    // Partículas flutuantes
-    for (let i = 0; i < 20; i++) {
-      const x = centerX + Math.sin(frame * 0.02 + i) * 200;
-      const y = centerY + Math.cos(frame * 0.03 + i) * 150;
-      const size = Math.abs(Math.sin(frame * 0.05 + i) * 3) + 2; // Garantir que o tamanho seja sempre positivo
-      
-      ctx.fillStyle = `rgba(0, 212, 255, ${0.3 + Math.abs(Math.sin(frame * 0.1 + i)) * 0.2})`;
-      ctx.beginPath();
-      ctx.arc(x, y, size, 0, Math.PI * 2);
-      ctx.fill();
-    }
+  // Sistema ultra moderno de avatar real com foto
+  private async createRealPhotoAvatar(config: VideoConfig, script: string): Promise<Blob> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        console.log('🚀 Iniciando geração de avatar ultra moderno com foto real...');
+        
+        // Usar fotos reais de pessoas baseadas no gênero
+        const avatarPhotos = {
+          feminino: [
+            'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=400&fit=crop&crop=face',
+            'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=face',
+            'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop&crop=face'
+          ],
+          masculino: [
+            'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
+            'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face',
+            'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+          ]
+        };
+        
+        const selectedGender = config.avatarGender || 'masculino';
+        const photos = avatarPhotos[selectedGender as keyof typeof avatarPhotos];
+        const selectedPhoto = photos[Math.floor(Math.random() * photos.length)];
+        
+        console.log(`📸 Foto selecionada para ${selectedGender}: ${selectedPhoto}`);
+        
+        // Criar canvas para composição
+        const canvas = document.createElement('canvas');
+        canvas.width = 1280;
+        canvas.height = 720;
+        const ctx = canvas.getContext('2d')!;
+        
+        // Carregar foto da pessoa
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = () => {
+          console.log('✅ Foto carregada com sucesso');
+          
+          // Configurar MediaRecorder
+          const stream = canvas.captureStream(30);
+          let mediaRecorder: MediaRecorder;
+          
+          try {
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+          } catch (e) {
+            mediaRecorder = new MediaRecorder(stream);
+          }
+          
+          const chunks: Blob[] = [];
+          
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) chunks.push(event.data);
+          };
+          
+          mediaRecorder.onstop = () => {
+            const videoBlob = new Blob(chunks, { type: 'video/webm' });
+            console.log('✅ Vídeo de avatar real criado:', videoBlob.size, 'bytes');
+            resolve(videoBlob);
+          };
+          
+          mediaRecorder.onerror = (event) => {
+            console.error('❌ Erro no MediaRecorder:', event);
+            reject(new Error('Erro na gravação do vídeo'));
+          };
+          
+          // Iniciar gravação
+          mediaRecorder.start(1000);
+          
+          // Reproduzir áudio
+          setTimeout(() => {
+            this.playUltraNaturalAudio(script, config);
+          }, 500);
+          
+          // Animar avatar com foto real
+          const duration = parseInt(config.duration) * 1000;
+          const startTime = Date.now();
+          let frame = 0;
+          
+          const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = elapsed / duration;
+            
+            if (elapsed >= duration) {
+              console.log('🏁 Finalizando gravação do avatar real...');
+              mediaRecorder.stop();
+              return;
+            }
+            
+            // Desenhar avatar com foto real
+            this.drawRealPhotoAvatar(ctx, img, frame, progress, config, script);
+            frame++;
+            
+            requestAnimationFrame(animate);
+          };
+          
+          animate();
+        };
+        
+        img.onerror = () => {
+          console.error('❌ Erro ao carregar foto, usando fallback');
+          // Fallback para avatar desenhado simples
+          this.createSimpleAvatar(config, script).then(resolve).catch(reject);
+        };
+        
+        img.src = selectedPhoto;
+        
+      } catch (error) {
+        console.error('❌ Erro na criação do avatar real:', error);
+        reject(error);
+      }
+    });
+  }
+  
+  // Desenhar avatar com foto real
+  private drawRealPhotoAvatar(ctx: CanvasRenderingContext2D, img: HTMLImageElement, frame: number, progress: number, config: VideoConfig, script: string) {
+    // Limpar canvas
+    ctx.fillStyle = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    ctx.fillRect(0, 0, 1280, 720);
     
-    // Ondas sonoras quando falando
+    // Desenhar foto da pessoa (centralizada)
+    const centerX = 640;
+    const centerY = 300;
+    const size = 300;
+    
+    // Efeito de respiração na foto
+    const breathe = Math.sin(frame * 0.05) * 5;
+    const currentSize = size + breathe;
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, currentSize / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(img, centerX - currentSize / 2, centerY - currentSize / 2, currentSize, currentSize);
+    ctx.restore();
+    
+    // Borda da foto
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, currentSize / 2, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Efeitos de fala (ondas sonoras)
     if (progress > 0.05 && progress < 0.95) {
-      for (let i = 1; i <= 4; i++) {
-        const radius = Math.abs(30 * i + Math.sin(frame * 0.3) * 10); // Garantir que o raio seja sempre positivo
-        ctx.strokeStyle = `rgba(0, 212, 255, ${0.5 - i * 0.1})`;
-        ctx.lineWidth = 3;
+      for (let i = 1; i <= 3; i++) {
+        const radius = 200 + i * 30 + Math.sin(frame * 0.3) * 15;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 - i * 0.1})`;
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(centerX + 150, centerY - 20, radius, 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         ctx.stroke();
       }
     }
+    
+    // Nome do negócio
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 48px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(config.businessName || 'Seu Negócio', centerX, 100);
+    
+    // Texto do script (palavra por palavra)
+    const words = script.split(' ');
+    const wordsToShow = Math.floor(words.length * progress);
+    const currentText = words.slice(0, wordsToShow).join(' ');
+    
+    if (currentText) {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '24px Arial';
+      ctx.textAlign = 'center';
+      
+      // Quebrar texto em linhas
+      const maxWidth = 800;
+      const lines = this.wrapText(ctx, currentText, maxWidth);
+      
+      lines.forEach((line, index) => {
+        ctx.fillText(line, centerX, 550 + index * 30);
+      });
+    }
+  }
+  
+  // Avatar simples como fallback
+  private async createSimpleAvatar(config: VideoConfig, script: string): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1280;
+        canvas.height = 720;
+        const ctx = canvas.getContext('2d')!;
+        
+        const stream = canvas.captureStream(30);
+        const mediaRecorder = new MediaRecorder(stream);
+        const chunks: Blob[] = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) chunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+          const videoBlob = new Blob(chunks, { type: 'video/webm' });
+          resolve(videoBlob);
+        };
+        
+        mediaRecorder.start(1000);
+        
+        setTimeout(() => {
+          this.playUltraNaturalAudio(script, config);
+        }, 500);
+        
+        const duration = parseInt(config.duration) * 1000;
+        const startTime = Date.now();
+        let frame = 0;
+        
+        const animate = () => {
+          const elapsed = Date.now() - startTime;
+          
+          if (elapsed >= duration) {
+            mediaRecorder.stop();
+            return;
+          }
+          
+          // Desenhar avatar simples sem efeitos problemáticos
+          this.drawSimpleAvatar(ctx, frame, elapsed / duration, config, script);
+          frame++;
+          
+          requestAnimationFrame(animate);
+        };
+        
+        animate();
+        
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+  
+  // Desenhar avatar simples
+  private drawSimpleAvatar(ctx: CanvasRenderingContext2D, frame: number, progress: number, config: VideoConfig, script: string) {
+    // Fundo gradiente
+    const gradient = ctx.createLinearGradient(0, 0, 1280, 720);
+    gradient.addColorStop(0, '#667eea');
+    gradient.addColorStop(1, '#764ba2');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 1280, 720);
+    
+    const centerX = 640;
+    const centerY = 300;
+    
+    // Avatar simples (círculo com rosto básico)
+    const avatarData = this.getUltraModernAvatarData(config);
+    
+    // Cabeça
+    ctx.fillStyle = avatarData.skinColor;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 100, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Olhos
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(centerX - 30, centerY - 20, 8, 0, Math.PI * 2);
+    ctx.arc(centerX + 30, centerY - 20, 8, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Boca (animada quando falando)
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    if (progress > 0.05 && progress < 0.95 && Math.sin(frame * 0.5) > 0) {
+      ctx.ellipse(centerX, centerY + 20, 15, 8, 0, 0, Math.PI * 2);
+    } else {
+      ctx.ellipse(centerX, centerY + 20, 15, 3, 0, 0, Math.PI * 2);
+    }
+    ctx.fill();
+    
+    // Nome do negócio
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 48px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(config.businessName || 'Seu Negócio', centerX, 100);
+    
+    // Texto do script
+    const words = script.split(' ');
+    const wordsToShow = Math.floor(words.length * progress);
+    const currentText = words.slice(0, wordsToShow).join(' ');
+    
+    if (currentText) {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '24px Arial';
+      const lines = this.wrapText(ctx, currentText, 800);
+      
+      lines.forEach((line, index) => {
+        ctx.fillText(line, centerX, 500 + index * 30);
+      });
+    }
+  }
+  
+  // Função para quebrar texto em linhas
+  private wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+    
+    for (const word of words) {
+      const testLine = currentLine + (currentLine ? ' ' : '') + word;
+      const metrics = ctx.measureText(testLine);
+      
+      if (metrics.width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+    
+    return lines;
   }
 
   // Renderizar texto animado
