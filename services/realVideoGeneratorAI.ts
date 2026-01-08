@@ -327,59 +327,94 @@ class RealVideoGeneratorAI {
 
   // Criar avatar ultra moderno com tecnologia avançada
   private async createUltraModernAvatar(config: VideoConfig, script: string): Promise<Blob> {
-    return new Promise((resolve) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 1920; // 4K resolution
-      canvas.height = 1080;
-      const ctx = canvas.getContext('2d')!;
-      
-      // Configurar MediaRecorder com qualidade ultra alta
-      const stream = canvas.captureStream(60); // 60 FPS
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9',
-        videoBitsPerSecond: 8000000 // 8 Mbps para qualidade ultra
-      });
-      
-      const chunks: Blob[] = [];
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-        }
-      };
-      
-      mediaRecorder.onstop = () => {
-        const videoBlob = new Blob(chunks, { type: 'video/webm' });
-        resolve(videoBlob);
-      };
-      
-      // Iniciar gravação
-      mediaRecorder.start();
-      
-      // Reproduzir áudio ultra natural
-      this.playUltraNaturalAudio(script, config);
-      
-      // Animar avatar ultra realista
-      const duration = parseInt(config.duration) * 1000;
-      const startTime = Date.now();
-      let frame = 0;
-      
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
+    return new Promise((resolve, reject) => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1280; // Resolução mais compatível
+        canvas.height = 720;
+        const ctx = canvas.getContext('2d')!;
         
-        if (elapsed >= duration) {
-          mediaRecorder.stop();
-          return;
+        // Configurar MediaRecorder com configurações mais compatíveis
+        const stream = canvas.captureStream(30);
+        let mediaRecorder: MediaRecorder;
+        
+        // Tentar diferentes formatos para compatibilidade
+        try {
+          mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'video/webm;codecs=vp9'
+          });
+        } catch (e) {
+          try {
+            mediaRecorder = new MediaRecorder(stream, {
+              mimeType: 'video/webm'
+            });
+          } catch (e2) {
+            mediaRecorder = new MediaRecorder(stream);
+          }
         }
         
-        // Desenhar avatar ultra moderno
-        this.drawUltraModernAvatar(ctx, frame, config, script, elapsed / duration);
-        frame++;
+        const chunks: Blob[] = [];
         
-        requestAnimationFrame(animate);
-      };
-      
-      animate();
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            chunks.push(event.data);
+          }
+        };
+        
+        mediaRecorder.onstop = () => {
+          try {
+            const videoBlob = new Blob(chunks, { type: 'video/webm' });
+            console.log('✅ Vídeo criado com sucesso:', videoBlob.size, 'bytes');
+            resolve(videoBlob);
+          } catch (error) {
+            console.error('❌ Erro ao criar blob do vídeo:', error);
+            reject(error);
+          }
+        };
+        
+        mediaRecorder.onerror = (event) => {
+          console.error('❌ Erro no MediaRecorder:', event);
+          reject(new Error('Erro na gravação do vídeo'));
+        };
+        
+        // Iniciar gravação
+        console.log('🎬 Iniciando gravação do vídeo...');
+        mediaRecorder.start(1000); // Capturar dados a cada 1 segundo
+        
+        // Reproduzir áudio ultra natural
+        setTimeout(() => {
+          this.playUltraNaturalAudio(script, config);
+        }, 500);
+        
+        // Animar avatar ultra realista
+        const duration = parseInt(config.duration) * 1000;
+        const startTime = Date.now();
+        let frame = 0;
+        
+        const animate = () => {
+          const elapsed = Date.now() - startTime;
+          const progress = elapsed / duration;
+          
+          if (elapsed >= duration) {
+            console.log('🏁 Finalizando gravação do vídeo...');
+            mediaRecorder.stop();
+            return;
+          }
+          
+          // Desenhar avatar ultra moderno
+          this.drawUltraModernAvatar(ctx, frame, config, script, progress);
+          frame++;
+          
+          requestAnimationFrame(animate);
+        };
+        
+        // Iniciar animação
+        animate();
+        
+      } catch (error) {
+        console.error('❌ Erro na criação do avatar:', error);
+        reject(error);
+      }
     });
   }
 
@@ -399,34 +434,60 @@ class RealVideoGeneratorAI {
         const voices = speechSynthesis.getVoices();
         let selectedVoice;
         
+        console.log(`🔍 Buscando voz ${config.voiceGender || 'padrão'} entre ${voices.length} vozes disponíveis`);
+        
         if (config.voiceGender === 'feminina') {
+          // Buscar vozes femininas em português
           selectedVoice = voices.find(v => 
             (v.lang.includes('pt') || v.lang.includes('BR')) && 
             (v.name.toLowerCase().includes('female') || 
              v.name.toLowerCase().includes('feminina') ||
              v.name.toLowerCase().includes('woman') ||
              v.name.toLowerCase().includes('maria') ||
-             v.name.toLowerCase().includes('ana'))
+             v.name.toLowerCase().includes('ana') ||
+             v.name.toLowerCase().includes('luciana') ||
+             v.name.toLowerCase().includes('helena'))
           );
+          
+          // Fallback: qualquer voz que pareça feminina
+          if (!selectedVoice) {
+            selectedVoice = voices.find(v => 
+              v.lang.includes('pt') && 
+              (v.name.includes('2') || v.name.includes('Female') || v.name.includes('Woman'))
+            );
+          }
         } else {
+          // Buscar vozes masculinas em português
           selectedVoice = voices.find(v => 
             (v.lang.includes('pt') || v.lang.includes('BR')) && 
             (v.name.toLowerCase().includes('male') || 
              v.name.toLowerCase().includes('masculino') ||
              v.name.toLowerCase().includes('man') ||
              v.name.toLowerCase().includes('joão') ||
-             v.name.toLowerCase().includes('carlos'))
+             v.name.toLowerCase().includes('carlos') ||
+             v.name.toLowerCase().includes('ricardo') ||
+             v.name.toLowerCase().includes('daniel'))
           );
+          
+          // Fallback: qualquer voz que pareça masculina
+          if (!selectedVoice) {
+            selectedVoice = voices.find(v => 
+              v.lang.includes('pt') && 
+              (v.name.includes('1') || v.name.includes('Male') || v.name.includes('Man'))
+            );
+          }
         }
         
-        // Fallback para qualquer voz portuguesa
+        // Fallback final: primeira voz portuguesa disponível
         if (!selectedVoice) {
-          selectedVoice = voices.find(v => v.lang.includes('pt'));
+          selectedVoice = voices.find(v => v.lang.includes('pt') || v.lang.includes('BR'));
         }
         
         if (selectedVoice) {
           utterance.voice = selectedVoice;
-          console.log(`🎵 Voz ${config.voiceGender} selecionada: ${selectedVoice.name}`);
+          console.log(`🎵 Voz ${config.voiceGender || 'padrão'} selecionada: ${selectedVoice.name} (${selectedVoice.lang})`);
+        } else {
+          console.warn('⚠️ Nenhuma voz portuguesa encontrada, usando voz padrão do sistema');
         }
       };
       
@@ -539,8 +600,11 @@ class RealVideoGeneratorAI {
       }
     };
     
-    const genderAvatars = avatars[config.avatarGender as keyof typeof avatars];
-    return genderAvatars[config.avatarStyle as keyof typeof genderAvatars];
+    const selectedGender = config.avatarGender || 'masculino';
+    const selectedStyle = config.avatarStyle || 'professional';
+    
+    const genderAvatars = avatars[selectedGender as keyof typeof avatars];
+    return genderAvatars[selectedStyle as keyof typeof genderAvatars];
   }
 
   // Desenhar avatar ultra realista

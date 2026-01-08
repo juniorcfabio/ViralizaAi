@@ -117,7 +117,9 @@ const AIVideoGeneratorPage: React.FC = () => {
         avatarStyle: config.avatarStyle,
         voiceStyle: config.voiceStyle,
         duration: config.duration,
-        background: config.background
+        background: config.background,
+        avatarGender: config.avatarGender,
+        voiceGender: config.voiceGender
       };
 
       const video = await videoService.generateRealVideo(videoConfig);
@@ -144,7 +146,9 @@ const AIVideoGeneratorPage: React.FC = () => {
           avatarStyle: config.avatarStyle,
           voiceStyle: config.voiceStyle,
           duration: config.duration,
-          background: config.background
+          background: config.background,
+          avatarGender: config.avatarGender,
+          voiceGender: config.voiceGender
         };
         
         const demoVideo = await videoService.generateRealVideo(demoConfig);
