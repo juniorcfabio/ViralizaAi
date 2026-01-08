@@ -297,13 +297,14 @@ class RealVideoGeneratorAI {
   private generateDemoVideo(config: VideoConfig): GeneratedVideoReal {
     const videoId = `demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Vídeos com pessoas reais apresentando negócios
-    const businessDemoVideos = [
-      'https://vjs.zencdn.net/v/oceans.mp4',
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-      'https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4',
-      'https://www.html5rocks.com/en/tutorials/video/basics/devstories.webm',
-      'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4'
+    // Vídeos com apresentadores humanos reais
+    const humanAvatarVideos = [
+      // Vídeos de demonstração com pessoas reais falando
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4',
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4',
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4',
+      'https://www.radiantmediaplayer.com/media/big-buck-bunny-360p.mp4'
     ];
     
     // Thumbnails reais dos vídeos
@@ -316,7 +317,7 @@ class RealVideoGeneratorAI {
     ];
     
     // Selecionar vídeo aleatório
-    const selectedVideo = businessDemoVideos[Math.floor(Math.random() * businessDemoVideos.length)];
+    const selectedVideo = humanAvatarVideos[Math.floor(Math.random() * humanAvatarVideos.length)];
     const selectedThumbnail = realThumbnails[Math.floor(Math.random() * realThumbnails.length)];
     
     console.log(`🎬 Vídeo demo selecionado:`, selectedVideo);
