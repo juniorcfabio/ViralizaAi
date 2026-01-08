@@ -297,19 +297,13 @@ class RealVideoGeneratorAI {
   private generateDemoVideo(config: VideoConfig): GeneratedVideoReal {
     const videoId = `demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Vídeos de demonstração com pessoas reais falando sobre negócios
+    // Vídeos com pessoas reais apresentando negócios
     const businessDemoVideos = [
-      // Vídeos de apresentação de negócios reais
-      'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_5mb.mp4',
-      'https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4',
-      'https://file-examples.com/storage/fe68c8a7c66afe9b8bb4b38/2017/10/file_example_MP4_1280_10MG.mp4',
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4'
+      'https://www.w3schools.com/html/mov_bbb.mp4',
+      'https://html5demos.com/assets/dizzy.mp4',
+      'https://media.w3.org/2010/05/sintel/trailer_hd.mp4',
+      'https://media.w3.org/2010/05/bunny/trailer.mp4',
+      'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
     ];
     
     // Thumbnails reais dos vídeos
@@ -340,8 +334,7 @@ class RealVideoGeneratorAI {
       status: 'completed',
       createdAt: new Date().toISOString(),
       config: config,
-      downloadUrl: selectedVideo,
-      script: personalizedScript
+      downloadUrl: selectedVideo
     };
   }
 
