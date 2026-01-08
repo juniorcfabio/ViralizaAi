@@ -21,6 +21,8 @@ const AIVideoGeneratorPage: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<GeneratedVideo | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState('');
+  const [generationStep, setGenerationStep] = useState(0);
   const [videoService] = useState(() => RealVideoGeneratorAI.getInstance());
   const [priceService] = useState(() => RealTimePriceSyncService.getInstance());
   const [currentPrice, setCurrentPrice] = useState(197.00);
@@ -76,10 +78,32 @@ const AIVideoGeneratorPage: React.FC = () => {
     }
 
     setIsGenerating(true);
+    setGenerationStep(0);
+    setGenerationProgress('Iniciando geração...');
     
     try {
       console.log('🎬 Iniciando geração REAL de vídeo...');
       
+      // Simular progresso das etapas
+      const progressSteps = [
+        'Gerando script personalizado...',
+        'Criando áudio com IA...',
+        'Gerando avatar...',
+        'Criando background...',
+        'Compondo vídeo final...'
+      ];
+
+      // Atualizar progresso durante a geração
+      const progressInterval = setInterval(() => {
+        setGenerationStep(prev => {
+          const next = prev + 1;
+          if (next < progressSteps.length) {
+            setGenerationProgress(progressSteps[next]);
+          }
+          return next;
+        });
+      }, 2000);
+
       const videoConfig: VideoGenerationConfig = {
         businessType: config.businessType,
         businessName: config.businessName,
@@ -93,12 +117,39 @@ const AIVideoGeneratorPage: React.FC = () => {
       };
 
       const video = await videoService.generateRealVideo(videoConfig);
+      
+      clearInterval(progressInterval);
+      setGenerationStep(5);
+      setGenerationProgress('Vídeo gerado com sucesso!');
+      
       setGeneratedVideo(video);
       console.log('✅ Vídeo gerado com sucesso:', video);
       
     } catch (error) {
       console.error('❌ Erro na geração do vídeo:', error);
-      alert('❌ Erro ao gerar vídeo. Tente novamente.');
+      setGenerationProgress('Erro na geração. Usando vídeo demo...');
+      
+      // Ainda tentar gerar um vídeo demo
+      try {
+        const demoConfig: VideoGenerationConfig = {
+          businessType: config.businessType || 'Negócio',
+          businessName: config.businessName || 'Empresa Demo',
+          targetAudience: config.targetAudience || 'Público geral',
+          mainMessage: config.mainMessage || 'Mensagem de demonstração',
+          callToAction: config.callToAction || 'Entre em contato',
+          avatarStyle: config.avatarStyle,
+          voiceStyle: config.voiceStyle,
+          duration: config.duration,
+          background: config.background
+        };
+        
+        const demoVideo = await videoService.generateRealVideo(demoConfig);
+        setGeneratedVideo(demoVideo);
+        setGenerationProgress('Vídeo demo gerado com sucesso!');
+      } catch (demoError) {
+        console.error('❌ Erro ao gerar vídeo demo:', demoError);
+        alert('❌ Erro ao gerar vídeo. Tente novamente ou verifique sua conexão.');
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -222,9 +273,16 @@ const AIVideoGeneratorPage: React.FC = () => {
               
               <div className="aspect-video bg-primary rounded-xl mb-6 flex items-center justify-center border-2 border-dashed border-gray-600">
                 {isGenerating ? (
-                  <div className="text-center">
+                  <div className="text-center w-full max-w-md">
                     <div className="animate-spin w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                    <p className="text-gray-300">Gerando vídeo...</p>
+                    <p className="text-white font-semibold mb-3">{generationProgress}</p>
+                    <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
+                      <div 
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${(generationStep / 5) * 100}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-gray-300 text-sm">Etapa {generationStep}/5</p>
                   </div>
                 ) : generatedVideo ? (
                   <div className="text-center">
