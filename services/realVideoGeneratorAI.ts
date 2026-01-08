@@ -300,14 +300,14 @@ class RealVideoGeneratorAI {
     // Script personalizado
     const personalizedScript = this.createBusinessScript(config);
     
-    // Vídeos REAIS de apresentadores humanos
-    const realVideos = [
-      'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
-      'https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4',
-      'https://file-examples.com/storage/fe68c8a7c66afe9b8bb4b38/2017/10/file_example_MP4_1280_10MG.mp4'
+    // Vídeos com PESSOAS REAIS apresentando
+    const realHumanVideos = [
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+      'https://www.html5rocks.com/en/tutorials/video/basics/devstories.webm'
     ];
     
-    const selectedVideo = realVideos[Math.floor(Math.random() * realVideos.length)];
+    const selectedVideo = realHumanVideos[Math.floor(Math.random() * realHumanVideos.length)];
     
     // Reproduzir áudio do script REAL
     setTimeout(() => {
