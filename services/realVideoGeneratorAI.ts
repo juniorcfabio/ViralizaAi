@@ -425,9 +425,17 @@ class RealVideoGeneratorAI {
       
       const utterance = new SpeechSynthesisUtterance(script);
       utterance.lang = 'pt-BR';
-      utterance.rate = 0.85; // Velocidade ultra natural
-      utterance.pitch = config.voiceGender === 'feminina' ? 1.2 : 0.9; // Tom baseado no gênero
-      utterance.volume = 1.0;
+      
+      // Configurações ultra humanizadas baseadas no gênero
+      if (config.voiceGender === 'feminina') {
+        utterance.rate = 0.75; // Mais devagar para soar mais natural
+        utterance.pitch = 1.15; // Tom feminino mais suave
+        utterance.volume = 0.95; // Volume ligeiramente menor para suavidade
+      } else {
+        utterance.rate = 0.7; // Ainda mais devagar para masculino
+        utterance.pitch = 0.85; // Tom masculino mais grave e natural
+        utterance.volume = 1.0; // Volume normal
+      }
       
       // Selecionar voz baseada no gênero escolhido
       const setGenderVoice = () => {
@@ -437,9 +445,10 @@ class RealVideoGeneratorAI {
         console.log(`🔍 Buscando voz ${config.voiceGender || 'padrão'} entre ${voices.length} vozes disponíveis`);
         
         if (config.voiceGender === 'feminina') {
-          // Buscar vozes femininas em português
+          // Priorizar vozes femininas mais naturais
           selectedVoice = voices.find(v => 
             (v.lang.includes('pt') || v.lang.includes('BR')) && 
+            (v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('microsoft')) &&
             (v.name.toLowerCase().includes('female') || 
              v.name.toLowerCase().includes('feminina') ||
              v.name.toLowerCase().includes('woman') ||
@@ -449,7 +458,16 @@ class RealVideoGeneratorAI {
              v.name.toLowerCase().includes('helena'))
           );
           
-          // Fallback: qualquer voz que pareça feminina
+          // Fallback 1: Qualquer voz Google/Microsoft feminina
+          if (!selectedVoice) {
+            selectedVoice = voices.find(v => 
+              v.lang.includes('pt') && 
+              (v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('microsoft')) &&
+              (v.name.includes('2') || v.name.includes('Female') || v.name.includes('Woman'))
+            );
+          }
+          
+          // Fallback 2: Qualquer voz feminina
           if (!selectedVoice) {
             selectedVoice = voices.find(v => 
               v.lang.includes('pt') && 
@@ -457,9 +475,10 @@ class RealVideoGeneratorAI {
             );
           }
         } else {
-          // Buscar vozes masculinas em português
+          // Priorizar vozes masculinas mais naturais
           selectedVoice = voices.find(v => 
             (v.lang.includes('pt') || v.lang.includes('BR')) && 
+            (v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('microsoft')) &&
             (v.name.toLowerCase().includes('male') || 
              v.name.toLowerCase().includes('masculino') ||
              v.name.toLowerCase().includes('man') ||
@@ -469,7 +488,16 @@ class RealVideoGeneratorAI {
              v.name.toLowerCase().includes('daniel'))
           );
           
-          // Fallback: qualquer voz que pareça masculina
+          // Fallback 1: Qualquer voz Google/Microsoft masculina
+          if (!selectedVoice) {
+            selectedVoice = voices.find(v => 
+              v.lang.includes('pt') && 
+              (v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('microsoft')) &&
+              (v.name.includes('1') || v.name.includes('Male') || v.name.includes('Man'))
+            );
+          }
+          
+          // Fallback 2: Qualquer voz masculina
           if (!selectedVoice) {
             selectedVoice = voices.find(v => 
               v.lang.includes('pt') && 
@@ -837,9 +865,9 @@ class RealVideoGeneratorAI {
     for (let i = 0; i < 20; i++) {
       const x = centerX + Math.sin(frame * 0.02 + i) * 200;
       const y = centerY + Math.cos(frame * 0.03 + i) * 150;
-      const size = Math.sin(frame * 0.05 + i) * 3 + 2;
+      const size = Math.abs(Math.sin(frame * 0.05 + i) * 3) + 2; // Garantir que o tamanho seja sempre positivo
       
-      ctx.fillStyle = `rgba(0, 212, 255, ${0.3 + Math.sin(frame * 0.1 + i) * 0.2})`;
+      ctx.fillStyle = `rgba(0, 212, 255, ${0.3 + Math.abs(Math.sin(frame * 0.1 + i)) * 0.2})`;
       ctx.beginPath();
       ctx.arc(x, y, size, 0, Math.PI * 2);
       ctx.fill();
@@ -848,10 +876,11 @@ class RealVideoGeneratorAI {
     // Ondas sonoras quando falando
     if (progress > 0.05 && progress < 0.95) {
       for (let i = 1; i <= 4; i++) {
+        const radius = Math.abs(30 * i + Math.sin(frame * 0.3) * 10); // Garantir que o raio seja sempre positivo
         ctx.strokeStyle = `rgba(0, 212, 255, ${0.5 - i * 0.1})`;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(centerX + 150, centerY - 20, 30 * i + Math.sin(frame * 0.3) * 10, 0, Math.PI * 2);
+        ctx.arc(centerX + 150, centerY - 20, radius, 0, Math.PI * 2);
         ctx.stroke();
       }
     }
