@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import { SocialAccount } from '../../types';
 import PaywallModal from '../ui/PaywallModal';
 

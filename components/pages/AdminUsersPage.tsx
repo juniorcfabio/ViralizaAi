@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import { User, UserStatus } from '../../types';
 import UserFormModal from '../ui/UserFormModal';
 import UserAccountReset from '../ui/UserAccountReset';

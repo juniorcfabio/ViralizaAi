@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 
 interface ServiceArea {
   type: 'neighborhood' | 'city' | 'state' | 'country' | 'worldwide';

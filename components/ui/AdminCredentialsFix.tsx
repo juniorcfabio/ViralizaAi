@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 
 const AdminCredentialsFix: React.FC = () => {
     const [message, setMessage] = useState('');

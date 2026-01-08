@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, UserStatus, FeatureKey } from '../../types';
-import { useAuth, AdminUserData } from '../../contexts/AuthContext';
+import { useAuth, AdminUserData } from '../../contexts/AuthContextFixed';
 
 interface UserFormModalProps {
     user: User | null;

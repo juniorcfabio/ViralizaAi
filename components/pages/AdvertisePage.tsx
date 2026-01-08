@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import { AdPartner, AdPricingConfig } from '../../types';
 import { getAdPricingConfig } from '../../services/dbService';
 import { useNavigate } from 'react-router-dom';

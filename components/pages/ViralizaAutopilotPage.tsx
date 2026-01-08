@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AutopilotActionLog } from '../../types';
 import { generateAutopilotAction } from '../../services/geminiService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import FeatureLockedOverlay from '../ui/FeatureLockedOverlay';
 
 // Icons

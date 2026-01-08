@@ -14,7 +14,7 @@ import {
     Legend,
     ResponsiveContainer
 } from 'recharts';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import { Transaction, TransactionStatus, User, AdminPayoutConfig } from '../../types';
 
 // Icons

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import { useLanguage } from '../../contexts/LanguageContext';
 import RealDataService from '../../services/realDataService';
 import { useNavigate } from 'react-router-dom';

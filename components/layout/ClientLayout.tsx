@@ -3,7 +3,7 @@ import React from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import ClientSidebar from '../ui/ClientSidebar';
 import MobileNav from '../ui/MobileNav';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 
 const ClientLayout: React.FC = () => {
     const { isSubscriptionActive } = useAuth();
