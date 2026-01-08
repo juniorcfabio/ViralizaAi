@@ -27,7 +27,7 @@ const ToolAccessControl: React.FC<ToolAccessControlProps> = ({
     return <>{children}</>;
   }
 
-  const hasAccess = hasToolAccess(user.plan, toolKey, user.addOns);
+  const hasAccess = hasToolAccess(user.plan, toolKey, user.addOns, user.type);
 
   if (hasAccess) {
     return <>{children}</>;

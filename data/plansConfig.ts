@@ -159,8 +159,10 @@ export const TOOL_DESCRIPTIONS: Record<FeatureKey, { name: string; description: 
 /**
  * Função para verificar se usuário tem acesso a uma ferramenta
  */
-export function hasToolAccess(userPlan: string | undefined, toolKey: FeatureKey, userAddOns?: FeatureKey[]): boolean {
-  // Admin sempre tem acesso
+export function hasToolAccess(userPlan: string | undefined, toolKey: FeatureKey, userAddOns?: FeatureKey[], userType?: string): boolean {
+  // Admin sempre tem acesso total a todas as ferramentas gratuitamente
+  if (userType === 'admin') return true;
+  
   if (!userPlan) return false;
   
   // Verificar se tem como add-on
@@ -176,7 +178,12 @@ export function hasToolAccess(userPlan: string | undefined, toolKey: FeatureKey,
 /**
  * Função para obter ferramentas disponíveis por plano
  */
-export function getAvailableTools(userPlan: string | undefined, userAddOns?: FeatureKey[]): FeatureKey[] {
+export function getAvailableTools(userPlan: string | undefined, userAddOns?: FeatureKey[], userType?: string): FeatureKey[] {
+  // Admin tem acesso a TODAS as ferramentas gratuitamente
+  if (userType === 'admin') {
+    return Object.keys(TOOL_DESCRIPTIONS) as FeatureKey[];
+  }
+  
   if (!userPlan) return [];
   
   const plan = SUBSCRIPTION_PLANS.find(p => p.id === userPlan);

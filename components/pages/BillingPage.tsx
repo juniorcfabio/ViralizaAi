@@ -347,6 +347,35 @@ const AddPaymentMethodModal: React.FC<{
 
 const BillingPage: React.FC = () => {
     const { user, updateUser } = useAuth();
+
+    // Admin tem acesso gratuito a todos os planos - não deve ver página de cobrança
+    if (user?.type === 'admin') {
+        return (
+            <div className="min-h-screen bg-primary text-white">
+                <div className="container mx-auto px-6 py-12">
+                    <div className="text-center">
+                        <h1 className="text-4xl font-bold mb-4">🔧 Módulo Administrativo</h1>
+                        <p className="text-xl mb-8">Como administrador, você tem acesso gratuito a todos os planos e ferramentas</p>
+                        <div className="bg-secondary rounded-2xl p-8 max-w-2xl mx-auto">
+                            <h2 className="text-2xl font-bold mb-4 text-green-400">✅ Acesso Total Liberado</h2>
+                            <p className="text-gray-300 mb-6">
+                                Você pode testar e validar todas as funcionalidades sem restrições:
+                            </p>
+                            <ul className="text-left text-gray-300 space-y-2 mb-6">
+                                <li>• Todos os planos (Mensal, Trimestral, Semestral, Anual)</li>
+                                <li>• Todas as ferramentas premium</li>
+                                <li>• Funcionalidades completas sem limitações</li>
+                                <li>• Acesso para teste e validação</li>
+                            </ul>
+                            <p className="text-sm text-yellow-300">
+                                <strong>Nota:</strong> Cobrança e assinaturas são aplicadas apenas no módulo usuário.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
     const { t } = useLanguage();
     const navigate = useNavigate();
 
