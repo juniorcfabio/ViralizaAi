@@ -164,11 +164,30 @@ const AIVideoGeneratorPage: React.FC = () => {
     if (!generatedVideo) return;
     
     try {
-      await videoService.downloadVideo(generatedVideo);
-      alert('🎉 Vídeo baixado com sucesso!');
+      console.log('📥 Iniciando download do vídeo:', generatedVideo.videoUrl);
+      
+      // Tentar download direto primeiro
+      const link = document.createElement('a');
+      link.href = generatedVideo.videoUrl;
+      link.download = `${generatedVideo.config.businessName}_video_${generatedVideo.id}.mp4`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      alert('🎉 Download iniciado! Verifique sua pasta de downloads.');
+      
     } catch (error) {
       console.error('Erro ao baixar vídeo:', error);
-      alert('❌ Erro ao baixar o vídeo. Tente novamente.');
+      
+      // Fallback: abrir em nova aba
+      try {
+        window.open(generatedVideo.videoUrl, '_blank');
+        alert('📺 Vídeo aberto em nova aba. Clique com botão direito e "Salvar vídeo como..."');
+      } catch (fallbackError) {
+        console.error('Erro no fallback:', fallbackError);
+        alert('❌ Erro ao baixar o vídeo. Tente copiar a URL: ' + generatedVideo.videoUrl);
+      }
     }
   };
 
@@ -322,6 +341,68 @@ const AIVideoGeneratorPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de Preview do Vídeo */}
+      {showPreview && generatedVideo && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+          <div className="bg-secondary rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold text-white">🎬 Preview do Vídeo</h3>
+              <button 
+                onClick={() => setShowPreview(false)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="aspect-video bg-black rounded-lg mb-6 overflow-hidden">
+              <video 
+                controls 
+                autoPlay
+                className="w-full h-full"
+                poster={generatedVideo.thumbnailUrl}
+              >
+                <source src={generatedVideo.videoUrl} type="video/mp4" />
+                Seu navegador não suporta reprodução de vídeo.
+              </video>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-6 text-sm">
+              <div className="space-y-2">
+                <h4 className="font-semibold text-accent">Detalhes do Vídeo:</h4>
+                <p><span className="text-gray-400">ID:</span> {generatedVideo.id}</p>
+                <p><span className="text-gray-400">Duração:</span> {generatedVideo.duration} segundos</p>
+                <p><span className="text-gray-400">Qualidade:</span> {generatedVideo.quality}</p>
+                <p><span className="text-gray-400">Status:</span> {generatedVideo.status}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-semibold text-accent">Configuração:</h4>
+                <p><span className="text-gray-400">Negócio:</span> {generatedVideo.config.businessName}</p>
+                <p><span className="text-gray-400">Avatar:</span> {generatedVideo.config.avatarStyle}</p>
+                <p><span className="text-gray-400">Voz:</span> {generatedVideo.config.voiceStyle}</p>
+                <p><span className="text-gray-400">Background:</span> {generatedVideo.config.background}</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-4 mt-6 justify-center">
+              <button 
+                onClick={handleDownloadVideo}
+                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center gap-2"
+              >
+                📥 Baixar Vídeo
+              </button>
+              <button 
+                onClick={() => setShowPreview(false)}
+                className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
