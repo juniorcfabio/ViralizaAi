@@ -299,11 +299,11 @@ class RealVideoGeneratorAI {
     
     // Vídeos com pessoas reais apresentando negócios
     const businessDemoVideos = [
-      'https://sample-videos.com/zip/10/mp4/SampleVideo_640x360_1mb.mp4',
-      'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_2mb.mp4',
-      'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4',
-      'https://filesamples.com/samples/video/mp4/SampleVideo_640x360_1mb.mp4',
-      'https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4'
+      'https://vjs.zencdn.net/v/oceans.mp4',
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+      'https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4',
+      'https://www.html5rocks.com/en/tutorials/video/basics/devstories.webm',
+      'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4'
     ];
     
     // Thumbnails reais dos vídeos
