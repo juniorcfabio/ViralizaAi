@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import { useNavigate } from 'react-router-dom';
 import EbookGeneratorComponent from '../ui/EbookGenerator';
 import { GeneratedEbook } from '../../services/ebookGenerator';
@@ -147,7 +147,7 @@ const EbookGeneratorPage: React.FC = () => {
           </p>
         </div>
 
-        {!hasEbookAccess ? (
+        {!hasEbookAccess && user?.type !== 'admin' ? (
           <div className="bg-secondary/95 backdrop-blur-lg rounded-3xl shadow-2xl p-10 border border-gray-700 max-w-4xl mx-auto relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-blue-600/10 to-accent/10"></div>
             <div className="relative z-10">

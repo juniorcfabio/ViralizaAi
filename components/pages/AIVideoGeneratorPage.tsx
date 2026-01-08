@@ -57,11 +57,20 @@ const AIVideoGeneratorPage: React.FC = () => {
 
   useEffect(() => {
     const checkVideoAccess = () => {
+      let hasAccess = false;
+      
+      // Admin sempre tem acesso total - SEM VERIFICAÇÕES DE PAGAMENTO
+      if (user?.type === 'admin') {
+        hasAccess = true;
+        console.log('✅ Acesso ADMIN - Total e irrestrito');
+        setHasVideoAccess(hasAccess);
+        return;
+      }
+      
+      // Para usuários normais, verificar pagamentos e add-ons
       const urlParams = new URLSearchParams(window.location.search);
       const activated = urlParams.get('activated') === 'true';
       const userIdFromUrl = urlParams.get('userId');
-      
-      let hasAccess = false;
       
       // 1. Verificar no usuário atual
       if (user?.addOns?.includes('ai_video_generator') || 
@@ -131,6 +140,7 @@ const AIVideoGeneratorPage: React.FC = () => {
       console.log('🔍 Verificação de acesso completa:', { 
         hasAccess, 
         userId: user?.id, 
+        userType: user?.type,
         activated, 
         userIdFromUrl,
         userAddOns: user?.addOns,
@@ -330,7 +340,7 @@ const AIVideoGeneratorPage: React.FC = () => {
     }
   };
 
-  if (!hasVideoAccess) {
+  if (!hasVideoAccess && user?.type !== 'admin') {
     return (
       <div className="min-h-screen bg-primary text-white">
         <div className="container mx-auto px-6 py-12">
