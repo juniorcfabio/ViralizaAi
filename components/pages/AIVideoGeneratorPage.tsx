@@ -121,8 +121,13 @@ const AIVideoGeneratorPage: React.FC = () => {
     }
   };
 
+  // ADMIN NUNCA VÊ PÁGINA DE COMPRA - ACESSO DIRETO
+  if (!user) {
+    return <div>Carregando...</div>;
+  }
+
   // Se não é admin e não tem acesso, mostrar página de compra
-  if (user?.type !== 'admin' && !hasVideoAccess) {
+  if (user.type !== 'admin' && !hasVideoAccess) {
     return (
       <div className="min-h-screen bg-primary text-white">
         <div className="container mx-auto px-6 py-12">

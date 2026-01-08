@@ -59,8 +59,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const hasAccess = (feature: FeatureKey): boolean => {
-    if (user?.type === 'admin') return true;
-    return true; // Acesso liberado para desenvolvimento
+    console.log('🔍 hasAccess chamado para feature:', feature, 'usuário:', user?.type);
+    if (user?.type === 'admin') {
+      console.log('✅ Admin tem acesso total a:', feature);
+      return true;
+    }
+    
+    // Para usuários normais, verificar planos e add-ons
+    if (!user) return false;
+    
+    // Verificar se tem no plano atual
+    const userPlan = user.plan;
+    if (userPlan) {
+      // Aqui você pode adicionar lógica específica de planos
+      return true; // Temporariamente liberado para desenvolvimento
+    }
+    
+    // Verificar add-ons
+    if (user.addOns && user.addOns.includes(feature)) {
+      return true;
+    }
+    
+    return false;
   };
 
   useEffect(() => {
