@@ -46,6 +46,91 @@ select {
 html {
   scroll-behavior: smooth;
 }
+
+/* Animações para carrossel de empresas parceiras */
+@keyframes infinite-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-33.333%);
+  }
+}
+
+.animate-infinite-scroll {
+  animation: infinite-scroll 30s linear infinite;
+}
+
+.pause-animation {
+  animation-play-state: paused;
+}
+
+/* Animação de pulse para badges */
+@keyframes pulse-badge {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-badge {
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+/* Animação de brilho para logos */
+@keyframes shine {
+  0% {
+    transform: translateX(-200%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}
+
+.animate-shine {
+  animation: shine 1s ease-out;
+}
+
+/* Efeitos de hover suaves */
+.logo-hover-effect {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logo-hover-effect:hover {
+  transform: scale(1.05) translateY(-2px);
+  filter: brightness(1.1);
+}
+
+/* Gradientes animados */
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+/* Responsividade para carrossel */
+@media (max-width: 640px) {
+  .animate-infinite-scroll {
+    animation-duration: 20s;
+  }
+}
+
+@media (max-width: 480px) {
+  .animate-infinite-scroll {
+    animation-duration: 15s;
+  }
+}
+
 :root {
   --color-primary: #02042B;
   --color-secondary: #0B1747;

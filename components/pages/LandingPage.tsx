@@ -1316,6 +1316,7 @@ const AffiliateSection: React.FC<{ onRegister: () => void }> = ({ onRegister }) 
 
 const ClientLogos: React.FC = () => {
     const [logos, setLogos] = useState<TrustedCompany[]>([]);
+    const [isPaused, setIsPaused] = useState(false);
 
     useEffect(() => {
         const loadLogos = async () => {
@@ -1327,24 +1328,51 @@ const ClientLogos: React.FC = () => {
 
     if (logos.length === 0) return null;
 
-    const extendedLogos = [...logos, ...logos];
+    // Triplicar logos para carrossel infinito suave
+    const extendedLogos = [...logos, ...logos, ...logos];
 
     return (
-        <div className="w-full overflow-hidden [mask-image:_linear_gradient(to_right,transparent_0,_black_128px,_black_calc(100%-128px),transparent_100%)]">
-            <ul className="flex animate-scroll w-max">
+        <div className="w-full overflow-hidden relative">
+            {/* Gradientes laterais para efeito fade */}
+            <div className="absolute left-0 top-0 w-20 h-full bg-gradient-to-r from-secondary to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute right-0 top-0 w-20 h-full bg-gradient-to-l from-secondary to-transparent z-10 pointer-events-none"></div>
+            
+            {/* Container do carrossel */}
+            <div 
+                className={`flex w-max ${isPaused ? 'pause-animation' : 'animate-infinite-scroll'}`}
+                onMouseEnter={() => setIsPaused(true)}
+                onMouseLeave={() => setIsPaused(false)}
+            >
                 {extendedLogos.map((logo, index) => (
-                    <li key={`${logo.id}-${index}`} className="flex-shrink-0 mx-8">
+                    <div 
+                        key={`${logo.id}-${index}`} 
+                        className="flex-shrink-0 mx-6 sm:mx-8 lg:mx-12 group"
+                    >
                         <a 
                             href={logo.url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="text-2xl font-bold text-gray-500 filter grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer"
+                            className="block transform transition-all duration-500 ease-out group-hover:scale-110"
                         >
-                            {logo.name}
+                            {/* Logo com efeitos visuais */}
+                            <div className="relative">
+                                {/* Glow effect */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                
+                                {/* Logo text */}
+                                <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 px-4 py-3 rounded-lg border border-gray-700/50 group-hover:border-accent/50 transition-all duration-500">
+                                    <span className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-gray-300 to-gray-500 group-hover:from-white group-hover:to-accent bg-clip-text text-transparent transition-all duration-500">
+                                        {logo.name}
+                                    </span>
+                                </div>
+                                
+                                {/* Shine effect */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-out"></div>
+                            </div>
                         </a>
-                    </li>
+                    </div>
                 ))}
-            </ul>
+            </div>
         </div>
     );
 };
@@ -1352,16 +1380,55 @@ const ClientLogos: React.FC = () => {
 const Footer: React.FC = () => {
     const { t } = useLanguage();
     return (
-        <footer className="bg-secondary py-12">
+        <footer className="bg-secondary py-16">
             <div className="container mx-auto px-6 text-center text-gray-dark flex flex-col items-center">
-                 <div className="w-full mb-10">
-                    <h3 className="text-sm font-semibold uppercase tracking-widest text-gray-500 mb-6">
-                        CONFIADO POR EMPRESAS GLOBAIS
-                    </h3>
-                    <ClientLogos />
+                <div className="w-full mb-12">
+                    {/* Título melhorado com gradiente */}
+                    <div className="mb-8">
+                        <h3 className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
+                            🌟 CONFIADO POR GIGANTES GLOBAIS 🌟
+                        </h3>
+                        <p className="text-sm text-gray-400 max-w-2xl mx-auto">
+                            Mais de 30 empresas líderes mundiais confiam em nossa tecnologia de IA para impulsionar seus negócios
+                        </p>
+                    </div>
+                    
+                    {/* Carrossel de logos */}
+                    <div className="bg-gradient-to-r from-primary/50 via-secondary/80 to-primary/50 rounded-2xl p-6 border border-gray-700/30">
+                        <ClientLogos />
+                    </div>
+                    
+                    {/* Estatísticas impressionantes */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 max-w-4xl mx-auto">
+                        <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 p-4 rounded-lg border border-blue-500/20">
+                            <div className="text-2xl font-bold text-blue-400">30+</div>
+                            <div className="text-xs text-gray-400">Empresas Parceiras</div>
+                        </div>
+                        <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 p-4 rounded-lg border border-green-500/20">
+                            <div className="text-2xl font-bold text-green-400">$2.8T</div>
+                            <div className="text-xs text-gray-400">Valor de Mercado</div>
+                        </div>
+                        <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 p-4 rounded-lg border border-purple-500/20">
+                            <div className="text-2xl font-bold text-purple-400">500M+</div>
+                            <div className="text-xs text-gray-400">Usuários Ativos</div>
+                        </div>
+                        <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 p-4 rounded-lg border border-orange-500/20">
+                            <div className="text-2xl font-bold text-orange-400">195</div>
+                            <div className="text-xs text-gray-400">Países Atendidos</div>
+                        </div>
+                    </div>
                 </div>
+                
                 <Logo />
-                <p className="mt-4">&copy; 2025 ViralizaAi. {t('footer.rights')}</p>
+                <p className="mt-4 text-sm">&copy; 2025 ViralizaAi. {t('footer.rights')}</p>
+                
+                {/* Links adicionais */}
+                <div className="flex flex-wrap justify-center gap-6 mt-6 text-xs text-gray-500">
+                    <a href="#" className="hover:text-accent transition-colors">Política de Privacidade</a>
+                    <a href="#" className="hover:text-accent transition-colors">Termos de Uso</a>
+                    <a href="#" className="hover:text-accent transition-colors">Suporte</a>
+                    <a href="#" className="hover:text-accent transition-colors">API</a>
+                </div>
             </div>
         </footer>
     );
