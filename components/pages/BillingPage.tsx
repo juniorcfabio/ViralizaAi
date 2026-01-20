@@ -779,7 +779,6 @@ const handleSubscribe = async (plan: Plan) => {
         else if (planName.includes('semestral')) billingCycle = 'semiannual';
         else if (planName.includes('anual')) billingCycle = 'annual';
 
-        // CONFIGURAÇÃO EXATA QUE FUNCIONAVA EM 02/01 e 07/01/2026
         const subscriptionData = {
             mode: 'subscription',
             line_items: [{
@@ -796,65 +795,33 @@ const handleSubscribe = async (plan: Plan) => {
                                  'year'
                     }
                 },
-            ?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    const handlePurchaseGrowthEngine = async (
-        label: string,
-        price: number
-    ): Promise<void> => {
-        if (!ensurePaymentMethod()) return;
-
-        setBuyingGrowthEngine(label);
-
-        try {
-            console.log('🚀 Iniciando compra do Motor de Crescimento via Stripe...');
-            const appBaseUrl = buildAppBaseUrl();
-
-            // Usar API Stripe unificada mais robusta
-            const response = await fetch(`${appBaseUrl}/api/stripe-payment-unified`, {
-                method: 'POST',
-                headers: {
+                quantity: 1
+            }],
+            success_url: `${appBaseUrl}/#/dashboard/social-tools?payment=success&plan=${encodeURIComponent(plan.name)}`,
+            cancel_url: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`,
+            customer_email: user.email,
+            metadata: {
+                productType: 'subscription',
+                planName: plan.name,
+                planId: plan.id || plan.name,
+                userId: user.id,
+                userEmail: user.email,
+                billingCycle: billingCycle
             }
         };
 
         showNotification('Redirecionando para o pagamento seguro...');
         await stripeService.processSubscriptionPayment(subscriptionData);
-            console.log('✅ Dados Motor recebidos:', data);
 
-            if (data.success && data.url) {
-
-// ...
-        }
-    };
-
-    return (
-        <>
-            <header className="mb-8">
-                <h2 className="text-3xl font-bold">Faturamento & Assinatura</h2>
-                <p className="text-gray-dark">
-                    Gerencie seu plano, métodos de pagamento e ferramentas avulsas.
-                </p>
-            </header>
-
-            {notification && (
-                <div className="bg-green-500 bg-opacity-20 text-green-300 p-3 rounded-lg mb-6 text-center">
-                    {notification}
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1 space-y-8">
-                    <div className="bg-secondary p-6 rounded-lg">
-                        <h3 className="text-xl font-bold mb-4">Seu Plano Atual</h3>
-                        {currentPlan ? (
-                            <>
-                                <p className="text-2xl font-bold text-accent">
-                                    {currentPlan.name}
-                                </p>
-                                <p className="text-lg text-gray-dark">
-                                    R$ {currentPlan.price}
-                                    {currentPlan.period}
+    } catch (error) {
+        console.error('Erro no pagamento:', error);
+        showNotification(
+            `Houve um erro ao iniciar o pagamento da assinatura. Tente novamente.` 
+        );
+    } finally {
+        setSubscribingPlan(null);
+    }
+};
                                 </p>
                                 <div className="mt-6 flex space-x-2">
                                     <button
