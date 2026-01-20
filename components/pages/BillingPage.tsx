@@ -762,15 +762,18 @@ const defaultGrowthEnginePricing = {
                 productType: 'subscription' as const,
                 userId: user.id,
                 userEmail: user.email,
-                successUrl: `${appBaseUrl}/#/dashboard/billing?success=true`,
-                cancelUrl: `${appBaseUrl}/#/dashboard/billing?canceled=true`,
+                successUrl: `${appBaseUrl}/#/dashboard/social-tools?payment=success&plan=${encodeURIComponent(plan.name)}`,
+                cancelUrl: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`,
                 planId: plan.id || plan.name,
                 planName: plan.name,
                 billingCycle: billingCycle,
                 metadata: {
+                    productType: 'subscription',
                     planName: plan.name,
+                    planId: plan.id || plan.name,
                     userId: user.id,
-                    userEmail: user.email
+                    userEmail: user.email,
+                    billingCycle: billingCycle
                 }
             };
 

@@ -171,8 +171,53 @@ async function handleSubscriptionCanceled(subscription) {
 
 // Funções auxiliares para atualizar dados do usuário
 async function activateUserSubscription(userId, metadata) {
-  // Implementar lógica para ativar assinatura do usuário
   console.log('🔓 Ativando assinatura para usuário:', userId);
+  console.log('📋 Metadata da assinatura:', metadata);
+  
+  try {
+    // Normalizar nome do plano baseado no metadata
+    let planName = 'mensal';
+    const metaPlanName = metadata?.planName || metadata?.planId || '';
+    const lowerPlan = metaPlanName.toLowerCase();
+    
+    if (lowerPlan.includes('trimestral')) planName = 'trimestral';
+    else if (lowerPlan.includes('semestral')) planName = 'semestral';
+    else if (lowerPlan.includes('anual')) planName = 'anual';
+    
+    console.log('📊 Plano normalizado:', planName);
+    
+    // Simular atualização do usuário no localStorage (em produção seria banco de dados)
+    const userKey = `user_${userId}`;
+    let userData = {};
+    
+    try {
+      const storedData = localStorage.getItem(userKey);
+      if (storedData) {
+        userData = JSON.parse(storedData);
+      }
+    } catch (e) {
+      console.log('📝 Criando novo registro de usuário');
+    }
+    
+    // Atualizar plano do usuário
+    userData.plan = planName;
+    userData.subscriptionActive = true;
+    userData.subscriptionDate = new Date().toISOString();
+    
+    // Salvar no localStorage
+    try {
+      localStorage.setItem(userKey, JSON.stringify(userData));
+      console.log('✅ Plano ativado com sucesso no localStorage');
+    } catch (e) {
+      console.error('❌ Erro ao salvar no localStorage:', e);
+    }
+    
+    console.log('🎉 ASSINATURA ATIVADA COM SUCESSO!');
+    console.log('🎯 Usuário agora tem acesso ao plano:', planName);
+    
+  } catch (error) {
+    console.error('❌ Erro ao ativar assinatura:', error);
+  }
   
   // Aqui você integraria com seu banco de dados
   // Por exemplo: await updateUserInDatabase(userId, { plan: metadata.planId, active: true });

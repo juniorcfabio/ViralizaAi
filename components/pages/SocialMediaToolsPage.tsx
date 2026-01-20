@@ -82,13 +82,44 @@ const ToolCard: React.FC<ToolCardProps> = ({ title, description, icon, available
 );
 
 const SocialMediaToolsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('automation');
   const [toolsEngine] = useState(() => SocialMediaToolsEngine.getInstance());
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const userPlan = user?.plan || 'mensal';
+
+  // Detectar retorno do pagamento Stripe e ativar plano
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('payment');
+    const planName = urlParams.get('plan');
+
+    if (paymentStatus === 'success' && planName && user) {
+      console.log('🎉 Pagamento aprovado! Ativando plano:', planName);
+      
+      // Normalizar nome do plano
+      let normalizedPlan = 'mensal';
+      const lowerPlan = planName.toLowerCase();
+      if (lowerPlan.includes('trimestral')) normalizedPlan = 'trimestral';
+      else if (lowerPlan.includes('semestral')) normalizedPlan = 'semestral';
+      else if (lowerPlan.includes('anual')) normalizedPlan = 'anual';
+
+      // Ativar plano imediatamente
+      updateUser(user.id, { plan: normalizedPlan });
+      setPaymentSuccess(true);
+
+      // Limpar URL
+      window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+
+      // Mostrar notificação de sucesso
+      setTimeout(() => {
+        alert(`🎉 Pagamento aprovado! Seu plano ${planName} foi ativado com sucesso. Agora você tem acesso a todas as ferramentas do plano!`);
+      }, 500);
+    }
+  }, [user, updateUser]);
 
   const toolCategories = {
     automation: {
