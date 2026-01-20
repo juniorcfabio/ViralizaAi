@@ -175,28 +175,52 @@ export class GeolocationService {
     return GeolocationService.instance;
   }
 
-  async detectUserLocation(): Promise<LocationData> {
-    // Verificar cache (válido por 1 hora)
-    if (this.locationCache && Date.now() < this.cacheExpiry) {
-      return this.locationCache;
+  public async getCurrentLocation(): Promise<LocationData> {
+    // Verificar cache primeiro
+    const cached = this.getCachedLocation();
+    if (cached && this.isCacheValid(cached.timestamp)) {
+      return cached.data;
     }
 
-    try {
-      // Tentar múltiplas APIs de geolocalização
-      const locationData = await this.tryMultipleGeoAPIs();
-      
-      // Cache por 1 hora
-      this.locationCache = locationData;
-      this.cacheExpiry = Date.now() + (60 * 60 * 1000);
-      
-      return locationData;
-    } catch (error) {
-      console.warn('Geolocation detection failed, using fallback:', error);
-      return this.getFallbackLocation();
-    }
+    // Retornar dados padrão imediatamente para evitar timeouts
+    const defaultLocation: LocationData = {
+      ip: 'unknown',
+      country: 'Brasil',
+      countryCode: 'BR',
+      region: 'São Paulo',
+      city: 'São Paulo',
+      timezone: 'America/Sao_Paulo',
+      currency: 'BRL',
+      language: 'pt'
+    };
+
+    // Tentar obter localização real em background (sem bloquear)
+    this.tryGeolocationAPIs()
+      .then(location => {
+        this.cacheLocation(location);
+      })
+      .catch(() => {
+        // Silenciar erros para não poluir console
+      });
+    
+    // Cachear e retornar dados padrão imediatamente
+    this.cacheLocation(defaultLocation);
+    return defaultLocation;
   }
 
-  private async tryMultipleGeoAPIs(): Promise<LocationData> {
+  private getCachedLocation(): { data: LocationData; timestamp: number } | null {
+    return this.locationCache;
+  }
+
+  private isCacheValid(timestamp: number): boolean {
+    return Date.now() - timestamp < 60 * 60 * 1000; // 1 hora
+  }
+
+  private cacheLocation(location: LocationData): void {
+    this.locationCache = { data: location, timestamp: Date.now() };
+  }
+
+  private async tryGeolocationAPIs(): Promise<LocationData> {
     const apis = [
       () => this.getLocationFromIPAPI(),
       () => this.getLocationFromIPInfo(),
@@ -219,22 +243,25 @@ export class GeolocationService {
 
   private async getLocationFromIPAPI(): Promise<LocationData> {
     try {
-      // Usar HTTPS para evitar Mixed Content error
+      // Criar controller de timeout manual para melhor compatibilidade
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos
+      
       const response = await fetch('https://ipapi.co/json/', {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
         },
-        signal: AbortSignal.timeout(5000) // 5 second timeout
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
       
       const data = await response.json();
-      
-      console.log('✅ IP-API response:', data);
       
       return {
         ip: data.ip || 'unknown',
@@ -247,20 +274,29 @@ export class GeolocationService {
         language: data.languages?.split(',')[0] || 'pt'
       };
     } catch (error) {
-      console.error('IP-API failed:', error);
+      // Silenciar erro de timeout para não poluir console
+      if (error.name === 'AbortError') {
+        console.warn('Geolocation timeout - usando dados padrão');
+      }
       throw error;
     }
   }
 
   private async getLocationFromIPInfo(): Promise<LocationData> {
     try {
+      // Criar controller de timeout manual para melhor compatibilidade
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos
+      
       const response = await fetch('https://ipinfo.io/json', {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
         },
-        signal: AbortSignal.timeout(5000)
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
