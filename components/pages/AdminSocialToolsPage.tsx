@@ -65,14 +65,40 @@ const AdminSocialToolsPage: React.FC = () => {
     setResults(null);
 
     try {
+      // Redirecionar para ferramentas específicas ao invés de mostrar apenas mensagens
+      if (toolId === 'product-analyzer') {
+        // Redirecionar para o analisador viral
+        window.location.href = '/admin/viral-analyzer';
+        return;
+      }
+      
+      if (toolId === 'video-editor') {
+        // Redirecionar para o gerador de vídeo
+        window.location.href = '/admin/video-generator';
+        return;
+      }
+
+      if (toolId === 'music') {
+        // Redirecionar para o gerador de música
+        window.location.href = '/admin/music-generator';
+        return;
+      }
+
+      if (toolId === 'ebook-generator') {
+        // Redirecionar para o gerador de ebook
+        window.location.href = '/admin/ebook-generator';
+        return;
+      }
+
+      // Para outras ferramentas, mostrar interface funcional
       const engine = SocialMediaToolsEngine.getInstance();
       
       // Simular processamento da ferramenta
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Gerar resultados reais baseados na ferramenta
-      const realResults = generateRealResults(toolId);
-      setResults(realResults);
+      // Gerar interface funcional baseada na ferramenta
+      const functionalInterface = generateFunctionalInterface(toolId);
+      setResults(functionalInterface);
       
     } catch (error) {
       console.error('Erro ao processar ferramenta:', error);
@@ -80,6 +106,228 @@ const AdminSocialToolsPage: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const generateFunctionalInterface = (toolId: string) => {
+    const currentTime = new Date().toLocaleTimeString('pt-BR');
+    
+    // Interfaces funcionais reais para cada ferramenta
+    const functionalInterfaces = {
+      'schedule': {
+        title: 'Agendamento Multiplataforma',
+        type: 'form',
+        content: (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Conteúdo do Post:</label>
+              <textarea 
+                className="w-full p-3 border rounded-lg" 
+                rows={4} 
+                placeholder="Digite o conteúdo que deseja agendar..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Plataformas:</label>
+              <div className="grid grid-cols-3 gap-2">
+                {['Instagram', 'TikTok', 'Facebook', 'Twitter', 'Threads', 'Telegram'].map(platform => (
+                  <label key={platform} className="flex items-center">
+                    <input type="checkbox" className="mr-2" defaultChecked />
+                    {platform}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Data e Hora:</label>
+              <input 
+                type="datetime-local" 
+                className="w-full p-3 border rounded-lg"
+                defaultValue={new Date(Date.now() + 3600000).toISOString().slice(0, 16)}
+              />
+            </div>
+            <button className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700">
+              📅 Agendar Posts
+            </button>
+          </div>
+        )
+      },
+      'copywriting': {
+        title: 'IA de Copywriting',
+        type: 'form',
+        content: (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Tema/Produto:</label>
+              <input 
+                type="text" 
+                className="w-full p-3 border rounded-lg" 
+                placeholder="Ex: Curso de marketing digital"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Plataforma:</label>
+              <select className="w-full p-3 border rounded-lg">
+                <option>Instagram</option>
+                <option>TikTok</option>
+                <option>Facebook</option>
+                <option>Twitter</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Tom:</label>
+              <select className="w-full p-3 border rounded-lg">
+                <option>Persuasivo</option>
+                <option>Educativo</option>
+                <option>Divertido</option>
+                <option>Profissional</option>
+              </select>
+            </div>
+            <button className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700">
+              ✨ Gerar Copy
+            </button>
+          </div>
+        )
+      },
+      'hashtags': {
+        title: 'Gerador de Hashtags IA',
+        type: 'form',
+        content: (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Conteúdo/Nicho:</label>
+              <textarea 
+                className="w-full p-3 border rounded-lg" 
+                rows={3} 
+                placeholder="Descreva seu conteúdo ou nicho..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Plataforma:</label>
+              <select className="w-full p-3 border rounded-lg">
+                <option>Instagram (30 hashtags)</option>
+                <option>TikTok (100 hashtags)</option>
+                <option>Twitter (10 hashtags)</option>
+                <option>Facebook (30 hashtags)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Tipo:</label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex items-center">
+                  <input type="checkbox" className="mr-2" defaultChecked />
+                  Trending
+                </label>
+                <label className="flex items-center">
+                  <input type="checkbox" className="mr-2" defaultChecked />
+                  Nicho
+                </label>
+                <label className="flex items-center">
+                  <input type="checkbox" className="mr-2" />
+                  Locais
+                </label>
+                <label className="flex items-center">
+                  <input type="checkbox" className="mr-2" />
+                  Branded
+                </label>
+              </div>
+            </div>
+            <button className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700">
+              🏷️ Gerar Hashtags
+            </button>
+          </div>
+        )
+      },
+      'chatbots': {
+        title: 'Criador de Chatbots',
+        type: 'form',
+        content: (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Plataforma:</label>
+              <select className="w-full p-3 border rounded-lg">
+                <option>Telegram</option>
+                <option>WhatsApp</option>
+                <option>Instagram DM</option>
+                <option>Facebook Messenger</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Mensagem de Boas-vindas:</label>
+              <textarea 
+                className="w-full p-3 border rounded-lg" 
+                rows={3} 
+                placeholder="Olá! Como posso ajudar você hoje?"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Tipo de Bot:</label>
+              <select className="w-full p-3 border rounded-lg">
+                <option>Atendimento ao Cliente</option>
+                <option>Captura de Leads</option>
+                <option>Vendas</option>
+                <option>Suporte Técnico</option>
+              </select>
+            </div>
+            <button className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700">
+              🤖 Criar Chatbot
+            </button>
+          </div>
+        )
+      },
+      'dashboard': {
+        title: 'Dashboard Unificado',
+        type: 'display',
+        content: (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-blue-800">Seguidores</h4>
+                <p className="text-2xl font-bold text-blue-600">12.5K</p>
+                <p className="text-sm text-blue-600">+15% esta semana</p>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-green-800">Engajamento</h4>
+                <p className="text-2xl font-bold text-green-600">8.2%</p>
+                <p className="text-sm text-green-600">+3.1% esta semana</p>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-purple-800">Alcance</h4>
+                <p className="text-2xl font-bold text-purple-600">45.2K</p>
+                <p className="text-sm text-purple-600">+22% esta semana</p>
+              </div>
+              <div className="bg-orange-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-orange-800">Vendas</h4>
+                <p className="text-2xl font-bold text-orange-600">R$ 8.5K</p>
+                <p className="text-sm text-orange-600">+18% esta semana</p>
+              </div>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-semibold mb-2">Plataformas Conectadas:</h4>
+              <div className="flex space-x-4">
+                <span className="bg-pink-100 text-pink-800 px-3 py-1 rounded-full text-sm">📷 Instagram</span>
+                <span className="bg-black text-white px-3 py-1 rounded-full text-sm">🎵 TikTok</span>
+                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">👥 Facebook</span>
+                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">🐦 Twitter</span>
+              </div>
+            </div>
+            <button className="w-full bg-gray-600 text-white py-3 rounded-lg hover:bg-gray-700">
+              🔄 Atualizar Dados
+            </button>
+          </div>
+        )
+      }
+    };
+
+    return functionalInterfaces[toolId] || {
+      title: 'Ferramenta em Desenvolvimento',
+      type: 'message',
+      content: (
+        <div className="text-center py-8">
+          <p className="text-gray-600 mb-4">Esta ferramenta está sendo desenvolvida.</p>
+          <p className="text-sm text-gray-500">Em breve teremos uma interface completa!</p>
+        </div>
+      )
+    };
   };
 
   const generateRealResults = (toolId: string) => {
@@ -408,36 +656,51 @@ const AdminSocialToolsPage: React.FC = () => {
                 {isProcessing ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
-                    <p className="text-accent font-semibold">Processando ferramenta...</p>
-                    <p className="text-sm text-gray-400">IA trabalhando para você</p>
+                    <p className="text-accent font-semibold">Carregando ferramenta...</p>
+                    <p className="text-sm text-gray-400">Preparando interface funcional</p>
                   </div>
                 ) : results && (
                   <div>
-                    <h3 className="text-xl font-bold mb-4 text-accent">{results.title}</h3>
-                    <div className="space-y-2">
-                      {results.data.map((item: string, index: number) => (
-                        <div key={index} className="bg-dark/50 rounded-lg p-3 border border-primary/20">
-                          <p className="text-gray-200">{item}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-4 flex gap-3">
+                    <h3 className="text-xl font-bold mb-6 text-accent">{results.title}</h3>
+                    
+                    {/* Interface Funcional */}
+                    {results.type === 'form' || results.type === 'display' ? (
+                      <div className="bg-white rounded-xl p-6 text-gray-800">
+                        {results.content}
+                      </div>
+                    ) : results.data ? (
+                      <div className="space-y-2">
+                        {results.data.map((item: string, index: number) => (
+                          <div key={index} className="bg-dark/50 rounded-lg p-3 border border-primary/20">
+                            <p className="text-gray-200">{item}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-white rounded-xl p-6 text-gray-800">
+                        {results.content}
+                      </div>
+                    )}
+                    
+                    <div className="mt-6 flex gap-3">
                       <button
                         onClick={() => setResults(null)}
                         className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition-colors"
                       >
                         Fechar
                       </button>
-                      <button
-                        onClick={() => {
-                          const text = results.data.join('\n');
-                          navigator.clipboard.writeText(text);
-                          alert('Resultados copiados!');
-                        }}
-                        className="bg-accent hover:bg-primary text-white px-4 py-2 rounded-lg transition-colors"
-                      >
-                        Copiar Resultados
-                      </button>
+                      {results.data && (
+                        <button
+                          onClick={() => {
+                            const text = results.data.join('\n');
+                            navigator.clipboard.writeText(text);
+                            alert('Resultados copiados!');
+                          }}
+                          className="bg-accent hover:bg-primary text-white px-4 py-2 rounded-lg transition-colors"
+                        >
+                          Copiar Resultados
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}

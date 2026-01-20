@@ -48,6 +48,7 @@ import EmergencyPaymentFix from './services/emergencyPaymentFix';
 import SocialMediaToolsPage from './components/pages/SocialMediaToolsPage';
 import ViralProductAnalyzerPage from './components/pages/ViralProductAnalyzerPage';
 import AdminSocialToolsPage from './components/pages/AdminSocialToolsPage';
+import AdminMusicGeneratorPage from './components/pages/AdminMusicGeneratorPage';
 
 const UpdateModal: React.FC = () => {
     const [hasUpdate, setHasUpdate] = useState(false);
@@ -168,6 +169,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="advertise" element={<AdvertisePage />} />
                 <Route path="social-tools" element={<AdminSocialToolsPage />} />
                 <Route path="viral-analyzer" element={<ViralProductAnalyzerPage />} />
+                <Route path="music-generator" element={<AdminMusicGeneratorPage />} />
             </Route>
 
             {/* Payment Success Route */}
