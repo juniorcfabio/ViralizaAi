@@ -59,10 +59,24 @@ const EbookGenerator: React.FC<EbookGeneratorProps> = ({
     }
   };
 
-  const downloadEbook = () => {
-    if (!generatedEbook) return;
+  const downloadEbook = async () => {
+    if (!generatedEbook) {
+      alert('Erro: Nenhum ebook gerado para download.');
+      return;
+    }
 
-    const htmlContent = `
+    try {
+      // Mostrar feedback visual
+      const button = document.querySelector('[data-download-btn]') as HTMLButtonElement;
+      if (button) {
+        button.disabled = true;
+        button.innerHTML = '⏳ Preparando download...';
+      }
+
+      // Aguardar um momento para garantir que o DOM esteja pronto
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const htmlContent = `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -174,7 +188,7 @@ const EbookGenerator: React.FC<EbookGeneratorProps> = ({
             ${generatedEbook.chapters.map(chapter => `
                 <div class="chapter">
                     <h2>${chapter.title}</h2>
-                    <img src="${chapter.imageUrl}" alt="${chapter.title}" class="chapter-image" />
+                    <img src="${chapter.imageUrl}" alt="${chapter.title}" class="chapter-image" onerror="this.style.display='none'" />
                     <div class="chapter-content">${chapter.content}</div>
                 </div>
             `).join('')}
@@ -188,15 +202,74 @@ const EbookGenerator: React.FC<EbookGeneratorProps> = ({
 </body>
 </html>`;
 
-    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${generatedEbook.title.replace(/\s+/g, '-').toLowerCase()}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      // Criar o blob e fazer o download
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      
+      // Criar link de download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${generatedEbook.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase()}.html`;
+      link.style.display = 'none';
+      
+      // Adicionar ao DOM, clicar e remover
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpar recursos
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+
+      // Restaurar botão e mostrar sucesso
+      if (button) {
+        button.disabled = false;
+        button.innerHTML = '📥 Baixar Ebook Premium';
+      }
+
+      // Mostrar confirmação
+      alert('✅ Download do ebook iniciado com sucesso!');
+
+    } catch (error) {
+      console.error('Erro no download do ebook:', error);
+      
+      // Restaurar botão em caso de erro
+      const button = document.querySelector('[data-download-btn]') as HTMLButtonElement;
+      if (button) {
+        button.disabled = false;
+        button.innerHTML = '📥 Baixar Ebook Premium';
+      }
+      
+      // Tentar método alternativo de download
+      try {
+        const fallbackContent = `
+EBOOK: ${generatedEbook.title}
+
+${generatedEbook.chapters.map((chapter, index) => `
+CAPÍTULO ${index + 1}: ${chapter.title}
+
+${chapter.content}
+
+---
+`).join('')}
+
+© ${new Date().getFullYear()} ${businessName} - Gerado pela Viraliza.AI
+        `;
+        
+        const fallbackBlob = new Blob([fallbackContent], { type: 'text/plain;charset=utf-8' });
+        const fallbackUrl = URL.createObjectURL(fallbackBlob);
+        const fallbackLink = document.createElement('a');
+        fallbackLink.href = fallbackUrl;
+        fallbackLink.download = `${generatedEbook.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase()}.txt`;
+        fallbackLink.click();
+        URL.revokeObjectURL(fallbackUrl);
+        
+        alert('✅ Download realizado em formato texto (TXT) como alternativa!');
+      } catch (fallbackError) {
+        alert('❌ Erro no download. Tente novamente ou use outro navegador.');
+      }
+    }
   };
 
   if (!isGenerating && !generatedEbook) {
@@ -317,6 +390,7 @@ const EbookGenerator: React.FC<EbookGeneratorProps> = ({
           <div className="flex gap-4 justify-center">
             <button
               onClick={downloadEbook}
+              data-download-btn
               className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-emerald-600 hover:to-green-600 text-white font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2"
             >
               📥 Baixar Ebook Premium
