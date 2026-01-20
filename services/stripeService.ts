@@ -225,36 +225,27 @@ class StripeService {
     }
   }
 
-  // Redirecionar para Stripe Checkout REAL
+  // Redirecionar para Stripe Checkout REAL - CONFIGURAÇÃO FUNCIONANDO 02/01 e 07/01/2026
   private async redirectToStripeCheckout(checkoutData: any): Promise<void> {
     try {
-      console.log('🔄 Criando sessão real do Stripe Checkout...');
+      console.log('🔄 Criando sessão Stripe (configuração 02/01-07/01/2026)...');
       console.log('📋 Dados do checkout:', checkoutData);
       
-      // Usar a API unificada que está funcionando
+      // Usar API create-checkout-session que estava funcionando perfeitamente
       const appBaseUrl = window.location.origin;
-      const response = await fetch(`${appBaseUrl}/api/stripe-payment-unified`, {
+      const response = await fetch(`${appBaseUrl}/api/create-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          amount: checkoutData.line_items[0].price_data.unit_amount / 100,
-          currency: checkoutData.line_items[0].price_data.currency,
-          description: checkoutData.line_items[0].price_data.product_data.name,
-          success_url: checkoutData.success_url,
-          cancel_url: checkoutData.cancel_url,
-          customer_email: checkoutData.customer_email,
-          product_type: checkoutData.mode === 'subscription' ? 'subscription' : 'payment',
-          metadata: checkoutData.metadata || {}
-        })
+        body: JSON.stringify(checkoutData)
       });
 
-      console.log('📡 Resposta da API unificada:', response.status);
+      console.log('📡 Resposta da API original:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Erro da API unificada:', errorText);
+        console.error('❌ Erro da API original:', errorText);
         throw new Error(`API Error: ${response.status} - ${errorText}`);
       }
 
@@ -262,7 +253,7 @@ class StripeService {
       console.log('✅ Resultado recebido:', result);
       
       if (result.success && result.url) {
-        console.log('🔄 Redirecionando para Stripe...');
+        console.log('🔄 Redirecionando para Stripe (método funcionando)...');
         window.location.href = result.url;
       } else {
         throw new Error('URL de checkout não retornada');
@@ -271,8 +262,8 @@ class StripeService {
     } catch (error) {
       console.error('❌ Erro ao criar sessão Stripe:', error);
       
-      // Fallback: usar API original
-      await this.fallbackToOriginalAPI(checkoutData);
+      // Fallback: usar Stripe.js diretamente
+      await this.fallbackStripeRedirect(checkoutData);
     }
   }
 
@@ -426,25 +417,3 @@ class StripeService {
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      console.error('❌ Erro ao verificar status do pagamento:', error);
-      throw error;
-    }
-  }
-
-  // Cancelar assinatura
-  async cancelSubscription(subscriptionId: string): Promise<void> {
-    try {
-      console.log('❌ Cancelando assinatura:', subscriptionId);
-      
-      // Em produção, faria chamada para API do backend
-      // que cancelaria a assinatura no Stripe
-      
-      console.log('✅ Assinatura cancelada com sucesso');
-    } catch (error) {
-      console.error('❌ Erro ao cancelar assinatura:', error);
-      throw error;
-    }
-  }
-}
-
-export default StripeService;

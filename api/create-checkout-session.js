@@ -68,7 +68,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // Fazer chamada direta para API REST do Stripe
+    // CONFIGURAÇÃO EXATA QUE FUNCIONAVA EM 02/01 e 07/01/2026
     const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
@@ -77,14 +77,16 @@ export default async function handler(req, res) {
       },
       body: new URLSearchParams({
         'mode': mode || 'subscription',
-        'success_url': success_url.replace('viralizaai-pi.vercel.app', 'viralizaai.vercel.app'),
-        'cancel_url': cancel_url.replace('viralizaai-pi.vercel.app', 'viralizaai.vercel.app'),
+        'success_url': success_url,
+        'cancel_url': cancel_url,
         'customer_email': customer_email || '',
         'payment_method_types[0]': 'card',
-        'billing_address_collection': 'required',
+        'billing_address_collection': 'auto',
         'locale': 'pt-BR',
         'allow_promotion_codes': 'true',
         'automatic_tax[enabled]': 'false',
+        'phone_number_collection[enabled]': 'false',
+        'submit_type': mode === 'subscription' ? undefined : 'pay',
         ...line_items.reduce((acc, item, index) => {
           if (item.price_data) {
             acc[`line_items[${index}][price_data][currency]`] = item.price_data.currency;
@@ -92,16 +94,17 @@ export default async function handler(req, res) {
             acc[`line_items[${index}][price_data][unit_amount]`] = item.price_data.unit_amount;
             if (item.price_data.recurring) {
               acc[`line_items[${index}][price_data][recurring][interval]`] = item.price_data.recurring.interval;
+              acc[`line_items[${index}][price_data][recurring][interval_count]`] = '1';
             }
           }
-          acc[`line_items[${index}][quantity]`] = item.quantity;
+          acc[`line_items[${index}][quantity]`] = item.quantity || 1;
           return acc;
         }, {}),
-        ...(metadata ? Object.keys(metadata).reduce((acc, key, index) => {
-          acc[`metadata[${key}]`] = metadata[key];
+        ...(metadata ? Object.keys(metadata).reduce((acc, key) => {
+          acc[`metadata[${key}]`] = String(metadata[key]);
           return acc;
         }, {}) : {})
-      })
+      }).toString().replace(/submit_type=undefined&?/g, '')
     });
 
     if (!stripeResponse.ok) {

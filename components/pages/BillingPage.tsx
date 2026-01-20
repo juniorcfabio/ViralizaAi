@@ -726,73 +726,76 @@ const defaultGrowthEnginePricing = {
             } catch (err) {
                 console.error('Erro ao carregar histórico de faturamento:', err);
             }
-        };
-
-        loadHistory();
-    }, [user.id]);
-
-    const handleSubscribe = async (plan: Plan) => {
-        if (!ensurePaymentMethod()) return;
-
-        setSubscribingPlan(plan.name);
-
         try {
-            const normalizedPrice =
-                typeof plan.price === 'number'
-                    ? plan.price.toFixed(2)
-                    : String(plan.price);
-            const amount = parseFloat(normalizedPrice.replace(',', '.'));
-            const appBaseUrl = buildAppBaseUrl();
-
-            // Usar StripeService diretamente
-            const stripeService = StripeService.getInstance();
-            
-            // Determinar ciclo de cobrança baseado no nome do plano
-            let billingCycle: 'monthly' | 'quarterly' | 'semiannual' | 'annual' = 'monthly';
-            const planName = plan.name.toLowerCase();
-            if (planName.includes('trimestral')) billingCycle = 'quarterly';
-            else if (planName.includes('semestral')) billingCycle = 'semiannual';
-            else if (planName.includes('anual')) billingCycle = 'annual';
-
-            const subscriptionData = {
-                amount: amount,
-                currency: 'brl',
-                description: `Assinatura ${plan.name} - ViralizaAI`,
-                productId: plan.id || plan.name,
-                productType: 'subscription' as const,
-                userId: user.id,
-                userEmail: user.email,
-                successUrl: `${appBaseUrl}/#/dashboard/social-tools?payment=success&plan=${encodeURIComponent(plan.name)}`,
-                cancelUrl: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`,
-                planId: plan.id || plan.name,
-                planName: plan.name,
-                billingCycle: billingCycle,
-                metadata: {
-                    productType: 'subscription',
-                    planName: plan.name,
-                    planId: plan.id || plan.name,
-                    userId: user.id,
-                    userEmail: user.email,
-                    billingCycle: billingCycle
+            const res = await fetch(`${API_BASE_URL}/payments/list`, {
+                headers: {
+                    ...getAuthHeaders(),
                 }
-            };
+            });
+            if (!res.ok) return;
 
-            showNotification('Redirecionando para o pagamento seguro...');
-            await stripeService.processSubscriptionPayment(subscriptionData);
-
-        } catch (error) {
-            console.error('Erro no pagamento:', error);
-            showNotification(
-                `Houve um erro ao iniciar o pagamento da assinatura. Tente novamente.` 
+            const txs = await res.json();
+            const userTxs = (Array.isArray(txs) ? txs : []).filter(
+                (tx: any) => tx.userId === user.id
             );
-        } finally {
-            setSubscribingPlan(null);
+
+            const mapped = userTxs.map((tx: any) => ({
+                id: tx.id,
+                date: tx.createdAt,
+                description: tx.itemId,
+                amount: `R$ ${tx.amount}`,
+                status: tx.status === 'paid' ? 'Pago' : 'Pendente'
+            }));
+
+            setBillingHistory(mapped);
+        } catch (err) {
+            console.error('Erro ao carregar histórico de faturamento:', err);
         }
     };
 
-    const handlePlansScroll = () => {
-        document
-            .getElementById('plans-section')
+    loadHistory();
+}, [user.id]);
+
+const handleSubscribe = async (plan: Plan) => {
+    if (!ensurePaymentMethod()) return;
+
+    setSubscribingPlan(plan.name);
+
+    try {
+        const normalizedPrice =
+            typeof plan.price === 'number'
+                ? plan.price.toFixed(2)
+                : String(plan.price);
+        const amount = parseFloat(normalizedPrice.replace(',', '.'));
+        const appBaseUrl = buildAppBaseUrl();
+
+        // Usar StripeService diretamente
+        const stripeService = StripeService.getInstance();
+        
+        // Determinar ciclo de cobrança baseado no nome do plano
+        let billingCycle: 'monthly' | 'quarterly' | 'semiannual' | 'annual' = 'monthly';
+        const planName = plan.name.toLowerCase();
+        if (planName.includes('trimestral')) billingCycle = 'quarterly';
+        else if (planName.includes('semestral')) billingCycle = 'semiannual';
+        else if (planName.includes('anual')) billingCycle = 'annual';
+
+        // CONFIGURAÇÃO EXATA QUE FUNCIONAVA EM 02/01 e 07/01/2026
+        const subscriptionData = {
+            mode: 'subscription',
+            line_items: [{
+                price_data: {
+                    currency: 'brl',
+                    product_data: {
+                        name: `Assinatura ${plan.name} - ViralizaAI`
+                    },
+                    unit_amount: Math.round(amount * 100),
+                    recurring: {
+                        interval: billingCycle === 'monthly' ? 'month' : 
+                                 billingCycle === 'quarterly' ? 'month' :
+                                 billingCycle === 'semiannual' ? 'month' :
+                                 'year'
+                    }
+                },
             ?.scrollIntoView({ behavior: 'smooth' });
     };
 
@@ -812,61 +815,16 @@ const defaultGrowthEnginePricing = {
             const response = await fetch(`${appBaseUrl}/api/stripe-payment-unified`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    amount: price,
-                    currency: 'brl',
-                    description: `Motor de Crescimento - ${label} - ViralizaAI`,
-                    success_url: `${appBaseUrl}/#/dashboard/billing?payment=success&tool=growth-engine`,
-                    cancel_url: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`,
-                    customer_email: user.email,
-                    product_type: 'tool',
-                    metadata: {
-                        userId: user.id,
-                        toolId: 'growth-engine',
-                        productType: 'tool',
-                        amount: price.toString(),
-                        label: label
-                    }
-                })
-            });
-
-            console.log('📡 Resposta da API Motor:', response.status);
-
-            if (!response.ok) {
-                const errorData = await response.text();
-                console.error('❌ Erro da API Motor:', errorData);
-                throw new Error(`Erro ao criar sessão de pagamento: ${response.status}`);
             }
+        };
 
-            const data = await response.json();
+        showNotification('Redirecionando para o pagamento seguro...');
+        await stripeService.processSubscriptionPayment(subscriptionData);
             console.log('✅ Dados Motor recebidos:', data);
 
             if (data.success && data.url) {
-                showNotification('Redirecionando para o pagamento do Motor de Crescimento...');
-                console.log('🔄 Redirecionando para Stripe Checkout Motor...');
-                window.location.href = data.url;
-                return;
-            } else {
-                throw new Error('URL de checkout não retornada pela API');
-            }
-        } catch (error) {
-            console.error(error);
-            showNotification(
-                'Não foi possível iniciar o pagamento do Motor de Crescimento. Tente novamente.'
-            );
-        } finally {
-            setBuyingGrowthEngine(null);
-        }
-    };
 
-    const getStatusChip = (status: 'Pago' | 'Pendente') => {
-        switch (status) {
-            case 'Pago':
-                return 'bg-green-500/20 text-green-300';
-            case 'Pendente':
-                return 'bg-yellow-500/20 text-yellow-300';
+// ...
         }
     };
 
