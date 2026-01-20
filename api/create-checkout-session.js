@@ -16,6 +16,10 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('🚀 API create-checkout-session iniciada');
+    console.log('📋 Method:', req.method);
+    console.log('📋 Body:', req.body);
+
     // Fallback para chaves hardcoded se env vars não funcionarem
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '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';
     
@@ -24,7 +28,12 @@ export default async function handler(req, res) {
     console.log('VERCEL:', process.env.VERCEL);
     console.log('STRIPE_SECRET_KEY from env:', !!process.env.STRIPE_SECRET_KEY);
     console.log('Using fallback key:', !process.env.STRIPE_SECRET_KEY);
-    console.log('🔑 Stripe key (first 20 chars):', stripeSecretKey.substring(0, 20) + '...');
+    console.log('🔑 Stripe key disponível:', !!stripeSecretKey);
+
+    // Verificar se req.body existe e tem dados
+    if (!req.body) {
+      throw new Error('Body da requisição está vazio');
+    }
 
     const {
       mode,
@@ -37,8 +46,10 @@ export default async function handler(req, res) {
 
     console.log('🚀 Criando sessão Stripe Checkout...');
     console.log('📧 Email do cliente:', customer_email);
-    console.log('💰 Itens:', JSON.stringify(line_items, null, 2));
+    console.log('💰 Itens recebidos:', line_items);
     console.log('🎯 Modo:', mode);
+    console.log('🔗 Success URL:', success_url);
+    console.log('🔗 Cancel URL:', cancel_url);
 
     // Validar dados obrigatórios
     if (!line_items || !Array.isArray(line_items) || line_items.length === 0) {
@@ -47,6 +58,14 @@ export default async function handler(req, res) {
 
     if (!success_url || !cancel_url) {
       throw new Error('success_url e cancel_url são obrigatórios');
+    }
+
+    // Validar estrutura dos line_items
+    for (let i = 0; i < line_items.length; i++) {
+      const item = line_items[i];
+      if (!item.price_data || !item.price_data.product_data || !item.price_data.unit_amount) {
+        throw new Error(`line_items[${i}] tem estrutura inválida`);
+      }
     }
 
     // Fazer chamada direta para API REST do Stripe

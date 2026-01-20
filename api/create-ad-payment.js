@@ -2,6 +2,10 @@
 // Endpoint serverless para processar pagamentos de anúncios via Stripe
 
 export default async function handler(req, res) {
+  console.log('🚀 API create-ad-payment iniciada');
+  console.log('📋 Method:', req.method);
+  console.log('📋 Body:', req.body);
+
   // Configurar CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -19,7 +23,13 @@ export default async function handler(req, res) {
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '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';
     
     console.log('📢 Criando pagamento de anúncio...');
+    console.log('🔑 Stripe key disponível:', !!stripeSecretKey);
     
+    // Verificar se req.body existe e tem dados
+    if (!req.body) {
+      throw new Error('Body da requisição está vazio');
+    }
+
     const {
       amount,
       currency = 'brl',
@@ -30,13 +40,49 @@ export default async function handler(req, res) {
       metadata = {}
     } = req.body;
 
-    console.log('💰 Anúncio:', description, '- R$', amount);
-    console.log('📧 Email:', customer_email);
+    console.log('💰 Dados recebidos:', {
+      amount,
+      currency,
+      description,
+      success_url,
+      cancel_url,
+      customer_email,
+      metadata
+    });
 
     // Validar dados obrigatórios
     if (!amount || !description || !success_url || !cancel_url) {
-      throw new Error('Dados obrigatórios não fornecidos');
+      const missing = [];
+      if (!amount) missing.push('amount');
+      if (!description) missing.push('description');
+      if (!success_url) missing.push('success_url');
+      if (!cancel_url) missing.push('cancel_url');
+      throw new Error(`Dados obrigatórios não fornecidos: ${missing.join(', ')}`);
     }
+
+    // Preparar dados para o Stripe
+    const stripeData = {
+      'mode': 'payment',
+      'success_url': success_url,
+      'cancel_url': cancel_url,
+      'customer_email': customer_email || '',
+      'payment_method_types[0]': 'card',
+      'billing_address_collection': 'auto',
+      'locale': 'pt-BR',
+      'allow_promotion_codes': 'true',
+      'line_items[0][price_data][currency]': currency.toLowerCase(),
+      'line_items[0][price_data][product_data][name]': description,
+      'line_items[0][price_data][unit_amount]': Math.round(parseFloat(amount) * 100).toString(),
+      'line_items[0][quantity]': '1',
+      'metadata[productType]': 'ad',
+      'metadata[adId]': metadata.adId || 'premium_ad',
+      'metadata[userId]': metadata.userId || customer_email || 'unknown',
+      'metadata[amount]': amount.toString(),
+      'metadata[duration]': metadata.duration || '30',
+      'metadata[reach]': metadata.reach || '10000'
+    };
+
+    console.log('📡 Enviando para Stripe:', stripeData);
 
     // Criar sessão de checkout para anúncio
     const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {
@@ -45,29 +91,10 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${stripeSecretKey}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        'mode': 'payment',
-        'success_url': success_url.replace('viralizaai-pi.vercel.app', 'viralizaai.vercel.app'),
-        'cancel_url': cancel_url.replace('viralizaai-pi.vercel.app', 'viralizaai.vercel.app'),
-        'customer_email': customer_email || '',
-        'payment_method_types[0]': 'card',
-        'billing_address_collection': 'required',
-        'locale': 'pt-BR',
-        'allow_promotion_codes': 'true',
-        'line_items[0][price_data][currency]': currency,
-        'line_items[0][price_data][product_data][name]': description,
-        'line_items[0][price_data][product_data][description]': `Anúncio Premium: ${description}`,
-        'line_items[0][price_data][unit_amount]': Math.round(amount * 100),
-        'line_items[0][quantity]': '1',
-        'metadata[productType]': 'ad',
-        'metadata[adId]': metadata.adId || 'premium_ad',
-        'metadata[userId]': metadata.userId || customer_email,
-        'metadata[amount]': amount.toString(),
-        'metadata[description]': description,
-        'metadata[duration]': metadata.duration || '30',
-        'metadata[reach]': metadata.reach || '10000'
-      })
+      body: new URLSearchParams(stripeData)
     });
+
+    console.log('📡 Resposta Stripe status:', stripeResponse.status);
 
     if (!stripeResponse.ok) {
       const errorData = await stripeResponse.text();
@@ -88,12 +115,17 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao criar pagamento de anúncio:', error);
+    console.error('❌ Erro detalhado ao criar pagamento de anúncio:', {
+      message: error.message,
+      stack: error.stack,
+      body: req.body
+    });
     
     return res.status(500).json({
       error: 'Erro ao criar sessão de pagamento de anúncio',
       message: error.message,
-      success: false
+      success: false,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }
