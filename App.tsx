@@ -46,6 +46,8 @@ import GoogleOAuthCallbackPage from './components/pages/GoogleOAuthCallbackPage'
 import StripeReturnHandler from './services/stripeReturnHandler';
 import EmergencyPaymentFix from './services/emergencyPaymentFix';
 import SocialMediaToolsPage from './components/pages/SocialMediaToolsPage';
+import ViralProductAnalyzerPage from './components/pages/ViralProductAnalyzerPage';
+import AdminSocialToolsPage from './components/pages/AdminSocialToolsPage';
 
 const UpdateModal: React.FC = () => {
     const [hasUpdate, setHasUpdate] = useState(false);
@@ -134,6 +136,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="ai-video-generator" element={<AIVideoGeneratorPage />} />
                 <Route path="revenue-projection" element={<RevenueProjectionPage />} />
                 <Route path="social-media-tools" element={<SocialMediaToolsPage />} />
+                <Route path="viral-analyzer" element={<ViralProductAnalyzerPage />} />
             </Route>
 
             {/* Admin Routes */}
@@ -163,6 +166,8 @@ const AppRoutes: React.FC = () => {
                 <Route path="ai-funnel-builder" element={<AIFunnelBuilderPage />} />
                 <Route path="ebook-generator" element={<EbookGeneratorPage />} />
                 <Route path="advertise" element={<AdvertisePage />} />
+                <Route path="social-tools" element={<AdminSocialToolsPage />} />
+                <Route path="viral-analyzer" element={<ViralProductAnalyzerPage />} />
             </Route>
 
             {/* Payment Success Route */}

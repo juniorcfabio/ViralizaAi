@@ -199,6 +199,14 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
                             <span className="text-lg">🚀</span>
                             <span className="font-medium">Motor de Crescimento</span>
                         </NavLink>
+                        <NavLink to="/admin/social-tools" className={navLinkClasses} onClick={handleNavClick}>
+                            <span className="text-lg">🛠️</span>
+                            <span className="font-medium">Ferramentas Sociais</span>
+                        </NavLink>
+                        <NavLink to="/admin/viral-analyzer" className={navLinkClasses} onClick={handleNavClick}>
+                            <span className="text-lg">🌟</span>
+                            <span className="font-medium">Analisador Viral IA</span>
+                        </NavLink>
                     </div>
 
                     {/* MARKETING E PROMOÇÃO */}
