@@ -85,36 +85,53 @@ const EbookGeneratorPage: React.FC = () => {
     
     setPurchasing(true);
     try {
+      console.log('🛒 Iniciando compra do Gerador de Ebooks via Stripe...');
+      
       const appBaseUrl = window.location.origin;
-      const response = await fetch(`${API_BASE_URL}/payments/checkout`, {
+      
+      // Usar API Stripe direta para ferramentas
+      const response = await fetch(`${appBaseUrl}/api/create-tool-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeaders(),
         },
         body: JSON.stringify({
-          userId: user.id,
-          itemType: 'addon',
-          itemId: 'Gerador de Ebooks Premium',
           amount: 297.00,
-          currency: 'BRL',
-          provider: 'stripe',
-          successUrl: `${appBaseUrl}/#/dashboard/ebook-generator`,
-          cancelUrl: `${appBaseUrl}/#/dashboard/ebook-generator` 
+          currency: 'brl',
+          description: 'Gerador de Ebooks Premium - ViralizaAI',
+          success_url: `${appBaseUrl}/payment-success?tool=ebook-generator&userId=${user.id}`,
+          cancel_url: `${appBaseUrl}/#/dashboard/ebook-generator`,
+          customer_email: user.email,
+          metadata: {
+            userId: user.id,
+            toolId: 'ebook-generator',
+            productType: 'tool',
+            amount: '297.00'
+          }
         })
       });
 
+      console.log('📡 Resposta da API:', response.status);
+
       if (!response.ok) {
-        throw new Error(`Erro ao iniciar checkout: ${response.status}`);
+        const errorData = await response.text();
+        console.error('❌ Erro da API:', errorData);
+        throw new Error(`Erro ao criar sessão de pagamento: ${response.status}`);
       }
 
       const data = await response.json();
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
+      console.log('✅ Dados recebidos:', data);
+      
+      if (data.success && data.url) {
+        console.log('🔄 Redirecionando para Stripe Checkout...');
+        window.location.href = data.url;
+      } else {
+        throw new Error('URL de checkout não retornada pela API');
       }
+      
     } catch (error) {
-      console.error('Erro na compra:', error);
-      alert('Erro ao processar compra. Tente novamente.');
+      console.error('❌ Erro na compra do Ebook Generator:', error);
+      alert(`Erro ao processar compra: ${error.message}\nTente novamente ou contate o suporte.`);
     } finally {
       setPurchasing(false);
     }

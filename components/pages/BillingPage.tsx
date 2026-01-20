@@ -802,40 +802,50 @@ const defaultGrowthEnginePricing = {
         setBuyingGrowthEngine(label);
 
         try {
+            console.log('🚀 Iniciando compra do Motor de Crescimento via Stripe...');
             const appBaseUrl = buildAppBaseUrl();
 
-            const response = await fetch(`${API_BASE_URL}/payments/checkout`, {
+            // Usar API Stripe direta para Motor de Crescimento
+            const response = await fetch(`${appBaseUrl}/api/create-tool-payment`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...getAuthHeaders(),
                 },
                 body: JSON.stringify({
-                    userId: user.id,
-                    itemType: 'addon',
-                    itemId: `Motor de Crescimento - ${label}`,
                     amount: price,
-                    currency: 'BRL',
-                    provider: 'stripe',
-                    successUrl: `${appBaseUrl}/#/dashboard/billing`,
-                    cancelUrl: `${appBaseUrl}/#/dashboard/billing` 
+                    currency: 'brl',
+                    description: `Motor de Crescimento - ${label} - ViralizaAI`,
+                    success_url: `${appBaseUrl}/payment-success?tool=growth-engine&userId=${user.id}`,
+                    cancel_url: `${appBaseUrl}/#/dashboard/billing`,
+                    customer_email: user.email,
+                    metadata: {
+                        userId: user.id,
+                        toolId: 'growth-engine',
+                        productType: 'tool',
+                        amount: price.toString(),
+                        label: label
+                    }
                 })
             });
 
+            console.log('📡 Resposta da API Motor:', response.status);
+
             if (!response.ok) {
-                throw new Error(`Erro ao iniciar checkout: ${response.status}`);
+                const errorData = await response.text();
+                console.error('❌ Erro da API Motor:', errorData);
+                throw new Error(`Erro ao criar sessão de pagamento: ${response.status}`);
             }
 
             const data = await response.json();
+            console.log('✅ Dados Motor recebidos:', data);
 
-            if (data.checkoutUrl) {
-                showNotification(
-                    'Redirecionando para o pagamento do Motor de Crescimento...'
-                );
-                window.location.href = data.checkoutUrl;
+            if (data.success && data.url) {
+                showNotification('Redirecionando para o pagamento do Motor de Crescimento...');
+                console.log('🔄 Redirecionando para Stripe Checkout Motor...');
+                window.location.href = data.url;
                 return;
             } else {
-                throw new Error('Resposta sem checkoutUrl');
+                throw new Error('URL de checkout não retornada pela API');
             }
         } catch (error) {
             console.error(error);
