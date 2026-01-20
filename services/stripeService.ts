@@ -79,48 +79,58 @@ class StripeService {
   }
 
   // Processar pagamento de assinatura
-  async processSubscriptionPayment(data: StripeSubscriptionData): Promise<void> {
-    await this.initializeStripe();
-
+  public async processSubscriptionPayment(data: StripeSubscriptionData): Promise<void> {
+    console.log('💳 Processando pagamento de assinatura via API unificada:', data);
+    
     try {
-      console.log('🚀 Iniciando pagamento de assinatura via Stripe');
-      console.log(`💰 Plano: ${data.planName} - R$ ${data.amount.toFixed(2)}`);
+      const appBaseUrl = window.location.origin;
+      
+      // Usar API unificada para assinaturas também
+      const response = await fetch(`${appBaseUrl}/api/stripe-payment-unified`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: data.amount,
+          currency: data.currency,
+          description: data.description,
+          success_url: data.successUrl,
+          cancel_url: data.cancelUrl,
+          customer_email: data.userEmail,
+          product_type: 'subscription',
+          metadata: {
+            productType: 'subscription',
+            planId: data.planId,
+            planName: data.planName,
+            userId: data.userId,
+            billingCycle: data.billingCycle,
+            ...data.metadata
+          }
+        })
+      });
 
-      // Criar sessão de checkout no Stripe
-      const checkoutData = {
-        mode: 'subscription',
-        line_items: [{
-          price_data: {
-            currency: data.currency,
-            product_data: {
-              name: data.planName,
-              description: data.description,
-              images: ['https://viralizaai.vercel.app/logo.png']
-            },
-            unit_amount: Math.round(data.amount * 100), // Converter para centavos
-            recurring: {
-              interval: this.getBillingInterval(data.billingCycle)
-            }
-          },
-          quantity: 1
-        }],
-        success_url: data.successUrl.replace('viralizaai-pi.vercel.app', 'viralizaai.vercel.app'),
-        cancel_url: data.cancelUrl.replace('viralizaai-pi.vercel.app', 'viralizaai.vercel.app'),
-        customer_email: data.userEmail,
-        metadata: {
-          userId: data.userId,
-          planId: data.planId,
-          productType: data.productType,
-          ...data.metadata
-        }
-      };
+      console.log('📡 Resposta da API unificada para assinatura:', response.status);
 
-      // Redirecionar para Stripe Checkout
-      await this.redirectToStripeCheckout(checkoutData);
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('❌ Erro da API unificada:', errorData);
+        throw new Error(`Erro ao criar sessão de assinatura: ${response.status}`);
+      }
 
+      const result = await response.json();
+      console.log('✅ Dados de assinatura recebidos:', result);
+      
+      if (result.success && result.url) {
+        console.log('🔄 Redirecionando para Stripe Checkout (assinatura)...');
+        window.location.href = result.url;
+      } else {
+        throw new Error('URL de checkout não retornada pela API unificada');
+      }
+      
     } catch (error) {
-      console.error('❌ Erro no pagamento de assinatura:', error);
-      throw new Error('Falha no processamento do pagamento');
+      console.error('❌ Erro no processamento de assinatura:', error);
+      throw error;
     }
   }
 

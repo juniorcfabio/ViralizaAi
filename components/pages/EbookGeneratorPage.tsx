@@ -89,8 +89,8 @@ const EbookGeneratorPage: React.FC = () => {
       
       const appBaseUrl = window.location.origin;
       
-      // Usar API Stripe direta para ferramentas
-      const response = await fetch(`${appBaseUrl}/api/create-tool-payment`, {
+      // Usar API Stripe unificada mais robusta
+      const response = await fetch(`${appBaseUrl}/api/stripe-payment-unified`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,9 +99,10 @@ const EbookGeneratorPage: React.FC = () => {
           amount: 297.00,
           currency: 'brl',
           description: 'Gerador de Ebooks Premium - ViralizaAI',
-          success_url: `${appBaseUrl}/payment-success?tool=ebook-generator&userId=${user.id}`,
-          cancel_url: `${appBaseUrl}/#/dashboard/ebook-generator`,
+          success_url: `${appBaseUrl}/#/dashboard/ebook-generator?payment=success&tool=ebook-generator`,
+          cancel_url: `${appBaseUrl}/#/dashboard/ebook-generator?payment=cancelled`,
           customer_email: user.email,
+          product_type: 'tool',
           metadata: {
             userId: user.id,
             toolId: 'ebook-generator',

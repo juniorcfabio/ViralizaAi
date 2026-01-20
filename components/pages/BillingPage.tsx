@@ -805,8 +805,8 @@ const defaultGrowthEnginePricing = {
             console.log('🚀 Iniciando compra do Motor de Crescimento via Stripe...');
             const appBaseUrl = buildAppBaseUrl();
 
-            // Usar API Stripe direta para Motor de Crescimento
-            const response = await fetch(`${appBaseUrl}/api/create-tool-payment`, {
+            // Usar API Stripe unificada mais robusta
+            const response = await fetch(`${appBaseUrl}/api/stripe-payment-unified`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -815,9 +815,10 @@ const defaultGrowthEnginePricing = {
                     amount: price,
                     currency: 'brl',
                     description: `Motor de Crescimento - ${label} - ViralizaAI`,
-                    success_url: `${appBaseUrl}/payment-success?tool=growth-engine&userId=${user.id}`,
-                    cancel_url: `${appBaseUrl}/#/dashboard/billing`,
+                    success_url: `${appBaseUrl}/#/dashboard/billing?payment=success&tool=growth-engine`,
+                    cancel_url: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`,
                     customer_email: user.email,
+                    product_type: 'tool',
                     metadata: {
                         userId: user.id,
                         toolId: 'growth-engine',
