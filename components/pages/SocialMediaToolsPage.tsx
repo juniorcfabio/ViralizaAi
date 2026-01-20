@@ -2,7 +2,7 @@
 // Interface completa para todas as ferramentas por plano
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContextStable';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import SocialMediaToolsEngine from '../../services/socialMediaToolsEngine';
 
 // Ícones
