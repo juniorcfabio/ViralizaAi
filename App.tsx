@@ -45,6 +45,7 @@ import PaymentSuccessPageUltraRobust from './components/pages/PaymentSuccessPage
 import GoogleOAuthCallbackPage from './components/pages/GoogleOAuthCallbackPage';
 import StripeReturnHandler from './services/stripeReturnHandler';
 import EmergencyPaymentFix from './services/emergencyPaymentFix';
+import SocialMediaToolsPage from './components/pages/SocialMediaToolsPage';
 
 const UpdateModal: React.FC = () => {
     const [hasUpdate, setHasUpdate] = useState(false);
@@ -132,6 +133,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="ai-funnel-builder" element={<AIFunnelBuilderPageComplete />} />
                 <Route path="ai-video-generator" element={<AIVideoGeneratorPage />} />
                 <Route path="revenue-projection" element={<RevenueProjectionPage />} />
+                <Route path="social-media-tools" element={<SocialMediaToolsPage />} />
             </Route>
 
             {/* Admin Routes */}
