@@ -223,6 +223,23 @@ const VideoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
+const SocialMediaIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+  </svg>
+);
+
 interface NavItem {
   path: string;
   labelKey: string;
@@ -233,6 +250,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: '/dashboard', labelKey: 'sidebar.dashboard', icon: LayoutGridIcon, end: true },
   { path: '/dashboard/social', labelKey: 'sidebar.social', icon: UsersIcon },
+  { path: '/dashboard/social-media-tools', labelKey: 'sidebar.socialMediaTools', icon: SocialMediaIcon },
   { path: '/dashboard/analytics', labelKey: 'sidebar.analytics', icon: BarChart3Icon },
   { path: '/dashboard/growth-engine', labelKey: 'sidebar.growthEngine', icon: RocketIcon },
   { path: '/dashboard/ebook-generator', labelKey: 'sidebar.ebookGenerator', icon: BookOpenIcon },
