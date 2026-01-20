@@ -59,25 +59,22 @@ const EbookGenerator: React.FC<EbookGeneratorProps> = ({
     }
   };
 
-  const downloadEbook = async () => {
+  const downloadEbook = () => {
     if (!generatedEbook) {
-      alert('Erro: Nenhum ebook gerado para download.');
+      alert('❌ Erro: Nenhum ebook gerado para download.');
       return;
     }
 
+    // Mostrar feedback visual imediatamente
+    const button = document.querySelector('[data-download-btn]') as HTMLButtonElement;
+    if (button) {
+      button.disabled = true;
+      button.innerHTML = '⏳ Baixando...';
+    }
+
     try {
-      // Mostrar feedback visual
-      const button = document.querySelector('[data-download-btn]') as HTMLButtonElement;
-      if (button) {
-        button.disabled = true;
-        button.innerHTML = '⏳ Preparando download...';
-      }
-
-      // Aguardar um momento para garantir que o DOM esteja pronto
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const htmlContent = `
-<!DOCTYPE html>
+      // Método 1: Tentar download direto com data URL
+      const htmlContent = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -89,7 +86,7 @@ const EbookGenerator: React.FC<EbookGeneratorProps> = ({
             font-family: 'Georgia', serif; 
             line-height: 1.8; 
             color: #2c3e50; 
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: #f8f9fa;
             padding: 40px 20px;
         }
         .container { 
@@ -129,41 +126,11 @@ const EbookGenerator: React.FC<EbookGeneratorProps> = ({
             padding-bottom: 15px;
             border-bottom: 3px solid #667eea;
         }
-        .chapter-image { 
-            width: 100%; 
-            height: 300px; 
-            object-fit: cover; 
-            border-radius: 15px; 
-            margin: 30px 0; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
         .chapter-content { 
             font-size: 1.1em; 
             text-align: justify; 
             margin-bottom: 30px;
-        }
-        .methodology { 
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
-            color: white; 
-            padding: 30px; 
-            border-radius: 15px; 
-            margin: 30px 0;
-        }
-        .methodology h3 { 
-            font-size: 1.4em; 
-            margin-bottom: 15px; 
-        }
-        .tips { 
-            background: #f8f9fa; 
-            border-left: 5px solid #28a745; 
-            padding: 25px; 
-            margin: 25px 0; 
-            border-radius: 0 10px 10px 0;
-        }
-        .tips h4 { 
-            color: #28a745; 
-            margin-bottom: 15px; 
-            font-size: 1.2em;
+            line-height: 1.8;
         }
         .footer { 
             background: #2c3e50; 
@@ -188,7 +155,6 @@ const EbookGenerator: React.FC<EbookGeneratorProps> = ({
             ${generatedEbook.chapters.map(chapter => `
                 <div class="chapter">
                     <h2>${chapter.title}</h2>
-                    <img src="${chapter.imageUrl}" alt="${chapter.title}" class="chapter-image" onerror="this.style.display='none'" />
                     <div class="chapter-content">${chapter.content}</div>
                 </div>
             `).join('')}
@@ -202,72 +168,121 @@ const EbookGenerator: React.FC<EbookGeneratorProps> = ({
 </body>
 </html>`;
 
-      // Criar o blob e fazer o download
-      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
+      const fileName = `${generatedEbook.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase()}`;
       
-      // Criar link de download
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${generatedEbook.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase()}.html`;
-      link.style.display = 'none';
+      // MÉTODO INFALÍVEL 1: Window.open com data URL
+      const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent);
+      const newWindow = window.open(dataUrl, '_blank');
       
-      // Adicionar ao DOM, clicar e remover
-      document.body.appendChild(link);
-      link.click();
-      
-      // Limpar recursos
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }, 100);
-
-      // Restaurar botão e mostrar sucesso
-      if (button) {
-        button.disabled = false;
-        button.innerHTML = '📥 Baixar Ebook Premium';
+      if (newWindow) {
+        // Aguardar carregamento e tentar salvar
+        setTimeout(() => {
+          try {
+            newWindow.document.title = fileName;
+            // Instrução para o usuário
+            alert('✅ Ebook aberto em nova aba!\n\n📋 Para salvar:\n• Pressione Ctrl+S (Windows) ou Cmd+S (Mac)\n• Escolha "Página da Web, completa"\n• Clique em Salvar');
+          } catch (e) {
+            console.log('Método 1 falhou, tentando método 2...');
+          }
+        }, 1000);
+      } else {
+        throw new Error('Popup bloqueado');
       }
 
-      // Mostrar confirmação
-      alert('✅ Download do ebook iniciado com sucesso!');
+      // MÉTODO INFALÍVEL 2: Blob download como backup
+      setTimeout(() => {
+        try {
+          const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName + '.html';
+          link.style.display = 'none';
+          
+          document.body.appendChild(link);
+          link.click();
+          
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }, 100);
+          
+        } catch (e) {
+          console.log('Método 2 falhou, tentando método 3...');
+          // MÉTODO INFALÍVEL 3: Texto simples
+          downloadAsText();
+        }
+      }, 2000);
 
     } catch (error) {
-      console.error('Erro no download do ebook:', error);
-      
-      // Restaurar botão em caso de erro
-      const button = document.querySelector('[data-download-btn]') as HTMLButtonElement;
+      console.error('Erro principal:', error);
+      downloadAsText();
+    }
+
+    // Restaurar botão
+    setTimeout(() => {
       if (button) {
         button.disabled = false;
         button.innerHTML = '📥 Baixar Ebook Premium';
       }
-      
-      // Tentar método alternativo de download
-      try {
-        const fallbackContent = `
-EBOOK: ${generatedEbook.title}
+    }, 3000);
+  };
 
-${generatedEbook.chapters.map((chapter, index) => `
+  // MÉTODO INFALÍVEL 3: Download como texto simples
+  const downloadAsText = () => {
+    try {
+      const textContent = `
+═══════════════════════════════════════════════════════════════════════════════
+                            ${generatedEbook?.title || 'EBOOK PREMIUM'}
+                        Guia Completo e Estratégico para ${businessName}
+═══════════════════════════════════════════════════════════════════════════════
+
+${generatedEbook?.chapters.map((chapter, index) => `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CAPÍTULO ${index + 1}: ${chapter.title}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${chapter.content}
 
----
 `).join('')}
 
-© ${new Date().getFullYear()} ${businessName} - Gerado pela Viraliza.AI
-        `;
+═══════════════════════════════════════════════════════════════════════════════
+© ${new Date().getFullYear()} ${businessName} - Todos os direitos reservados
+Gerado pela Viraliza.AI - Tecnologia Premium
+═══════════════════════════════════════════════════════════════════════════════
+      `;
+      
+      const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${generatedEbook?.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase() || 'ebook'}.txt`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      alert('✅ Ebook baixado em formato TXT!\nConteúdo completo salvo com sucesso.');
+      
+    } catch (error) {
+      console.error('Todos os métodos falharam:', error);
+      
+      // MÉTODO INFALÍVEL 4: Copiar para clipboard
+      if (navigator.clipboard && generatedEbook) {
+        const clipboardContent = generatedEbook.chapters.map((chapter, index) => 
+          `CAPÍTULO ${index + 1}: ${chapter.title}\n\n${chapter.content}\n\n`
+        ).join('');
         
-        const fallbackBlob = new Blob([fallbackContent], { type: 'text/plain;charset=utf-8' });
-        const fallbackUrl = URL.createObjectURL(fallbackBlob);
-        const fallbackLink = document.createElement('a');
-        fallbackLink.href = fallbackUrl;
-        fallbackLink.download = `${generatedEbook.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase()}.txt`;
-        fallbackLink.click();
-        URL.revokeObjectURL(fallbackUrl);
-        
-        alert('✅ Download realizado em formato texto (TXT) como alternativa!');
-      } catch (fallbackError) {
-        alert('❌ Erro no download. Tente novamente ou use outro navegador.');
+        navigator.clipboard.writeText(clipboardContent).then(() => {
+          alert('📋 Conteúdo copiado para área de transferência!\nCole em um documento para salvar.');
+        }).catch(() => {
+          alert('❌ Não foi possível baixar o ebook.\nTente usar outro navegador ou desabilite bloqueadores de popup.');
+        });
+      } else {
+        alert('❌ Não foi possível baixar o ebook.\nTente usar outro navegador ou desabilite bloqueadores de popup.');
       }
     }
   };
