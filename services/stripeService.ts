@@ -38,15 +38,17 @@ class StripeService {
   }
 
   // Inicializar Stripe
-  async initializeStripe(): Promise<void> {
-    if (this.isInitialized) return;
+  async initializeStripe(): Promise<any> {
+    if (this.isInitialized && (window as any).Stripe) {
+      return (window as any).Stripe(this.stripePublicKey);
+    }
 
     try {
       // Verificar se Stripe já está carregado
       if (typeof window !== 'undefined' && (window as any).Stripe) {
         this.isInitialized = true;
         console.log('✅ Stripe já estava carregado');
-        return;
+        return (window as any).Stripe(this.stripePublicKey);
       }
 
       // Carregar Stripe.js dinamicamente
@@ -72,6 +74,7 @@ class StripeService {
 
       this.isInitialized = true;
       console.log('✅ Stripe inicializado com sucesso');
+      return (window as any).Stripe(this.stripePublicKey);
     } catch (error) {
       console.error('❌ Erro ao inicializar Stripe:', error);
       throw new Error('Falha na inicialização do Stripe');
@@ -80,53 +83,47 @@ class StripeService {
 
   // Processar pagamento de assinatura
   public async processSubscriptionPayment(data: StripeSubscriptionData): Promise<void> {
-    console.log('💳 Processando pagamento de assinatura via API unificada:', data);
+    console.log('💳 Processando pagamento de assinatura:', data);
     
     try {
-      const appBaseUrl = window.location.origin;
-      
-      // Usar API unificada para assinaturas também
-      const response = await fetch(`${appBaseUrl}/api/stripe-payment-unified`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: data.amount,
-          currency: data.currency,
-          description: data.description,
-          success_url: data.successUrl,
-          cancel_url: data.cancelUrl,
-          customer_email: data.userEmail,
-          product_type: 'subscription',
-          metadata: {
-            productType: 'subscription',
-            planId: data.planId,
-            planName: data.planName,
-            userId: data.userId,
-            billingCycle: data.billingCycle,
-            ...data.metadata
-          }
-        })
-      });
-
-      console.log('📡 Resposta da API unificada para assinatura:', response.status);
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error('❌ Erro da API unificada:', errorData);
-        throw new Error(`Erro ao criar sessão de assinatura: ${response.status}`);
+      const stripe = await this.initializeStripe();
+      if (!stripe) {
+        throw new Error('Falha ao inicializar Stripe');
       }
 
-      const result = await response.json();
-      console.log('✅ Dados de assinatura recebidos:', result);
+      // Preparar dados para checkout
+      const checkoutData = {
+        mode: 'subscription',
+        line_items: [{
+          price_data: {
+            currency: data.currency,
+            product_data: {
+              name: data.description,
+              description: `Plano ${data.planName} - Cobrança ${this.getBillingInterval(data.billingCycle)}`
+            },
+            unit_amount: Math.round(data.amount * 100),
+            recurring: {
+              interval: this.getBillingInterval(data.billingCycle)
+            }
+          },
+          quantity: 1
+        }],
+        success_url: data.successUrl,
+        cancel_url: data.cancelUrl,
+        customer_email: data.userEmail,
+        metadata: {
+          productType: 'subscription',
+          planId: data.planId,
+          planName: data.planName,
+          userId: data.userId,
+          billingCycle: data.billingCycle,
+          ...data.metadata
+        }
+      };
+
+      console.log('🚀 Dados do checkout preparados:', checkoutData);
       
-      if (result.success && result.url) {
-        console.log('🔄 Redirecionando para Stripe Checkout (assinatura)...');
-        window.location.href = result.url;
-      } else {
-        throw new Error('URL de checkout não retornada pela API unificada');
-      }
+      await this.redirectToStripeCheckout(checkoutData);
       
     } catch (error) {
       console.error('❌ Erro no processamento de assinatura:', error);
