@@ -229,8 +229,58 @@ class StripeService {
   private async redirectToStripeCheckout(checkoutData: any): Promise<void> {
     try {
       console.log('🔄 Criando sessão real do Stripe Checkout...');
+      console.log('📋 Dados do checkout:', checkoutData);
       
-      // Criar sessão real no Stripe via API
+      // Usar a API unificada que está funcionando
+      const appBaseUrl = window.location.origin;
+      const response = await fetch(`${appBaseUrl}/api/stripe-payment-unified`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: checkoutData.line_items[0].price_data.unit_amount / 100,
+          currency: checkoutData.line_items[0].price_data.currency,
+          description: checkoutData.line_items[0].price_data.product_data.name,
+          success_url: checkoutData.success_url,
+          cancel_url: checkoutData.cancel_url,
+          customer_email: checkoutData.customer_email,
+          product_type: checkoutData.mode === 'subscription' ? 'subscription' : 'payment',
+          metadata: checkoutData.metadata || {}
+        })
+      });
+
+      console.log('📡 Resposta da API unificada:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erro da API unificada:', errorText);
+        throw new Error(`API Error: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Resultado recebido:', result);
+      
+      if (result.success && result.url) {
+        console.log('🔄 Redirecionando para Stripe...');
+        window.location.href = result.url;
+      } else {
+        throw new Error('URL de checkout não retornada');
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro ao criar sessão Stripe:', error);
+      
+      // Fallback: usar API original
+      await this.fallbackToOriginalAPI(checkoutData);
+    }
+  }
+
+  // Fallback para API original
+  private async fallbackToOriginalAPI(checkoutData: any): Promise<void> {
+    try {
+      console.log('🔄 Tentando API original como fallback...');
+      
       const response = await fetch('https://viralizaai.vercel.app/api/create-checkout-session', {
         method: 'POST',
         headers: {
@@ -240,22 +290,21 @@ class StripeService {
       });
 
       if (!response.ok) {
-        throw new Error('Falha ao criar sessão de checkout');
+        throw new Error('Falha na API original');
       }
 
       const { sessionId, url } = await response.json();
       
-      console.log('✅ Sessão criada com sucesso:', sessionId);
-      console.log('🔄 Redirecionando para Stripe...');
-      
-      // Redirecionar para o Stripe Checkout real
-      window.location.href = url;
+      if (url) {
+        console.log('✅ Redirecionando via API original...');
+        window.location.href = url;
+      } else {
+        throw new Error('URL não retornada pela API original');
+      }
       
     } catch (error) {
-      console.error('❌ Erro ao criar sessão Stripe:', error);
-      
-      // Fallback: usar Stripe.js diretamente
-      await this.fallbackStripeRedirect(checkoutData);
+      console.error('❌ Erro no fallback para API original:', error);
+      alert('Erro ao processar pagamento. Verifique sua conexão e tente novamente.');
     }
   }
 
