@@ -12,5 +12,6 @@
   "env": {
     "NODE_ENV": "production",
     "VITE_API_BASE_URL": "https://viralizaai.vercel.app/api"
-  }
+  },
+  "alias": ["viralizaai.vercel.app"]
 }
