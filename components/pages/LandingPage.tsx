@@ -1380,9 +1380,24 @@ const ClientLogos: React.FC = () => {
                                 {/* Glow effect */}
                                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                                 
-                                {/* Logo text */}
-                                <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 px-4 py-3 rounded-lg border border-gray-700/50 group-hover:border-accent/50 transition-all duration-500">
-                                    <span className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-gray-300 to-gray-500 group-hover:from-white group-hover:to-accent bg-clip-text text-transparent transition-all duration-500">
+                                {/* Logo real da empresa */}
+                                <div className="relative bg-white/10 backdrop-blur-sm px-6 py-4 rounded-lg border border-gray-700/50 group-hover:border-accent/50 transition-all duration-500 min-w-[120px] h-16 flex items-center justify-center">
+                                    {logo.logo ? (
+                                        <img 
+                                            src={logo.logo} 
+                                            alt={logo.name}
+                                            className="max-w-full max-h-full object-contain filter brightness-90 group-hover:brightness-110 transition-all duration-500"
+                                            onError={(e) => {
+                                                // Fallback para texto se a imagem não carregar
+                                                e.currentTarget.style.display = 'none';
+                                                e.currentTarget.nextElementSibling.style.display = 'block';
+                                            }}
+                                        />
+                                    ) : null}
+                                    <span 
+                                        className="text-sm font-bold bg-gradient-to-r from-gray-300 to-gray-500 group-hover:from-white group-hover:to-accent bg-clip-text text-transparent transition-all duration-500"
+                                        style={{ display: logo.logo ? 'none' : 'block' }}
+                                    >
                                         {logo.name}
                                     </span>
                                 </div>
