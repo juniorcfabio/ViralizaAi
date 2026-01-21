@@ -665,7 +665,7 @@ const Hero: React.FC<{ onRegister: () => void; onPersonaClick: () => void }> = (
                    {t('affiliate.subtitle')}
                 </p>
                 <div className="flex justify-center mb-8">
-                    <AIPersona onClick={() => console.log('onClick')} />
+                    <AIPersona onClick={onPersonaClick} />
                     <button 
                         onClick={onRegister}
                         className="bg-black text-white font-bold py-4 px-8 rounded-full hover:bg-gray-800 transition-all transform hover:scale-105 shadow-lg"
@@ -678,7 +678,7 @@ const Hero: React.FC<{ onRegister: () => void; onPersonaClick: () => void }> = (
     );
 };
 
-const ClientLogos: React.FC = () => {
+const Features: React.FC = () => {
     const { t } = useLanguage();
     return (
         <section id="features" className="py-20 bg-secondary">
