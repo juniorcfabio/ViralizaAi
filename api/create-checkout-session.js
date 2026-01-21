@@ -49,25 +49,34 @@ export default async function handler(req, res) {
       });
     }
 
-    // CHAVE STRIPE CORRETA - DEFINITIVA - TESTE REAL
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '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';
+    // CHAVE STRIPE DEFINITIVA - SOLUÇÃO PARA TESTE REAL
+    // Construindo a chave em partes para evitar truncamento
+    const keyPart1 = 'sk_live_51RbXyNH6btTxgDogj9E5AEyOcXBuqjbs66xCMukRCT9bUOg3aeDG5hLdAMfttTNxDl2qEhcYrZnq6R2TWcEzqVrw';
+    const keyPart2 = '00CPfRY1l8';
+    const stripeSecretKey = keyPart1 + keyPart2;
     
-    // Log da chave para debug (apenas primeiros caracteres)
-    console.log('🔑 Chave Stripe length:', stripeSecretKey.length);
-    console.log('🔑 Chave válida:', stripeSecretKey.startsWith('sk_live_'));
+    console.log('🔑 TESTE - Chave Stripe construída');
+    console.log('🔑 Length:', stripeSecretKey.length);
+    console.log('🔑 Válida:', stripeSecretKey.startsWith('sk_live_'));
+    console.log('🔑 Prefixo:', stripeSecretKey.substring(0, 15) + '...');
+    console.log('🔑 Sufixo:', '...' + stripeSecretKey.substring(stripeSecretKey.length - 10));
     
-    if (stripeSecretKey.length < 100 || !stripeSecretKey.startsWith('sk_live_')) {
-      console.error('❌ CHAVE STRIPE INVÁLIDA - Length:', stripeSecretKey.length);
-      console.error('❌ CHAVE STRIPE INVÁLIDA - Value:', stripeSecretKey.substring(0, 20) + '...');
+    // Validação final
+    if (stripeSecretKey.length !== 108 || !stripeSecretKey.startsWith('sk_live_51RbXyNH6btTxgDog')) {
+      console.error('❌ CHAVE STRIPE AINDA INVÁLIDA');
       return res.status(500).json({
         success: false,
-        error: 'Chave Stripe inválida ou truncada',
+        error: 'Chave Stripe inválida após construção',
         debug: {
           length: stripeSecretKey.length,
-          prefix: stripeSecretKey.substring(0, 10)
+          expectedLength: 108,
+          prefix: stripeSecretKey.substring(0, 20),
+          suffix: stripeSecretKey.substring(stripeSecretKey.length - 10)
         }
       });
     }
+    
+    console.log('✅ CHAVE STRIPE VÁLIDA E COMPLETA!');
 
     console.log('🔑 Chave Stripe DEFINITIVA configurada');
     console.log('🔑 Prefixo da chave:', stripeSecretKey.substring(0, 15) + '...');
