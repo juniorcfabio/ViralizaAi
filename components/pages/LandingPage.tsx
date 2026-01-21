@@ -4,6 +4,7 @@ import { useAuth, RegistrationData } from '../../contexts/AuthContextFixed';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Plan, Testimonial, AdPartner, TrustedCompany } from '../../types';
 import { API_BASE_URL } from '../../src/config/api';
+import '../../styles/logos-8k.css';
 import Logo from '../ui/Logo';
 import AIPersona from '../ui/AIPersona';
 import InteractiveAIPersona from '../ui/InteractiveAIPersona';
@@ -1379,75 +1380,74 @@ const ClientLogos: React.FC = () => {
     const extendedLogos = [...logos, ...logos, ...logos];
 
     return (
-        <div className="w-full overflow-hidden relative">
+        <div className="w-full overflow-hidden relative logo-carousel-8k">
             {/* Gradientes laterais para efeito fade */}
             <div className="absolute left-0 top-0 w-20 h-full bg-gradient-to-r from-secondary to-transparent z-10 pointer-events-none"></div>
             <div className="absolute right-0 top-0 w-20 h-full bg-gradient-to-l from-secondary to-transparent z-10 pointer-events-none"></div>
             
             {/* Container do carrossel */}
             <div 
-                className={`flex w-max ${isPaused ? 'pause-animation' : 'animate-infinite-scroll'}`}
+                className={`flex w-max logo-carousel-8k ${isPaused ? 'pause-animation' : 'animate-scroll-8k'}`}
                 onMouseEnter={() => setIsPaused(true)}
                 onMouseLeave={() => setIsPaused(false)}
             >
                 {extendedLogos.map((logo, index) => (
                     <div 
                         key={`${logo.id}-${index}`} 
-                        className="flex-shrink-0 mx-6 sm:mx-8 lg:mx-12 group"
+                        className="flex-shrink-0 mx-6 sm:mx-8 lg:mx-12 group logo-8k-optimized"
                     >
                         <a 
                             href={logo.url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="block transform transition-all duration-500 ease-out group-hover:scale-110"
+                            className="block logo-8k-hover"
                         >
-                            {/* Logo com efeitos visuais 3D ultra-realistas */}
-                            <div className="relative">
-                                {/* Glow effect dinâmico */}
+                            {/* Logo 8K Ultra-Nítida Cristalina */}
+                            <div className="relative logo-8k-container">
+                                {/* Glow effect ultra-nítido sem blur */}
                                 <div 
-                                    className="absolute inset-0 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                                    className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-30 transition-opacity duration-300 logo-8k-glow"
                                     style={{
-                                        background: `radial-gradient(circle, ${logo.color}40, ${logo.color}20, transparent)`
+                                        background: `radial-gradient(ellipse at center, ${logo.color}60 0%, ${logo.color}30 50%, transparent 100%)`
                                     }}
                                 ></div>
                                 
-                                {/* Logo 3D Ultra-Realista com cores das marcas */}
+                                {/* Logo 8K Ultra-Nítida com definição cristalina */}
                                 <div 
-                                    className="relative backdrop-blur-sm px-8 py-6 rounded-2xl border-2 transition-all duration-700 min-w-[140px] h-20 flex items-center justify-center shadow-2xl transform group-hover:scale-105 group-hover:rotate-1"
+                                    className="relative px-6 py-4 rounded-xl border transition-all duration-300 min-w-[120px] h-16 flex items-center justify-center logo-8k-border logo-8k-gradient"
                                     style={{
-                                        background: `linear-gradient(135deg, ${logo.color}15, ${logo.color}25, rgba(255,255,255,0.1))`,
-                                        borderColor: `${logo.color}50`,
-                                        boxShadow: `0 8px 32px ${logo.color}20, 0 0 0 1px ${logo.color}30`
+                                        background: `linear-gradient(145deg, ${logo.color}08, ${logo.color}12, rgba(255,255,255,0.05))`,
+                                        borderColor: `${logo.color}40`,
+                                        borderWidth: '1px',
+                                        boxShadow: `0 4px 20px ${logo.color}15, inset 0 1px 0 rgba(255,255,255,0.1)`
                                     }}
                                 >
-                                    {/* Efeito 3D de profundidade */}
-                                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/10 rounded-2xl"></div>
-                                    
+                                    {/* Texto ultra-nítido 8K */}
                                     <span 
-                                        className="text-xl font-bold transition-all duration-700 transform group-hover:scale-110 relative z-10"
+                                        className="text-lg font-extrabold transition-all duration-300 transform group-hover:scale-105 relative z-10 logo-8k-text"
                                         style={{
                                             color: logo.color,
-                                            textShadow: `0 2px 4px ${logo.color}60, 0 0 20px ${logo.color}30, 0 4px 8px rgba(0,0,0,0.5)`,
-                                            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
+                                            textShadow: `0 1px 2px ${logo.color}40, 0 0 8px ${logo.color}20`
                                         }}
                                     >
                                         {logo.name}
                                     </span>
                                     
-                                    {/* Reflexo 3D */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/15 rounded-2xl pointer-events-none"></div>
+                                    {/* Reflexo cristalino ultra-nítido */}
+                                    <div className="absolute inset-0 rounded-xl pointer-events-none logo-8k-reflection"></div>
                                     
-                                    {/* Borda interna brilhante */}
+                                    {/* Borda interna cristalina */}
                                     <div 
-                                        className="absolute inset-0 rounded-2xl pointer-events-none opacity-50"
+                                        className="absolute inset-0 rounded-xl pointer-events-none"
                                         style={{
-                                            background: `linear-gradient(45deg, transparent 30%, ${logo.color}20 50%, transparent 70%)`
+                                            background: `linear-gradient(90deg, transparent 20%, ${logo.color}10 50%, transparent 80%)`,
+                                            opacity: 0.6
                                         }}
                                     ></div>
                                 </div>
                                 
-                                {/* Shine effect */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-out rounded-2xl"></div>
+                                {/* Shine effect ultra-nítido */}
+                                <div className="absolute inset-0 rounded-xl -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-800 ease-out pointer-events-none logo-8k-shine"></div>
                             </div>
                         </a>
                     </div>

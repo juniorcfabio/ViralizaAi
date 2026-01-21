@@ -1,0 +1,153 @@
+/* Estilos CSS para Logos 8K Ultra-Nítidas */
+
+/* Otimização de renderização para texto ultra-nítido */
+.logo-8k-text {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "kern" 1, "liga" 1;
+    font-variant-ligatures: common-ligatures;
+    font-kerning: auto;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* Container otimizado para logos cristalinas */
+.logo-8k-container {
+    backface-visibility: hidden;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    perspective: 1000px;
+    transform-style: preserve-3d;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+}
+
+/* Efeitos de glow ultra-nítidos sem blur */
+.logo-8k-glow {
+    filter: contrast(1.4) saturate(1.6) brightness(1.1);
+    -webkit-filter: contrast(1.4) saturate(1.6) brightness(1.1);
+    backdrop-filter: saturate(1.8) contrast(1.3);
+    -webkit-backdrop-filter: saturate(1.8) contrast(1.3);
+}
+
+/* Animações suaves e otimizadas */
+.logo-8k-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    -webkit-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logo-8k-hover:hover {
+    transform: scale(1.05) translateZ(10px);
+    -webkit-transform: scale(1.05) translateZ(10px);
+    filter: contrast(1.5) saturate(1.8) brightness(1.2);
+    -webkit-filter: contrast(1.5) saturate(1.8) brightness(1.2);
+}
+
+/* Shine effect ultra-nítido */
+.logo-8k-shine {
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.6) 50%,
+        transparent 100%
+    );
+    filter: contrast(1.8) brightness(1.3);
+    -webkit-filter: contrast(1.8) brightness(1.3);
+}
+
+/* Otimização para carrossel infinito */
+.logo-carousel-8k {
+    will-change: transform;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
+
+/* Gradientes ultra-nítidos */
+.logo-8k-gradient {
+    background-attachment: fixed;
+    background-blend-mode: multiply;
+    filter: contrast(1.3) saturate(1.4);
+    -webkit-filter: contrast(1.3) saturate(1.4);
+}
+
+/* Bordas cristalinas */
+.logo-8k-border {
+    border-style: solid;
+    border-image: linear-gradient(45deg, transparent, currentColor, transparent) 1;
+    box-shadow: 
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Reflexos cristalinos */
+.logo-8k-reflection {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.2) 0%,
+        transparent 30%,
+        transparent 70%,
+        rgba(255, 255, 255, 0.1) 100%
+    );
+    mix-blend-mode: overlay;
+}
+
+/* Otimização para dispositivos de alta resolução */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .logo-8k-text {
+        font-weight: 800;
+        letter-spacing: 0.3px;
+    }
+    
+    .logo-8k-container {
+        filter: contrast(1.2) saturate(1.3);
+        -webkit-filter: contrast(1.2) saturate(1.3);
+    }
+}
+
+/* Otimização para telas 4K e 8K */
+@media (min-width: 2560px) {
+    .logo-8k-text {
+        font-weight: 900;
+        letter-spacing: 0.4px;
+        font-size: 1.25em;
+    }
+    
+    .logo-8k-container {
+        filter: contrast(1.3) saturate(1.4) brightness(1.05);
+        -webkit-filter: contrast(1.3) saturate(1.4) brightness(1.05);
+    }
+}
+
+/* Animação do carrossel otimizada */
+@keyframes scroll-8k {
+    0% {
+        transform: translateX(0) translateZ(0);
+    }
+    100% {
+        transform: translateX(-33.333%) translateZ(0);
+    }
+}
+
+.animate-scroll-8k {
+    animation: scroll-8k 60s linear infinite;
+    will-change: transform;
+    backface-visibility: hidden;
+}
+
+.animate-scroll-8k:hover {
+    animation-play-state: paused;
+}
+
+/* Otimização de performance */
+.logo-8k-optimized {
+    contain: layout style paint;
+    content-visibility: auto;
+    contain-intrinsic-size: 120px 64px;
+}
