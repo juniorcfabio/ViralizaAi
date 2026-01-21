@@ -427,8 +427,10 @@ class StripeService {
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      console.error('❌ Erro ao verificar status:', error);
+      console.error('❌ Erro ao verificar status do pagamento:', error);
       throw error;
     }
   }
 }
+
+export default StripeService;
