@@ -1342,13 +1342,13 @@ const AffiliateSection: React.FC<{ onRegister: () => void }> = ({ onRegister }) 
 const ClientLogos: React.FC = () => {
     const [isPaused, setIsPaused] = useState(false);
 
-    // Logos com cores das marcas para exibição visual 3D ultra-realista
+    // Logos com cores REAIS oficiais das empresas
     const logos = [
-        { id: '1', name: 'Microsoft', url: 'https://microsoft.com', color: '#00BCF2' },
+        { id: '1', name: 'Microsoft', url: 'https://microsoft.com', color: '#00A4EF' },
         { id: '2', name: 'Google', url: 'https://google.com', color: '#4285F4' },
         { id: '3', name: 'Amazon', url: 'https://amazon.com', color: '#FF9900' },
         { id: '4', name: 'Meta', url: 'https://meta.com', color: '#1877F2' },
-        { id: '5', name: 'Apple', url: 'https://apple.com', color: '#000000' },
+        { id: '5', name: 'Apple', url: 'https://apple.com', color: '#007AFF' },
         { id: '6', name: 'Tesla', url: 'https://tesla.com', color: '#CC0000' },
         { id: '7', name: 'Netflix', url: 'https://netflix.com', color: '#E50914' },
         { id: '8', name: 'Spotify', url: 'https://spotify.com', color: '#1DB954' },
@@ -1359,7 +1359,7 @@ const ClientLogos: React.FC = () => {
         { id: '13', name: 'Intel', url: 'https://intel.com', color: '#0071C5' },
         { id: '14', name: 'NVIDIA', url: 'https://nvidia.com', color: '#76B900' },
         { id: '15', name: 'Samsung', url: 'https://samsung.com', color: '#1428A0' },
-        { id: '16', name: 'Sony', url: 'https://sony.com', color: '#000000' },
+        { id: '16', name: 'Sony', url: 'https://sony.com', color: '#0070F3' },
         { id: '17', name: 'Uber', url: 'https://uber.com', color: '#000000' },
         { id: '18', name: 'Airbnb', url: 'https://airbnb.com', color: '#FF5A5F' },
         { id: '19', name: 'PayPal', url: 'https://paypal.com', color: '#003087' },
@@ -1367,9 +1367,9 @@ const ClientLogos: React.FC = () => {
         { id: '21', name: 'Zoom', url: 'https://zoom.us', color: '#2D8CFF' },
         { id: '22', name: 'Slack', url: 'https://slack.com', color: '#4A154B' },
         { id: '23', name: 'Dropbox', url: 'https://dropbox.com', color: '#0061FF' },
-        { id: '24', name: 'Twitter', url: 'https://twitter.com', color: '#1DA1F2' },
-        { id: '25', name: 'LinkedIn', url: 'https://linkedin.com', color: '#0077B5' },
-        { id: '26', name: 'TikTok', url: 'https://tiktok.com', color: '#000000' },
+        { id: '24', name: 'X (Twitter)', url: 'https://x.com', color: '#000000' },
+        { id: '25', name: 'LinkedIn', url: 'https://linkedin.com', color: '#0A66C2' },
+        { id: '26', name: 'TikTok', url: 'https://tiktok.com', color: '#FF0050' },
         { id: '27', name: 'Instagram', url: 'https://instagram.com', color: '#E4405F' },
         { id: '28', name: 'WhatsApp', url: 'https://whatsapp.com', color: '#25D366' },
         { id: '29', name: 'YouTube', url: 'https://youtube.com', color: '#FF0000' },
