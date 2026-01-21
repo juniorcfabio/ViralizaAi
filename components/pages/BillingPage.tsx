@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
-import { StripeService } from '../../services/stripeService';
+import StripeService from '../../services/stripeService';
 
 interface Plan {
     id: string;
