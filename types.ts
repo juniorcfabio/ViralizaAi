@@ -355,6 +355,7 @@ export interface TrustedCompany {
   name: string;
   url: string;
   status: 'Active' | 'Inactive';
+  logo?: string;
 }
 
 export interface ViralPredictionResult {

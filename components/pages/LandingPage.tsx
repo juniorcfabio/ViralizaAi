@@ -1380,26 +1380,45 @@ const ClientLogos: React.FC = () => {
                                 {/* Glow effect */}
                                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                                 
-                                {/* Logo real da empresa */}
-                                <div className="relative bg-white/10 backdrop-blur-sm px-6 py-4 rounded-lg border border-gray-700/50 group-hover:border-accent/50 transition-all duration-500 min-w-[120px] h-16 flex items-center justify-center">
+                                {/* Logo 3D Ultra-Realista */}
+                                <div className="relative bg-gradient-to-br from-white/95 to-gray-100/90 backdrop-blur-sm px-8 py-6 rounded-2xl border-2 border-white/30 group-hover:border-accent/60 transition-all duration-700 min-w-[140px] h-20 flex items-center justify-center shadow-2xl group-hover:shadow-accent/20 transform group-hover:scale-105 group-hover:rotate-1">
+                                    {/* Efeito 3D de profundidade */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/20 to-transparent rounded-2xl"></div>
+                                    
                                     {logo.logo ? (
                                         <img 
                                             src={logo.logo} 
                                             alt={logo.name}
-                                            className="max-w-full max-h-full object-contain filter brightness-90 group-hover:brightness-110 transition-all duration-500"
+                                            className="max-w-full max-h-full object-contain filter drop-shadow-lg group-hover:drop-shadow-2xl transition-all duration-700 transform group-hover:scale-110"
+                                            style={{
+                                                filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1)) brightness(1.1) contrast(1.1) saturate(1.2)',
+                                                imageRendering: 'crisp-edges'
+                                            }}
+                                            onLoad={(e) => {
+                                                // Garantir que a imagem seja visível quando carregar
+                                                e.currentTarget.style.opacity = '1';
+                                                const textElement = e.currentTarget.nextElementSibling as HTMLElement;
+                                                if (textElement) textElement.style.display = 'none';
+                                            }}
                                             onError={(e) => {
                                                 // Fallback para texto se a imagem não carregar
+                                                console.warn(`Erro ao carregar logo: ${logo.name} - ${logo.logo}`);
                                                 e.currentTarget.style.display = 'none';
-                                                e.currentTarget.nextElementSibling.style.display = 'block';
+                                                const textElement = e.currentTarget.nextElementSibling as HTMLElement;
+                                                if (textElement) textElement.style.display = 'block';
                                             }}
                                         />
                                     ) : null}
+                                    
                                     <span 
-                                        className="text-sm font-bold bg-gradient-to-r from-gray-300 to-gray-500 group-hover:from-white group-hover:to-accent bg-clip-text text-transparent transition-all duration-500"
+                                        className="text-lg font-bold bg-gradient-to-r from-gray-700 to-gray-900 group-hover:from-accent group-hover:to-blue-600 bg-clip-text text-transparent transition-all duration-700"
                                         style={{ display: logo.logo ? 'none' : 'block' }}
                                     >
                                         {logo.name}
                                     </span>
+                                    
+                                    {/* Reflexo 3D */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/10 rounded-2xl pointer-events-none"></div>
                                 </div>
                                 
                                 {/* Shine effect */}
