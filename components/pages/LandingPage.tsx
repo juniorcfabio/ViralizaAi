@@ -1121,33 +1121,54 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
     // Função para processar compra de plano via Stripe
     const handlePlanPurchase = async (plan: Plan) => {
         try {
+            console.log('🚀 LandingPage - Processando pagamento do plano:', plan.name);
+            
             const stripeService = StripeService.getInstance();
-            
-            const billingCycle = plan.name.toLowerCase().includes('mensal') ? 'monthly' :
-                               plan.name.toLowerCase().includes('trimestral') ? 'quarterly' :
-                               plan.name.toLowerCase().includes('semestral') ? 'semiannual' : 'annual';
-            
+            const amount = parseFloat(String(plan.price).replace(',', '.'));
+            const appBaseUrl = window.location.origin;
+
+            // Determinar ciclo de cobrança baseado no nome do plano
+            let billingCycle: 'monthly' | 'quarterly' | 'semiannual' | 'annual' = 'monthly';
+            const planName = plan.name.toLowerCase();
+            if (planName.includes('trimestral')) billingCycle = 'quarterly';
+            else if (planName.includes('semestral')) billingCycle = 'semiannual';
+            else if (planName.includes('anual')) billingCycle = 'annual';
+
             const subscriptionData = {
-                amount: parseFloat(String(plan.price).replace(',', '.')),
-                currency: 'BRL',
-                description: `Assinatura ${plan.name} - ViralizaAI`,
-                productId: plan.id || 'plan_' + Date.now(),
-                productType: 'subscription' as const,
-                userId: 'guest_' + Date.now(),
-                userEmail: 'usuario@exemplo.com',
-                successUrl: `${window.location.origin}/dashboard?payment=success`,
-                cancelUrl: `${window.location.origin}/?payment=cancelled`,
-                planId: plan.id || 'plan_' + Date.now(),
-                planName: plan.name,
-                billingCycle: billingCycle as 'monthly' | 'quarterly' | 'semiannual' | 'annual',
+                mode: 'subscription',
+                line_items: [{
+                    price_data: {
+                        currency: 'brl',
+                        product_data: {
+                            name: `Assinatura ${plan.name} - ViralizaAI`
+                        },
+                        unit_amount: Math.round(amount * 100),
+                        recurring: {
+                            interval: billingCycle === 'monthly' ? 'month' : 
+                                     billingCycle === 'quarterly' ? 'month' :
+                                     billingCycle === 'semiannual' ? 'month' :
+                                     'year'
+                        }
+                    },
+                    quantity: 1
+                }],
+                success_url: `${appBaseUrl}/#/dashboard/social-tools?payment=success&plan=${encodeURIComponent(plan.name)}`,
+                cancel_url: `${appBaseUrl}/?payment=cancelled`,
+                customer_email: 'usuario@viralizaai.com',
                 metadata: {
-                    planFeatures: Array.isArray(plan.features) ? plan.features.join(', ') : String(plan.features || '')
+                    productType: 'subscription',
+                    planName: plan.name,
+                    planId: plan.id || plan.name,
+                    source: 'landing_page',
+                    billingCycle: billingCycle
                 }
             };
-            
+
+            console.log('📋 Dados da assinatura (LandingPage):', subscriptionData);
             await stripeService.processSubscriptionPayment(subscriptionData);
+
         } catch (error) {
-            console.error('Erro ao processar pagamento:', error);
+            console.error('❌ Erro ao processar pagamento na LandingPage:', error);
             alert('Erro ao processar pagamento. Tente novamente.');
         }
     };

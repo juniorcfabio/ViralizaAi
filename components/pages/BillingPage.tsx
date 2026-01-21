@@ -180,9 +180,41 @@ const BillingPage: React.FC = () => {
     const handlePurchaseGrowthEngine = async (label: string, price: number) => {
         setBuyingGrowthEngine(label);
         try {
+            console.log('🚀 BillingPage - Processando compra Motor de Crescimento:', label, price);
+            
+            const stripeService = StripeService.getInstance();
+            const appBaseUrl = window.location.origin;
+
+            const subscriptionData = {
+                mode: 'payment',
+                line_items: [{
+                    price_data: {
+                        currency: 'brl',
+                        product_data: {
+                            name: `Motor de Crescimento Viraliza - ${label}`
+                        },
+                        unit_amount: Math.round(price * 100)
+                    },
+                    quantity: 1
+                }],
+                success_url: `${appBaseUrl}/#/dashboard/growth-engine?payment=success&addon=${encodeURIComponent(label)}`,
+                cancel_url: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`,
+                customer_email: user.email,
+                metadata: {
+                    productType: 'addon',
+                    addonName: 'Motor de Crescimento Viraliza',
+                    addonPeriod: label,
+                    userId: user.id,
+                    userEmail: user.email
+                }
+            };
+
+            console.log('📋 Dados da compra Motor de Crescimento:', subscriptionData);
             showNotification('Redirecionando para pagamento...');
-            // Implementar lógica de compra do Growth Engine
+            await stripeService.processSubscriptionPayment(subscriptionData);
+
         } catch (error) {
+            console.error('❌ Erro ao processar compra Motor de Crescimento:', error);
             showNotification('Erro ao processar compra. Tente novamente.');
         } finally {
             setBuyingGrowthEngine(null);
