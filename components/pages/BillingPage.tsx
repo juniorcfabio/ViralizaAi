@@ -822,12 +822,51 @@ const handleSubscribe = async (plan: Plan) => {
         setSubscribingPlan(null);
     }
 };
-                                </p>
-                                <div className="mt-6 flex space-x-2">
-                                    <button
-                                        onClick={handlePlansScroll}
-                                        className="flex-1 bg-accent text-light font-semibold py-2 px-4 rounded-full hover:bg-blue-500"
-                                    >
+
+const handlePlansScroll = () => {
+    document
+        .getElementById('plans-section')
+        ?.scrollIntoView({ behavior: 'smooth' });
+};
+
+const getStatusChip = (status: 'Pago' | 'Pendente') => {
+    switch (status) {
+        case 'Pago':
+            return 'bg-green-500/20 text-green-300';
+        case 'Pendente':
+            return 'bg-yellow-500/20 text-yellow-300';
+    }
+};
+
+return (
+    <>
+        <header className="mb-8">
+            <h2 className="text-3xl font-bold">Faturamento & Assinatura</h2>
+            <p className="text-gray-dark">
+                Gerencie seu plano, métodos de pagamento e ferramentas avulsas.
+            </p>
+        </header>
+
+        {notification && (
+            <div className="bg-green-500 bg-opacity-20 text-green-300 p-3 rounded-lg mb-6 text-center">
+                {notification}
+            </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1 space-y-8">
+                <div className="bg-secondary p-6 rounded-lg">
+                    <h3 className="text-xl font-bold mb-4">Seu Plano Atual</h3>
+                    {currentPlan ? (
+                        <>
+                            <p className="text-2xl font-bold text-accent">
+                                {currentPlan.name}
+                            </p>
+                            <p className="text-lg text-gray-dark">
+                                R$ {currentPlan.price}
+                                {currentPlan.period}
+                            </p>
+                            <div className="mt-6 flex space-x-2">
                                         Alterar Plano
                                     </button>
                                     <button className="flex-1 bg-primary text-gray-dark font-semibold py-2 px-4 rounded-full hover:bg-red-600/20 hover:text-red-400">

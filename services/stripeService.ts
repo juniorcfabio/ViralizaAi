@@ -81,52 +81,62 @@ class StripeService {
     }
   }
 
-  // Processar pagamento de assinatura
-  public async processSubscriptionPayment(data: StripeSubscriptionData): Promise<void> {
-    console.log('💳 Processando pagamento de assinatura:', data);
-    
+  // SISTEMA DE CHECKOUT RECONSTRUÍDO - SOLUÇÃO DEFINITIVA
+  async processSubscriptionPayment(subscriptionData: any): Promise<void> {
     try {
-      const stripe = await this.initializeStripe();
-      if (!stripe) {
-        throw new Error('Falha ao inicializar Stripe');
+      console.log('🚀 SISTEMA RECONSTRUÍDO - Processando pagamento...');
+      console.log('📋 Dados da assinatura:', subscriptionData);
+
+      // Validar dados antes de enviar
+      if (!subscriptionData.line_items || !Array.isArray(subscriptionData.line_items)) {
+        throw new Error('line_items é obrigatório e deve ser um array');
       }
 
-      // Preparar dados para checkout
-      const checkoutData = {
-        mode: 'subscription',
-        line_items: [{
-          price_data: {
-            currency: data.currency,
-            product_data: {
-              name: data.description,
-              description: `Plano ${data.planName} - Cobrança ${this.getBillingInterval(data.billingCycle)}`
-            },
-            unit_amount: Math.round(data.amount * 100),
-            recurring: {
-              interval: this.getBillingInterval(data.billingCycle)
-            }
-          },
-          quantity: 1
-        }],
-        success_url: data.successUrl,
-        cancel_url: data.cancelUrl,
-        customer_email: data.userEmail,
-        metadata: {
-          productType: 'subscription',
-          planId: data.planId,
-          planName: data.planName,
-          userId: data.userId,
-          billingCycle: data.billingCycle,
-          ...data.metadata
-        }
-      };
+      if (!subscriptionData.success_url || !subscriptionData.cancel_url) {
+        throw new Error('success_url e cancel_url são obrigatórios');
+      }
 
-      console.log('🚀 Dados do checkout preparados:', checkoutData);
+      // Usar API create-checkout-session reconstruída
+      const appBaseUrl = window.location.origin;
+      console.log('🔗 Chamando API reconstruída:', `${appBaseUrl}/api/create-checkout-session`);
       
-      await this.redirectToStripeCheckout(checkoutData);
+      const response = await fetch(`${appBaseUrl}/api/create-checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(subscriptionData)
+      });
+
+      console.log('📡 Status da resposta:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erro da API reconstruída:', errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { message: errorText };
+        }
+        
+        throw new Error(`API Error: ${response.status} - ${errorData.message || errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Resultado da API reconstruída:', result);
+      
+      if (result.success && result.url) {
+        console.log('🎉 SUCESSO! Redirecionando para Stripe...');
+        console.log('🔗 URL do checkout:', result.url);
+        window.location.href = result.url;
+      } else {
+        throw new Error(result.message || 'URL de checkout não retornada');
+      }
       
     } catch (error) {
-      console.error('❌ Erro no processamento de assinatura:', error);
+      console.error('❌ ERRO no sistema reconstruído:', error);
       throw error;
     }
   }
@@ -417,3 +427,8 @@ class StripeService {
         timestamp: new Date().toISOString()
       };
     } catch (error) {
+      console.error('❌ Erro ao verificar status:', error);
+      throw error;
+    }
+  }
+}
