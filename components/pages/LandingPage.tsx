@@ -662,20 +662,23 @@ const Hero: React.FC<{ onRegister: () => void; onPersonaClick: () => void }> = (
                    {t('hero.title')}
                 </h1>
                 <p className="text-lg md:text-xl text-gray-dark max-w-3xl mx-auto mb-8">
-                   {t('hero.subtitle')}
+                   {t('affiliate.subtitle')}
                 </p>
                 <div className="flex justify-center mb-8">
-                    <AIPersona onClick={onPersonaClick} />
+                    <AIPersona onClick={() => console.log('onClick')} />
+                    <button 
+                        onClick={onRegister}
+                        className="bg-black text-white font-bold py-4 px-8 rounded-full hover:bg-gray-800 transition-all transform hover:scale-105 shadow-lg"
+                    >
+                        Quero Ser Afiliado Agora!
+                    </button>
                 </div>
-                <button onClick={onRegister} className="bg-accent text-light font-bold py-4 px-8 rounded-full hover:bg-blue-500 transition-transform transform hover:scale-105">
-                    {t('hero.cta')}
-                </button>
             </div>
         </section>
     );
 };
 
-const Features: React.FC = () => {
+const ClientLogos: React.FC = () => {
     const { t } = useLanguage();
     return (
         <section id="features" className="py-20 bg-secondary">
@@ -1336,18 +1339,41 @@ const AffiliateSection: React.FC<{ onRegister: () => void }> = ({ onRegister }) 
 };
 
 const ClientLogos: React.FC = () => {
-    const [logos, setLogos] = useState<TrustedCompany[]>([]);
     const [isPaused, setIsPaused] = useState(false);
 
-    useEffect(() => {
-        const loadLogos = async () => {
-            const data = await getTrustedCompaniesDB();
-            setLogos(data.filter(c => c.status === 'Active'));
-        };
-        loadLogos();
-    }, []);
-
-    if (logos.length === 0) return null;
+    // Logos com cores das marcas para exibição visual 3D ultra-realista
+    const logos = [
+        { id: '1', name: 'Microsoft', url: 'https://microsoft.com', color: '#00BCF2' },
+        { id: '2', name: 'Google', url: 'https://google.com', color: '#4285F4' },
+        { id: '3', name: 'Amazon', url: 'https://amazon.com', color: '#FF9900' },
+        { id: '4', name: 'Meta', url: 'https://meta.com', color: '#1877F2' },
+        { id: '5', name: 'Apple', url: 'https://apple.com', color: '#000000' },
+        { id: '6', name: 'Tesla', url: 'https://tesla.com', color: '#CC0000' },
+        { id: '7', name: 'Netflix', url: 'https://netflix.com', color: '#E50914' },
+        { id: '8', name: 'Spotify', url: 'https://spotify.com', color: '#1DB954' },
+        { id: '9', name: 'Adobe', url: 'https://adobe.com', color: '#FF0000' },
+        { id: '10', name: 'Salesforce', url: 'https://salesforce.com', color: '#00A1E0' },
+        { id: '11', name: 'Oracle', url: 'https://oracle.com', color: '#F80000' },
+        { id: '12', name: 'IBM', url: 'https://ibm.com', color: '#1261FE' },
+        { id: '13', name: 'Intel', url: 'https://intel.com', color: '#0071C5' },
+        { id: '14', name: 'NVIDIA', url: 'https://nvidia.com', color: '#76B900' },
+        { id: '15', name: 'Samsung', url: 'https://samsung.com', color: '#1428A0' },
+        { id: '16', name: 'Sony', url: 'https://sony.com', color: '#000000' },
+        { id: '17', name: 'Uber', url: 'https://uber.com', color: '#000000' },
+        { id: '18', name: 'Airbnb', url: 'https://airbnb.com', color: '#FF5A5F' },
+        { id: '19', name: 'PayPal', url: 'https://paypal.com', color: '#003087' },
+        { id: '20', name: 'Shopify', url: 'https://shopify.com', color: '#96BF48' },
+        { id: '21', name: 'Zoom', url: 'https://zoom.us', color: '#2D8CFF' },
+        { id: '22', name: 'Slack', url: 'https://slack.com', color: '#4A154B' },
+        { id: '23', name: 'Dropbox', url: 'https://dropbox.com', color: '#0061FF' },
+        { id: '24', name: 'Twitter', url: 'https://twitter.com', color: '#1DA1F2' },
+        { id: '25', name: 'LinkedIn', url: 'https://linkedin.com', color: '#0077B5' },
+        { id: '26', name: 'TikTok', url: 'https://tiktok.com', color: '#000000' },
+        { id: '27', name: 'Instagram', url: 'https://instagram.com', color: '#E4405F' },
+        { id: '28', name: 'WhatsApp', url: 'https://whatsapp.com', color: '#25D366' },
+        { id: '29', name: 'YouTube', url: 'https://youtube.com', color: '#FF0000' },
+        { id: '30', name: 'Discord', url: 'https://discord.com', color: '#5865F2' },
+    ];
 
     // Triplicar logos para carrossel infinito suave
     const extendedLogos = [...logos, ...logos, ...logos];
@@ -1375,54 +1401,53 @@ const ClientLogos: React.FC = () => {
                             rel="noopener noreferrer"
                             className="block transform transition-all duration-500 ease-out group-hover:scale-110"
                         >
-                            {/* Logo com efeitos visuais */}
+                            {/* Logo com efeitos visuais 3D ultra-realistas */}
                             <div className="relative">
-                                {/* Glow effect */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                {/* Glow effect dinâmico */}
+                                <div 
+                                    className="absolute inset-0 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                                    style={{
+                                        background: `radial-gradient(circle, ${logo.color}40, ${logo.color}20, transparent)`
+                                    }}
+                                ></div>
                                 
-                                {/* Logo 3D Ultra-Realista */}
-                                <div className="relative bg-gradient-to-br from-white/95 to-gray-100/90 backdrop-blur-sm px-8 py-6 rounded-2xl border-2 border-white/30 group-hover:border-accent/60 transition-all duration-700 min-w-[140px] h-20 flex items-center justify-center shadow-2xl group-hover:shadow-accent/20 transform group-hover:scale-105 group-hover:rotate-1">
+                                {/* Logo 3D Ultra-Realista com cores das marcas */}
+                                <div 
+                                    className="relative backdrop-blur-sm px-8 py-6 rounded-2xl border-2 transition-all duration-700 min-w-[140px] h-20 flex items-center justify-center shadow-2xl transform group-hover:scale-105 group-hover:rotate-1"
+                                    style={{
+                                        background: `linear-gradient(135deg, ${logo.color}15, ${logo.color}25, rgba(255,255,255,0.1))`,
+                                        borderColor: `${logo.color}50`,
+                                        boxShadow: `0 8px 32px ${logo.color}20, 0 0 0 1px ${logo.color}30`
+                                    }}
+                                >
                                     {/* Efeito 3D de profundidade */}
-                                    <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/20 to-transparent rounded-2xl"></div>
-                                    
-                                    {logo.logo ? (
-                                        <img 
-                                            src={logo.logo} 
-                                            alt={logo.name}
-                                            className="max-w-full max-h-full object-contain filter drop-shadow-lg group-hover:drop-shadow-2xl transition-all duration-700 transform group-hover:scale-110"
-                                            style={{
-                                                filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1)) brightness(1.1) contrast(1.1) saturate(1.2)',
-                                                imageRendering: 'crisp-edges'
-                                            }}
-                                            onLoad={(e) => {
-                                                // Garantir que a imagem seja visível quando carregar
-                                                e.currentTarget.style.opacity = '1';
-                                                const textElement = e.currentTarget.nextElementSibling as HTMLElement;
-                                                if (textElement) textElement.style.display = 'none';
-                                            }}
-                                            onError={(e) => {
-                                                // Fallback para texto se a imagem não carregar
-                                                console.warn(`Erro ao carregar logo: ${logo.name} - ${logo.logo}`);
-                                                e.currentTarget.style.display = 'none';
-                                                const textElement = e.currentTarget.nextElementSibling as HTMLElement;
-                                                if (textElement) textElement.style.display = 'block';
-                                            }}
-                                        />
-                                    ) : null}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/10 rounded-2xl"></div>
                                     
                                     <span 
-                                        className="text-lg font-bold bg-gradient-to-r from-gray-700 to-gray-900 group-hover:from-accent group-hover:to-blue-600 bg-clip-text text-transparent transition-all duration-700"
-                                        style={{ display: logo.logo ? 'none' : 'block' }}
+                                        className="text-xl font-bold transition-all duration-700 transform group-hover:scale-110 relative z-10"
+                                        style={{
+                                            color: logo.color,
+                                            textShadow: `0 2px 4px ${logo.color}60, 0 0 20px ${logo.color}30, 0 4px 8px rgba(0,0,0,0.5)`,
+                                            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
+                                        }}
                                     >
                                         {logo.name}
                                     </span>
                                     
                                     {/* Reflexo 3D */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/10 rounded-2xl pointer-events-none"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/15 rounded-2xl pointer-events-none"></div>
+                                    
+                                    {/* Borda interna brilhante */}
+                                    <div 
+                                        className="absolute inset-0 rounded-2xl pointer-events-none opacity-50"
+                                        style={{
+                                            background: `linear-gradient(45deg, transparent 30%, ${logo.color}20 50%, transparent 70%)`
+                                        }}
+                                    ></div>
                                 </div>
                                 
                                 {/* Shine effect */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-out"></div>
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-out rounded-2xl"></div>
                             </div>
                         </a>
                     </div>
