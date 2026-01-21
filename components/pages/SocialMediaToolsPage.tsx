@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import SocialMediaToolsEngine from '../../services/socialMediaToolsEngine';
+import StripeService from '../../services/stripeService';
 
 // Ícones
 const ScheduleIcon = () => (
@@ -49,35 +50,43 @@ interface ToolCardProps {
   available: boolean;
   requiredPlan: string;
   onClick: () => void;
+  onUpgrade?: () => void;
 }
 
-const ToolCard: React.FC<ToolCardProps> = ({ title, description, icon, available, requiredPlan, onClick }) => (
+const ToolCard: React.FC<ToolCardProps> = ({ title, description, icon, available, requiredPlan, onClick, onUpgrade }) => (
   <div 
     className={`p-6 rounded-xl border-2 transition-all duration-300 cursor-pointer ${
       available 
         ? 'border-blue-200 bg-white hover:border-blue-400 hover:shadow-lg' 
-        : 'border-gray-200 bg-gray-50 opacity-60'
+        : 'border-orange-200 bg-orange-50 hover:border-orange-400 hover:shadow-lg'
     }`}
-    onClick={available ? onClick : undefined}
+    onClick={available ? onClick : onUpgrade}
   >
     <div className="flex items-center mb-4">
-      <div className={`p-3 rounded-lg ${available ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+      <div className={`p-3 rounded-lg ${available ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
         {icon}
       </div>
       <div className="ml-4">
-        <h3 className={`text-lg font-semibold ${available ? 'text-gray-900' : 'text-gray-500'}`}>
+        <h3 className={`text-lg font-semibold ${available ? 'text-gray-900' : 'text-gray-700'}`}>
           {title}
         </h3>
         {!available && (
-          <span className="text-sm text-orange-600 font-medium">
-            Requer plano {requiredPlan}+
+          <span className="text-sm text-orange-600 font-medium bg-orange-100 px-2 py-1 rounded-full">
+            Requer plano {requiredPlan}+ - Clique para assinar
           </span>
         )}
       </div>
     </div>
-    <p className={`text-sm ${available ? 'text-gray-600' : 'text-gray-400'}`}>
+    <p className={`text-sm ${available ? 'text-gray-600' : 'text-gray-600'}`}>
       {description}
     </p>
+    {!available && (
+      <div className="mt-4 pt-4 border-t border-orange-200">
+        <button className="w-full bg-orange-500 text-white py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors font-medium">
+          🚀 Fazer Upgrade para {requiredPlan.charAt(0).toUpperCase() + requiredPlan.slice(1)}
+        </button>
+      </div>
+    )}
   </div>
 );
 
@@ -274,7 +283,97 @@ const SocialMediaToolsPage: React.FC = () => {
     return planHierarchy[userPlan] >= planHierarchy[requiredPlan];
   };
 
+  // Função para processar checkout de plano específico
+  const handlePlanCheckout = async (requiredPlan: string) => {
+    try {
+      console.log('🚀 SocialMediaTools - Redirecionando para checkout do plano:', requiredPlan);
+      
+      const stripeService = StripeService.getInstance();
+      const appBaseUrl = window.location.origin;
+
+      // Mapear planos para preços
+      const planPrices = {
+        'mensal': { price: 59.90, name: 'Mensal' },
+        'trimestral': { price: 159.90, name: 'Trimestral' },
+        'semestral': { price: 259.90, name: 'Semestral' },
+        'anual': { price: 399.90, name: 'Anual' }
+      };
+
+      const planInfo = planPrices[requiredPlan];
+      if (!planInfo) {
+        alert('Plano não encontrado. Tente novamente.');
+        return;
+      }
+
+      // Determinar ciclo de cobrança
+      let billingCycle: 'monthly' | 'quarterly' | 'semiannual' | 'annual' = 'monthly';
+      if (requiredPlan === 'trimestral') billingCycle = 'quarterly';
+      else if (requiredPlan === 'semestral') billingCycle = 'semiannual';
+      else if (requiredPlan === 'anual') billingCycle = 'annual';
+
+      const subscriptionData = {
+        mode: 'subscription',
+        line_items: [{
+          price_data: {
+            currency: 'brl',
+            product_data: {
+              name: `Assinatura ${planInfo.name} - ViralizaAI`
+            },
+            unit_amount: Math.round(planInfo.price * 100),
+            recurring: {
+              interval: billingCycle === 'monthly' ? 'month' : 
+                       billingCycle === 'quarterly' ? 'month' :
+                       billingCycle === 'semiannual' ? 'month' :
+                       'year'
+            }
+          },
+          quantity: 1
+        }],
+        success_url: `${appBaseUrl}/#/dashboard/social-tools?payment=success&plan=${encodeURIComponent(planInfo.name)}`,
+        cancel_url: `${appBaseUrl}/#/dashboard/social-tools?payment=cancelled`,
+        customer_email: user?.email || 'usuario@viralizaai.com',
+        metadata: {
+          productType: 'subscription',
+          planName: planInfo.name,
+          planId: requiredPlan,
+          source: 'social_tools',
+          billingCycle: billingCycle
+        }
+      };
+
+      console.log('📋 Dados da assinatura (SocialTools):', subscriptionData);
+      await stripeService.processSubscriptionPayment(subscriptionData);
+
+    } catch (error) {
+      console.error('❌ Erro ao processar checkout do plano:', error);
+      alert('Erro ao processar pagamento. Tente novamente.');
+    }
+  };
+
   const handleToolAction = async (action: string, toolId: string) => {
+    // Encontrar a ferramenta para verificar se está disponível
+    const currentCategory = toolCategories[activeTab];
+    const tool = currentCategory.tools.find(t => t.action === action);
+    
+    if (!tool) {
+      alert('Ferramenta não encontrada.');
+      return;
+    }
+
+    // Se a ferramenta não estiver disponível, redirecionar para checkout
+    if (!isToolAvailable(tool.requiredPlan)) {
+      const confirmUpgrade = confirm(
+        `Esta ferramenta requer o plano ${tool.requiredPlan}.\n\n` +
+        `Você será redirecionado para o checkout do Stripe para fazer upgrade.\n\n` +
+        `Deseja continuar?`
+      );
+      
+      if (confirmUpgrade) {
+        await handlePlanCheckout(tool.requiredPlan);
+      }
+      return;
+    }
+
     setLoading(true);
     setResults(null);
 
@@ -462,6 +561,7 @@ const SocialMediaToolsPage: React.FC = () => {
               available={isToolAvailable(tool.requiredPlan)}
               requiredPlan={tool.requiredPlan}
               onClick={() => handleToolAction(tool.action, tool.id)}
+              onUpgrade={() => handlePlanCheckout(tool.requiredPlan)}
             />
           ))}
         </div>
