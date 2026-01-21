@@ -9,11 +9,6 @@
       "destination": "/index.html"
     }
   ],
-  "functions": {
-    "api/create-checkout-session.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "env": {
     "NODE_ENV": "production",
     "VITE_API_BASE_URL": "https://viralizaai.vercel.app/api"
