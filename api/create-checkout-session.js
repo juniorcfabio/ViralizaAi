@@ -49,8 +49,25 @@ export default async function handler(req, res) {
       });
     }
 
-    // CHAVE STRIPE CORRETA - DEFINITIVA
-    const stripeSecretKey = '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';
+    // CHAVE STRIPE CORRETA - DEFINITIVA - TESTE REAL
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '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';
+    
+    // Log da chave para debug (apenas primeiros caracteres)
+    console.log('🔑 Chave Stripe length:', stripeSecretKey.length);
+    console.log('🔑 Chave válida:', stripeSecretKey.startsWith('sk_live_'));
+    
+    if (stripeSecretKey.length < 100 || !stripeSecretKey.startsWith('sk_live_')) {
+      console.error('❌ CHAVE STRIPE INVÁLIDA - Length:', stripeSecretKey.length);
+      console.error('❌ CHAVE STRIPE INVÁLIDA - Value:', stripeSecretKey.substring(0, 20) + '...');
+      return res.status(500).json({
+        success: false,
+        error: 'Chave Stripe inválida ou truncada',
+        debug: {
+          length: stripeSecretKey.length,
+          prefix: stripeSecretKey.substring(0, 10)
+        }
+      });
+    }
 
     console.log('🔑 Chave Stripe DEFINITIVA configurada');
     console.log('🔑 Prefixo da chave:', stripeSecretKey.substring(0, 15) + '...');
