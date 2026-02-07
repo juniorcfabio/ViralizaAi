@@ -27,26 +27,10 @@ export class CheckoutService {
 
   async createCheckoutSession(checkoutData: CheckoutData) {
     try {
-      console.log('🚀 Iniciando checkout direto com Supabase...');
+      console.log('🚀 Iniciando checkout direto via API...');
       
-      // Garantir que temos uma sessão (anônima se necessário)
-      let user = await initializeAnonymousSession();
-      
-      if (!user) {
-        throw new Error('Não foi possível criar sessão de usuário');
-      }
-
-      // Buscar ou criar plano no banco
-      const plan = await this.ensurePlanExists(checkoutData);
-      
-      // Registrar tentativa de checkout no banco
-      const checkoutRecord = await this.createCheckoutRecord(user.id, plan.id, checkoutData);
-      
-      // Criar sessão Stripe via API do Vercel
-      const stripeSession = await this.createStripeSession(checkoutData, checkoutRecord.id);
-      
-      // Atualizar registro com session_id do Stripe
-      await this.updateCheckoutRecord(checkoutRecord.id, stripeSession.id);
+      // Criar sessão Stripe diretamente via API do Vercel (sem dependência do Supabase)
+      const stripeSession = await this.createStripeSession(checkoutData, null);
       
       console.log('✅ Checkout criado com sucesso:', stripeSession.id);
       
@@ -124,7 +108,7 @@ export class CheckoutService {
     return data;
   }
 
-  private async createStripeSession(checkoutData: CheckoutData, checkoutId: string) {
+  private async createStripeSession(checkoutData: CheckoutData, checkoutId: string | null) {
     // Usar API do Vercel para criar sessão Stripe
     const response = await fetch('/api/create-checkout-session', {
       method: 'POST',
@@ -135,7 +119,7 @@ export class CheckoutService {
         planName: checkoutData.planName,
         amount: checkoutData.amount,
         billingCycle: checkoutData.billingCycle,
-        checkoutId: checkoutId,
+        checkoutId: checkoutId || 'direct-checkout',
         successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${window.location.origin}/cancel`
       })
