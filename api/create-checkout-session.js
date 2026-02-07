@@ -16,14 +16,59 @@ export default async function handler(req, res) {
   try {
     console.log('🚀 STRIPE CHECKOUT API - Iniciando...');
     
-    const { line_items, success_url, cancel_url, customer_email, mode = 'payment', payment_method_types, metadata } = req.body;
+    const { 
+      line_items, 
+      success_url, 
+      cancel_url, 
+      customer_email, 
+      mode = 'payment', 
+      payment_method_types, 
+      metadata,
+      // Novos campos para compatibilidade
+      planName,
+      amount,
+      billingCycle,
+      checkoutId,
+      successUrl,
+      cancelUrl
+    } = req.body;
 
-    // Validações básicas
-    if (!line_items || !Array.isArray(line_items) || line_items.length === 0) {
-      return res.status(400).json({ success: false, error: 'line_items é obrigatório' });
+    // Se não tiver line_items, criar a partir dos novos campos
+    let processedLineItems = line_items;
+    
+    if (!processedLineItems && planName && amount) {
+      processedLineItems = [{
+        price_data: {
+          currency: 'brl',
+          product_data: {
+            name: planName
+          },
+          unit_amount: amount,
+          ...(billingCycle && billingCycle !== 'one-time' && {
+            recurring: {
+              interval: billingCycle === 'yearly' ? 'year' : 'month'
+            }
+          })
+        },
+        quantity: 1
+      }];
+      
+      // Ajustar mode baseado no billing cycle
+      if (billingCycle && billingCycle !== 'one-time') {
+        mode = 'subscription';
+      }
     }
 
-    if (!success_url || !cancel_url) {
+    // Validações básicas
+    if (!processedLineItems || !Array.isArray(processedLineItems) || processedLineItems.length === 0) {
+      return res.status(400).json({ success: false, error: 'line_items ou dados do plano são obrigatórios' });
+    }
+
+    // Usar URLs fornecidas ou fallback
+    const finalSuccessUrl = successUrl || success_url;
+    const finalCancelUrl = cancelUrl || cancel_url;
+    
+    if (!finalSuccessUrl || !finalCancelUrl) {
       return res.status(400).json({ success: false, error: 'URLs são obrigatórias' });
     }
 
@@ -35,10 +80,18 @@ export default async function handler(req, res) {
     // Preparar dados para Stripe
     const checkoutData = {
       mode: mode,
-      line_items: line_items,
-      success_url: success_url,
-      cancel_url: cancel_url
+      line_items: processedLineItems,
+      success_url: finalSuccessUrl,
+      cancel_url: finalCancelUrl
     };
+    
+    // Adicionar metadata do checkout se fornecido
+    if (checkoutId) {
+      checkoutData.metadata = {
+        ...metadata,
+        checkout_id: checkoutId
+      };
+    }
 
     if (customer_email) {
       checkoutData.customer_email = customer_email;

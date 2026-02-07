@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Checkout - ViralizaAI</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; margin: 10px; background: #4F46E5; color: white; border: none; cursor: pointer; }
+        .result { margin: 10px 0; padding: 10px; background: #f0f0f0; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Teste de Sistema de Checkout - ViralizaAI</h1>
+    
+    <div class="test-section">
+        <h2>1. Teste de API de Checkout</h2>
+        <button onclick="testCheckoutAPI()">Testar API /api/create-checkout-session</button>
+        <div id="api-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Teste de Supabase Connection</h2>
+        <button onclick="testSupabaseConnection()">Testar Conexão Supabase</button>
+        <div id="supabase-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Teste de Checkout Completo</h2>
+        <button onclick="testFullCheckout()">Testar Checkout Completo</button>
+        <div id="checkout-result" class="result"></div>
+    </div>
+
+    <script>
+        async function testCheckoutAPI() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = '🔄 Testando API...';
+            
+            try {
+                const response = await fetch('/api/create-checkout-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        planName: 'Teste Mensal',
+                        amount: 5990,
+                        billingCycle: 'monthly',
+                        successUrl: window.location.origin + '/success',
+                        cancelUrl: window.location.origin + '/cancel'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `<div class="success">✅ API funcionando! Session ID: ${data.sessionId}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Erro na API: ${data.error || 'Erro desconhecido'}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Erro de conexão: ${error.message}</div>`;
+            }
+        }
+
+        async function testSupabaseConnection() {
+            const resultDiv = document.getElementById('supabase-result');
+            resultDiv.innerHTML = '🔄 Testando Supabase...';
+            
+            try {
+                // Simular teste de conexão Supabase
+                const testUrl = 'https://ymmswnmietxoupeazmok.supabase.co/rest/v1/';
+                const response = await fetch(testUrl, {
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltbXN3bm1pZXR4b3VwZWF6bW9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2ODY2NjcsImV4cCI6MjA4MDI2MjY2N30.yvCcvTnqAMsNz9itandg4lyxeEmhsukcbqfkWZnkeu4'
+                    }
+                });
+
+                if (response.ok) {
+                    resultDiv.innerHTML = '<div class="success">✅ Supabase conectado com sucesso!</div>';
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Erro na conexão Supabase: ${response.status}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Erro de conexão Supabase: ${error.message}</div>`;
+            }
+        }
+
+        async function testFullCheckout() {
+            const resultDiv = document.getElementById('checkout-result');
+            resultDiv.innerHTML = '🔄 Testando checkout completo...';
+            
+            try {
+                // Simular dados de checkout da LandingPage
+                const subscriptionData = {
+                    planId: 'test-plan',
+                    billingCycle: 'monthly',
+                    line_items: [{
+                        price_data: {
+                            currency: 'brl',
+                            product_data: {
+                                name: 'Plano Teste Mensal'
+                            },
+                            unit_amount: 5990
+                        },
+                        quantity: 1
+                    }],
+                    metadata: {
+                        productType: 'subscription',
+                        planName: 'Plano Teste Mensal',
+                        planId: 'test-plan',
+                        source: 'test_page',
+                        billingCycle: 'monthly'
+                    }
+                };
+
+                // Testar API de checkout
+                const response = await fetch('/api/create-checkout-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        planName: subscriptionData.line_items[0].price_data.product_data.name,
+                        amount: subscriptionData.line_items[0].price_data.unit_amount,
+                        billingCycle: subscriptionData.billingCycle,
+                        successUrl: window.location.origin + '/success?session_id={CHECKOUT_SESSION_ID}',
+                        cancelUrl: window.location.origin + '/cancel'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            ✅ Checkout completo funcionando!<br>
+                            Session ID: ${data.sessionId}<br>
+                            <a href="${data.url}" target="_blank">🔗 Abrir Stripe Checkout</a>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Erro no checkout: ${data.error || 'Erro desconhecido'}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Erro no teste: ${error.message}</div>`;
+            }
+        }
+
+        // Executar testes automaticamente ao carregar
+        window.onload = function() {
+            console.log('🧪 Página de teste carregada. Execute os testes manualmente.');
+        };
+    </script>
+</body>
+</html>
