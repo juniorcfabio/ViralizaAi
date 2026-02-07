@@ -1,0 +1,199 @@
+// ADICIONE ESTAS FUNÇÕES AO SEU WEBHOOK HANDLER EXISTENTE
+// Cole este código no final do arquivo stripe-webhook/index.ts
+
+// Handler para Payment Intent Succeeded (Pagamentos Avulsos)
+async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+  console.log('💳 Payment intent succeeded:', paymentIntent.id)
+  
+  try {
+    const userId = paymentIntent.metadata?.user_id
+    const productId = paymentIntent.metadata?.product_id
+    const affiliateId = paymentIntent.metadata?.affiliate_id
+    
+    if (!userId) {
+      console.log('ℹ️ user_id não encontrado nos metadados do payment intent')
+      return { success: true, message: 'Payment intent processed (no user_id)' }
+    }
+
+    // Atualizar status da compra
+    const { error: purchaseError } = await supabase
+      .from('purchases')
+      .update({
+        status: 'completed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('stripe_payment_intent_id', paymentIntent.id)
+
+    if (purchaseError) {
+      console.error('❌ Erro ao atualizar compra:', purchaseError)
+    }
+
+    // Buscar dados da compra para processar
+    const { data: purchase } = await supabase
+      .from('purchases')
+      .select(`
+        *,
+        products (name, type, metadata)
+      `)
+      .eq('stripe_payment_intent_id', paymentIntent.id)
+      .single()
+
+    if (purchase) {
+      // Processar baseado no tipo de produto
+      await processProductPurchase(purchase, userId)
+
+      // Processar comissão de afiliado se houver
+      if (affiliateId && purchase.commission_amount > 0) {
+        await processAffiliateCommission(purchase, affiliateId)
+      }
+    }
+
+    // Registrar atividade
+    await supabase.from('activity_logs').insert({
+      user_id: userId,
+      action: 'payment_intent_succeeded',
+      details: {
+        payment_intent_id: paymentIntent.id,
+        amount: paymentIntent.amount / 100,
+        currency: paymentIntent.currency,
+        product_id: productId,
+        affiliate_id: affiliateId
+      },
+      resource_type: 'payment'
+    })
+
+    return { success: true, message: 'Payment intent processed successfully' }
+  } catch (error) {
+    console.error('❌ Erro ao processar payment intent succeeded:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+// Processar compra baseado no tipo de produto
+async function processProductPurchase(purchase: any, userId: string) {
+  const product = purchase.products
+  
+  switch (product.type) {
+    case 'ad_credit':
+      // Adicionar créditos de anúncios
+      const creditAmount = product.metadata?.credit_amount || purchase.amount
+      await supabase.from('ad_credits').insert({
+        user_id: userId,
+        purchase_id: purchase.id,
+        amount: creditAmount,
+        expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 ano
+      })
+      
+      console.log(`💰 Créditos de anúncios adicionados: R$ ${creditAmount}`)
+      break
+      
+    case 'tool':
+      // Registrar acesso à ferramenta
+      await supabase.from('activity_logs').insert({
+        user_id: userId,
+        action: 'tool_purchased',
+        details: {
+          tool_name: product.name,
+          purchase_id: purchase.id,
+          credits: product.metadata?.credits || 1
+        },
+        resource_type: 'tool'
+      })
+      
+      console.log(`🔧 Ferramenta comprada: ${product.name}`)
+      break
+      
+    case 'service':
+    case 'course':
+      // Registrar acesso ao serviço/curso
+      await supabase.from('activity_logs').insert({
+        user_id: userId,
+        action: 'service_purchased',
+        details: {
+          service_name: product.name,
+          service_type: product.type,
+          purchase_id: purchase.id,
+          metadata: product.metadata
+        },
+        resource_type: 'service'
+      })
+      
+      console.log(`📚 Serviço/Curso comprado: ${product.name}`)
+      break
+  }
+}
+
+// Processar comissão de afiliado para compras avulsas
+async function processAffiliateCommission(purchase: any, affiliateId: string) {
+  try {
+    // Criar registro de comissão
+    const { error: commissionError } = await supabase
+      .from('affiliate_commissions')
+      .insert({
+        affiliate_id: affiliateId,
+        source_type: 'purchase',
+        source_id: purchase.id,
+        amount: purchase.commission_amount,
+        commission_rate: (purchase.commission_amount / purchase.amount) * 100,
+        status: 'approved' // Aprovado automaticamente para compras
+      })
+
+    if (commissionError) {
+      console.error('❌ Erro ao criar comissão:', commissionError)
+      return
+    }
+
+    // Atualizar totais do afiliado
+    await supabase.rpc('update_affiliate_earnings', {
+      affiliate_id: affiliateId,
+      amount: purchase.commission_amount
+    })
+
+    // Registrar atividade
+    const { data: affiliate } = await supabase
+      .from('affiliates')
+      .select('user_id')
+      .eq('id', affiliateId)
+      .single()
+
+    if (affiliate) {
+      await supabase.from('activity_logs').insert({
+        user_id: affiliate.user_id,
+        action: 'commission_earned',
+        details: {
+          source_type: 'purchase',
+          source_id: purchase.id,
+          amount: purchase.commission_amount,
+          product_name: purchase.products?.name
+        },
+        resource_type: 'affiliate'
+      })
+    }
+
+    console.log(`💸 Comissão processada: R$ ${purchase.commission_amount}`)
+  } catch (error) {
+    console.error('❌ Erro ao processar comissão:', error)
+  }
+}
+
+// FUNÇÃO SQL PARA ATUALIZAR EARNINGS DO AFILIADO
+// Execute esta função no SQL Editor do Supabase:
+
+/*
+CREATE OR REPLACE FUNCTION update_affiliate_earnings(
+  affiliate_id UUID,
+  amount DECIMAL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE public.affiliates 
+  SET 
+    total_earnings = total_earnings + amount,
+    updated_at = NOW()
+  WHERE id = affiliate_id;
+END;
+$$;
+*/

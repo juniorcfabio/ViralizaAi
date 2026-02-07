@@ -6,7 +6,7 @@ export interface StripePaymentData {
   currency: string;
   description: string;
   productId: string;
-  productType: 'subscription' | 'tool' | 'ad';
+  productType: 'subscription' | 'tool' | 'ad' | 'advertising';
   userId: string;
   userEmail: string;
   successUrl: string;
@@ -408,6 +408,54 @@ class StripeService {
       case 'semiannual': return 'month'; // 6 meses
       case 'annual': return 'year';
       default: return 'month';
+    }
+  }
+
+  // Processar pagamento de anúncio (USANDO MESMA CONFIGURAÇÃO DOS PLANOS NORMAIS)
+  async processAdvertisingPayment(paymentData: StripePaymentData): Promise<void> {
+    try {
+      console.log('📢 Processando pagamento de anúncio:', paymentData);
+
+      // Usar a mesma estrutura dos planos normais para garantir funcionamento
+      const subscriptionData = {
+        mode: 'payment', // Pagamento único para anúncios
+        payment_method_types: ['card', 'boleto'], // Removendo PIX temporariamente para testar
+        line_items: [{
+          price_data: {
+            currency: 'brl',
+            product_data: {
+              name: paymentData.description,
+              description: `Anúncio publicitário - ${paymentData.metadata?.planName || 'Plano personalizado'}`
+            },
+            unit_amount: Math.round(paymentData.amount * 100) // Converter para centavos
+          },
+          quantity: 1
+        }],
+        success_url: paymentData.successUrl,
+        cancel_url: paymentData.cancelUrl,
+        customer_email: paymentData.userEmail,
+        locale: 'pt-BR',
+        metadata: {
+          productType: 'advertising',
+          planName: paymentData.metadata?.planName,
+          planId: paymentData.metadata?.planId,
+          planDays: paymentData.metadata?.planDays,
+          companyName: paymentData.metadata?.companyName,
+          cnpj: paymentData.metadata?.cnpj,
+          advertiserId: paymentData.metadata?.advertiserId,
+          source: 'advertising_page',
+          pix_key: 'caccb1b4-6b25-4e5a-98a0-17121d31780e' // Sua chave PIX
+        }
+      };
+
+      console.log('📋 Dados do pagamento de anúncio (formato padrão):', subscriptionData);
+
+      // Usar o mesmo método dos planos normais
+      await this.processSubscriptionPayment(subscriptionData);
+
+    } catch (error) {
+      console.error('❌ Erro ao processar pagamento de anúncio:', error);
+      throw error;
     }
   }
 

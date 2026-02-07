@@ -474,10 +474,138 @@ const EbookGeneratorPage: React.FC = () => {
                   </div>
                   <button
                     onClick={() => {
-                      // Lógica de download simplificada
-                      const link = document.createElement('a');
-                      link.download = `${ebook.title.replace(/\s+/g, '-').toLowerCase()}.html`;
-                      link.click();
+                      // Implementação real de download do ebook
+                      try {
+                        console.log('🔄 Iniciando download do ebook da biblioteca...');
+                        console.log('📊 Dados do ebook:', ebook);
+                        
+                        // Verificar se o ebook tem dados válidos
+                        if (!ebook || !ebook.title || !ebook.chapters || ebook.chapters.length === 0) {
+                          console.error('❌ Dados do ebook inválidos:', ebook);
+                          alert('❌ Erro: Dados do ebook estão incompletos.\nTente gerar o ebook novamente.');
+                          return;
+                        }
+                        
+                        // Criar conteúdo HTML completo
+                        const htmlContent = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${ebook.title}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Georgia', serif; 
+            line-height: 1.8; 
+            color: #2c3e50; 
+            background: #f8f9fa;
+            padding: 40px 20px;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 20px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .cover { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 80px 40px; 
+            text-align: center; 
+        }
+        .cover h1 { 
+            font-size: 3.5em; 
+            margin-bottom: 30px; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            line-height: 1.2;
+        }
+        .cover .subtitle { 
+            font-size: 1.4em; 
+            opacity: 0.9; 
+            font-style: italic;
+        }
+        .content { padding: 60px 50px; }
+        .chapter { 
+            margin-bottom: 80px; 
+            page-break-inside: avoid;
+        }
+        .chapter h2 { 
+            font-size: 2.2em; 
+            color: #667eea; 
+            margin-bottom: 30px; 
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+        .chapter-content { 
+            font-size: 1.1em; 
+            text-align: justify; 
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        .footer { 
+            background: #2c3e50; 
+            color: white; 
+            padding: 40px; 
+            text-align: center; 
+        }
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="cover">
+            <h1>${ebook.title}</h1>
+            <div class="subtitle">Guia Completo e Estratégico - ${ebook.niche}</div>
+        </div>
+        
+        <div class="content">
+            ${ebook.chapters.map(chapter => `
+                <div class="chapter">
+                    <h2>${chapter.title}</h2>
+                    <div class="chapter-content">${chapter.content}</div>
+                </div>
+            `).join('')}
+        </div>
+        
+        <div class="footer">
+            <p>© ${new Date().getFullYear()} - Todos os direitos reservados</p>
+            <p>Gerado pela Viraliza.AI - Tecnologia Premium</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+                        const fileName = `${ebook.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase()}`;
+                        
+                        // Download via Blob
+                        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+                        const url = URL.createObjectURL(blob);
+                        
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = fileName + '.html';
+                        link.style.display = 'none';
+                        
+                        document.body.appendChild(link);
+                        link.click();
+                        
+                        setTimeout(() => {
+                          document.body.removeChild(link);
+                          URL.revokeObjectURL(url);
+                          console.log('✅ Download da biblioteca concluído!');
+                          alert('✅ Ebook baixado com sucesso!\n\n📋 Instruções:\n• Arquivo salvo como HTML\n• Abra o arquivo baixado\n• Use Ctrl+P para imprimir como PDF');
+                        }, 100);
+                        
+                      } catch (error) {
+                        console.error('❌ Erro no download da biblioteca:', error);
+                        alert('❌ Erro ao baixar ebook.\nTente novamente ou contate o suporte.');
+                      }
                     }}
                     className="w-full bg-accent hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl transition-colors"
                   >

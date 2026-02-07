@@ -268,6 +268,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: '/dashboard', labelKey: 'sidebar.dashboard', icon: LayoutGridIcon, end: true },
+  { path: '/dashboard/ultra-tools', labelKey: 'sidebar.ultraTools', icon: RocketIcon },
   { path: '/dashboard/social', labelKey: 'sidebar.social', icon: UsersIcon },
   { path: '/dashboard/social-media-tools', labelKey: 'sidebar.socialMediaTools', icon: SocialMediaIcon },
   { path: '/dashboard/analytics', labelKey: 'sidebar.analytics', icon: BarChart3Icon },

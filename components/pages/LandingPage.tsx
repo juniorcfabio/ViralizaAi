@@ -1167,7 +1167,7 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
             };
 
             console.log('📋 Dados da assinatura (LandingPage):', subscriptionData);
-            await stripeService.processSubscriptionPayment(subscriptionData);
+            await (stripeService as any).processSubscriptionPayment(subscriptionData);
 
         } catch (error) {
             console.error('❌ Erro ao processar pagamento na LandingPage:', error);

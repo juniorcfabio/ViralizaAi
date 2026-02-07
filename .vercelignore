@@ -1,0 +1,79 @@
+# Ignorar arquivos desnecessários para reduzir funções serverless
+api/server.js
+api/cron-jobs.js
+api/middleware/
+database/
+api/create-pix-checkout.js
+api/activate-plan.js
+api/create-checkout-session.js
+
+# APIs antigas para evitar limite de funções serverless
+api/create-pix-checkout.js
+api/activate-plan.js
+api/create-checkout-session.js
+
+# APIs de exemplo/teste para evitar limite
+api/generate-content.js
+api/generate-video.js
+api/generate-ebook.js
+api/use-tool.js
+api/create-subscription.js
+
+# APIs admin para evitar limite (manter apenas essenciais)
+# api/admin/block-user.js
+# api/admin/change-plan.js
+# api/admin/stats.js
+
+# Ignorar APIs do Ultra Império para evitar limite
+api/affiliate/
+api/marketplace/
+api/franchise/
+api/whitelabel/
+api/v1/
+api/ai/
+api/pricing/
+api/webhook/
+api/cron-jobs-affiliate.js
+api/admin/
+api/auth/
+api/database/
+api/health/
+
+# Ignorar APIs extras para reduzir para menos de 12 funções
+api/generate-content.js
+api/generate-ebook.js
+api/generate-video.js
+api/use-tool.js
+api/create-subscription.js
+api/server.js
+api/cron-jobs.js
+api/mailer.js
+api/middleware/
+api/create-tool-payment.js
+api/create-ad-payment.js
+api/global-payment.js
+api/pix-payment.js
+# REMOVIDO: api/stripe-payment-unified.js - NECESSÁRIO PARA PAGAMENTOS
+# REMOVIDO: api/stripe-secure-payment.js - NECESSÁRIO PARA PAGAMENTOS
+
+# Manter apenas APIs core (menos de 12)
+# api/activate-plan.js
+# api/check-payment.js  
+# api/check-user-plan.js
+# api/create-checkout-session.js
+# api/create-pix-checkout.js
+# api/db.js
+# api/stripe-webhook.js
+# api/webhook-pix.js
+# api/webhook-stripe.js
+
+# Arquivos de desenvolvimento
+*.md
+*.txt
+.env.local
+.env.development
+.env.test
+
+# Logs
+*.log
+README.md

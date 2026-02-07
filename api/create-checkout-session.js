@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   try {
     console.log('🚀 STRIPE CHECKOUT API - Iniciando...');
     
-    const { line_items, success_url, cancel_url, customer_email, mode = 'payment' } = req.body;
+    const { line_items, success_url, cancel_url, customer_email, mode = 'payment', payment_method_types, metadata } = req.body;
 
     // Validações básicas
     if (!line_items || !Array.isArray(line_items) || line_items.length === 0) {
@@ -44,6 +44,16 @@ export default async function handler(req, res) {
       checkoutData.customer_email = customer_email;
     }
 
+    // 🔑 Adicionar payment_method_types se fornecido (para PIX)
+    if (payment_method_types && Array.isArray(payment_method_types)) {
+      checkoutData.payment_method_types = payment_method_types;
+    }
+
+    // 📝 Adicionar metadata se fornecido
+    if (metadata && typeof metadata === 'object') {
+      checkoutData.metadata = metadata;
+    }
+
     console.log('📋 Dados para Stripe:', JSON.stringify(checkoutData, null, 2));
 
     // Fazer requisição para Stripe API
@@ -58,6 +68,16 @@ export default async function handler(req, res) {
         'success_url': checkoutData.success_url,
         'cancel_url': checkoutData.cancel_url,
         ...(checkoutData.customer_email && { 'customer_email': checkoutData.customer_email }),
+        // 🔑 Adicionar payment_method_types para PIX
+        ...(checkoutData.payment_method_types && checkoutData.payment_method_types.reduce((acc, method, index) => {
+          acc[`payment_method_types[${index}]`] = method;
+          return acc;
+        }, {})),
+        // 📝 Adicionar metadata
+        ...(checkoutData.metadata && Object.keys(checkoutData.metadata).reduce((acc, key) => {
+          acc[`metadata[${key}]`] = checkoutData.metadata[key];
+          return acc;
+        }, {})),
         ...line_items.reduce((acc, item, index) => {
           acc[`line_items[${index}][price_data][currency]`] = item.price_data.currency;
           acc[`line_items[${index}][price_data][product_data][name]`] = item.price_data.product_data.name;

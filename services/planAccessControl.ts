@@ -1,6 +1,9 @@
 // SISTEMA DE CONTROLE DE ACESSO POR PLANO
 // Gerencia permissões e restrições baseadas no plano do usuário
 
+import { User } from '../types';
+import { SUBSCRIPTION_PLANS } from '../data/plansConfig';
+
 export interface PlanFeatures {
   name: string;
   price: number;
@@ -130,6 +133,21 @@ class PlanAccessControl {
     }
   };
 
+  // Método para sincronizar preços com plansConfig
+  private syncPricesWithConfig(): void {
+    try {
+      SUBSCRIPTION_PLANS.forEach(plan => {
+        const key = plan.name.toLowerCase();
+        if (this.planFeatures[key]) {
+          this.planFeatures[key].price = typeof plan.price === 'number' ? plan.price : parseFloat(String(plan.price));
+          this.planFeatures[key].name = plan.name;
+        }
+      });
+    } catch (error) {
+      console.warn('Erro ao sincronizar preços com plansConfig:', error);
+    }
+  }
+
   private featureRequirements = {
     // Automação
     'basic_scheduler': 'mensal',
@@ -162,6 +180,7 @@ class PlanAccessControl {
   public static getInstance(): PlanAccessControl {
     if (!PlanAccessControl.instance) {
       PlanAccessControl.instance = new PlanAccessControl();
+      PlanAccessControl.instance.syncPricesWithConfig();
     }
     return PlanAccessControl.instance;
   }

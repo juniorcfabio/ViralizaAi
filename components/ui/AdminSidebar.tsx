@@ -180,6 +180,52 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
                         </NavLink>
                     </div>
 
+                    {/* 👑 ULTRA IMPÉRIO - SISTEMA COMPLETO */}
+                    <div className="pt-3">
+                        <h3 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2 px-3">👑 Ultra Império</h3>
+                        <NavLink to="/admin/marketplace" className={navLinkClasses} onClick={handleNavClick}>
+                            <span className="text-lg">🛒</span>
+                            <span className="font-medium">Marketplace de Ferramentas</span>
+                        </NavLink>
+                        <NavLink to="/admin/franchise-system" className={navLinkClasses} onClick={handleNavClick}>
+                            <span className="text-lg">🏢</span>
+                            <span className="font-medium">Sistema de Franquias</span>
+                        </NavLink>
+                        <NavLink to="/admin/whitelabel-system" className={navLinkClasses} onClick={handleNavClick}>
+                            <span className="text-lg">🎨</span>
+                            <span className="font-medium">White-Label Automático</span>
+                        </NavLink>
+                        <NavLink to="/admin/global-api" className={navLinkClasses} onClick={handleNavClick}>
+                            <span className="text-lg">🌍</span>
+                            <span className="font-medium">API Global</span>
+                        </NavLink>
+                        <NavLink to="/admin/ai-tool-creator" className={navLinkClasses} onClick={handleNavClick}>
+                            <span className="text-lg">🤖</span>
+                            <span className="font-medium">IA Criadora de Ferramentas</span>
+                        </NavLink>
+                        <NavLink to="/admin/smart-pricing" className={navLinkClasses} onClick={handleNavClick}>
+                            <span className="text-lg">💰</span>
+                            <span className="font-medium">Preços Inteligentes</span>
+                        </NavLink>
+                        <NavLink to="/admin/ai-support" className={navLinkClasses}>
+                            <span className="text-lg mr-3">🎧</span>
+                            <span>IA de Suporte 24h</span>
+                        </NavLink>
+                    </div>
+
+                    {/* CENTRO DE COMANDO SUPREMO */}
+                    <div className="mb-6">
+                        <h3 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-3 px-3">
+                            🚀 Centro de Comando
+                        </h3>
+                        <div className="space-y-1">
+                            <NavLink to="/admin/command-center" className={navLinkClasses}>
+                                <span className="text-lg mr-3">🎛️</span>
+                                <span>Centro de Comando</span>
+                            </NavLink>
+                        </div>
+                    </div>
+
                     {/* FERRAMENTAS IA - ACESSO GRATUITO */}
                     <div className="pt-3">
                         <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider mb-2 px-3">🆓 Ferramentas IA (Gratuito)</h3>

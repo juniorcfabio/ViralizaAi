@@ -59,8 +59,16 @@ const helpQuestions: HelpQuestion[] = [
 ];
 
 const DraggableHelpButton: React.FC = () => {
+  // 🔒 PROTEÇÃO TOTAL SSR - Só executa no cliente
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState({ x: window.innerWidth - 100, y: window.innerHeight - 100 });
+  const [position, setPosition] = useState({ 
+    x: window.innerWidth - 100, 
+    y: window.innerHeight - 100 
+  });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [selectedCategory, setSelectedCategory] = useState<string>('todas');
@@ -127,6 +135,7 @@ const DraggableHelpButton: React.FC = () => {
     { id: 'afiliados', name: 'Afiliados', icon: '💰' },
     { id: 'geral', name: 'Geral', icon: '❓' }
   ];
+
 
   return (
     <>

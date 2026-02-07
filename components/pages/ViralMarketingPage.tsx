@@ -35,10 +35,10 @@ const ViralMarketingPage: React.FC = () => {
       addLog('🤝 Outreach para 500+ influenciadores iniciado');
       addLog('🎁 Programa de referência viral com R$ 50k em prêmios');
       
-      // Ativar estratégia bilionária
-      await engine.implementBillionDollarStrategy();
-      addLog('💎 ESTRATÉGIA BILIONÁRIA ATIVADA!');
-      addLog('🎯 Meta: R$ 3.1B+ anuais sem investimento');
+      // Ativar estratégia de crescimento escalável
+      await engine.implementScalableGrowthStrategy();
+      addLog('💎 ESTRATÉGIA DE CRESCIMENTO ESCALÁVEL ATIVADA!');
+      addLog('🎯 Projeções realistas baseadas em dados de mercado');
     } catch (error) {
       addLog(`❌ Erro ao iniciar sistema: ${error}`);
     } finally {
@@ -240,7 +240,7 @@ const ViralMarketingPage: React.FC = () => {
                       <p className="text-white font-semibold capitalize">
                         {key.replace(/([A-Z])/g, ' $1').trim()}
                       </p>
-                      <p className="text-indigo-200 text-sm">{value}</p>
+                      <p className="text-indigo-200 text-sm">{String(value)}</p>
                     </div>
                     <div className="text-2xl">✅</div>
                   </div>

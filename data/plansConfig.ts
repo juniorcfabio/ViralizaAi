@@ -8,95 +8,71 @@ import { Plan, FeatureKey } from '../types';
 export const SUBSCRIPTION_PLANS: Plan[] = [
   {
     id: 'mensal',
-    name: 'Plano Mensal',
-    price: 97,
-    period: 'mensal',
-    highlight: false,
+    name: 'Mensal',
+    price: 59.90,
+    period: 'mês',
     features: [
-      'Análises básicas de performance',
-      'Geração de conteúdo com IA',
-      'Agendamento de posts',
-      'Suporte por email',
-      '2 ferramentas avançadas incluídas'
+      'Dashboard Principal',
+      'Contas Sociais (básico)',
+      'Gerador de Ebook (básico)',
+      'Detector de Áudio Viral',
+      'Sistema de Afiliados'
     ],
-    includedTools: [
-      'analytics',
-      'trendPredictor'
-    ]
+    includedTools: ['audioDetector', 'affiliate'],
+    highlight: false,
+    description: 'Degustação 24h + Afiliados sempre liberado'
   },
   {
     id: 'trimestral',
-    name: 'Plano Trimestral',
-    price: 247,
-    period: 'trimestral',
-    highlight: false,
+    name: 'Trimestral',
+    price: 159.90,
+    period: 'trimestre',
     features: [
-      'Tudo do plano mensal',
-      'Análises avançadas de crescimento',
-      'Sistema de afiliados',
-      'Detector de áudio viral',
-      'Suporte prioritário',
-      '4 ferramentas avançadas incluídas'
+      'Tudo do Mensal',
+      'Analytics (básico)',
+      'Preditor de Tendências',
+      'Ferramentas de Mídia Social',
+      'Sistema de Afiliados Premium'
     ],
-    includedTools: [
-      'analytics',
-      'trendPredictor',
-      'affiliate',
-      'audioDetector'
-    ]
+    includedTools: ['audioDetector', 'affiliate', 'analytics', 'trendPredictor'],
+    highlight: true,
+    description: 'Áudios de Retenção IA + Predição de Tendências'
   },
   {
     id: 'semestral',
-    name: 'Plano Semestral',
-    price: 447,
-    period: 'semestral',
-    highlight: true,
+    name: 'Semestral',
+    price: 259.90,
+    period: 'semestre',
     features: [
-      'Tudo do plano trimestral',
-      'Piloto automático de crescimento',
-      'Radar de conversão avançado',
-      'Espião de concorrentes',
-      'Predição viral com IA',
-      'Suporte VIP',
-      '7 ferramentas avançadas incluídas'
+      'Tudo do Trimestral',
+      'Analytics Avançado',
+      'Espião de Concorrentes',
+      'Radar de Conversão',
+      'AI Video Generator',
+      'Analisador Viral'
     ],
-    includedTools: [
-      'analytics',
-      'trendPredictor',
-      'affiliate',
-      'audioDetector',
-      'autopilot',
-      'conversionRadar',
-      'competitorSpy'
-    ]
+    includedTools: ['audioDetector', 'affiliate', 'analytics', 'trendPredictor', 'competitorSpy', 'conversionRadar'],
+    highlight: false,
+    description: 'Espião de Concorrentes + Radar de Conversão + IA Avançada'
   },
   {
     id: 'anual',
-    name: 'Plano Anual',
-    price: 797,
-    period: 'anual',
+    name: 'Anual',
+    price: 399.90,
+    period: 'ano',
     highlight: false,
     features: [
-      'Tudo do plano semestral',
-      'Motor de crescimento completo',
-      'Predição viral avançada',
-      'Crescimento avançado premium',
-      'Consultoria estratégica mensal',
-      'Suporte 24/7 dedicado',
-      'TODAS as ferramentas incluídas'
+      'Tudo do Semestral',
+      'Crescimento Avançado',
+      'Predição Viral IA',
+      'Piloto Automático',
+      'Motor de Crescimento',
+      'AI Funil Builder Completo',
+      'Projeção de Receita',
+      'Publicidade Avançada'
     ],
-    includedTools: [
-      'analytics',
-      'affiliate',
-      'autopilot',
-      'advancedGrowth',
-      'conversionRadar',
-      'audioDetector',
-      'competitorSpy',
-      'trendPredictor',
-      'viralPrediction',
-      'growthEngine'
-    ]
+    includedTools: ['audioDetector', 'affiliate', 'analytics', 'trendPredictor', 'competitorSpy', 'conversionRadar', 'advancedGrowth', 'viralPrediction', 'autopilot', 'growthEngine'],
+    description: 'Todas as ferramentas + Motor de Crescimento + Piloto Automático'
   }
 ];
 
@@ -157,12 +133,44 @@ export const TOOL_DESCRIPTIONS: Record<FeatureKey, { name: string; description: 
 };
 
 /**
+ * Ferramentas sempre liberadas (sem necessidade de assinatura)
+ */
+export const ALWAYS_FREE_TOOLS: FeatureKey[] = ['affiliate'];
+
+/**
+ * Ferramentas disponíveis na degustação de 24h
+ */
+export const TRIAL_TOOLS: FeatureKey[] = ['audioDetector'];
+
+/**
+ * Função para verificar se o período de degustação de 24h ainda está ativo
+ */
+export function isTrialActive(trialStartDate?: string): boolean {
+  if (!trialStartDate) return false;
+  
+  const trialStart = new Date(trialStartDate);
+  const now = new Date();
+  const hoursDiff = (now.getTime() - trialStart.getTime()) / (1000 * 60 * 60);
+  
+  return hoursDiff < 24;
+}
+
+/**
  * Função para verificar se usuário tem acesso a uma ferramenta
  */
-export function hasToolAccess(userPlan: string | undefined, toolKey: FeatureKey, userAddOns?: FeatureKey[], userType?: string): boolean {
+export function hasToolAccess(userPlan: string | undefined, toolKey: FeatureKey, userAddOns?: FeatureKey[], userType?: string, trialStartDate?: string): boolean {
   // Admin sempre tem acesso total a todas as ferramentas gratuitamente
   if (userType === 'admin') return true;
   
+  // Ferramentas sempre liberadas (Sistema de Afiliados)
+  if (ALWAYS_FREE_TOOLS.includes(toolKey)) return true;
+  
+  // Verificar degustação de 24h para ferramentas do plano mensal
+  if (TRIAL_TOOLS.includes(toolKey) && isTrialActive(trialStartDate)) {
+    return true;
+  }
+  
+  // Sem plano = sem acesso (exceto ferramentas sempre liberadas)
   if (!userPlan) return false;
   
   // Verificar se tem como add-on

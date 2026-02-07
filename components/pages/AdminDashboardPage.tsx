@@ -1,8 +1,8 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
+import { SUBSCRIPTION_PLANS } from '../../data/plansConfig';
 import { StatCardData, User } from '../../types';
 import RealDataService from '../../services/realDataService';
 

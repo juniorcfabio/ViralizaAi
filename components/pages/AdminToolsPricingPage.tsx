@@ -22,58 +22,8 @@ const AdminToolsPricingPage: React.FC = () => {
   }, []);
 
   const loadToolsPricing = () => {
-    // Carregar preços das ferramentas do localStorage ou usar padrões
+    // Carregar preços do localStorage ou usar padrões
     const savedPricing = localStorage.getItem('admin_tools_pricing');
-    const defaultTools: ToolPrice[] = [
-      {
-        id: 'viral-marketing',
-        name: 'Marketing Viral Gratuito',
-        currentPrice: 297.00,
-        category: 'Marketing',
-        description: 'Sistema de marketing viral automatizado 24/7',
-        isActive: true
-      },
-      {
-        id: 'global-promotion',
-        name: 'Promoção Global',
-        currentPrice: 497.00,
-        category: 'Marketing',
-        description: 'Promoção mundial em 19 países e 12 idiomas',
-        isActive: true
-      },
-      {
-        id: 'ai-video-generator',
-        name: 'Gerador de Vídeo IA 8K',
-        currentPrice: 197.00,
-        category: 'IA',
-        description: 'Geração de vídeos profissionais em 8K',
-        isActive: true
-      },
-      {
-        id: 'ai-funnel-builder',
-        name: 'AI Funnel Builder',
-        currentPrice: 147.00,
-        category: 'IA',
-        description: 'Construtor de funis inteligente',
-        isActive: true
-      },
-      {
-        id: 'ebook-generator',
-        name: 'Ebook Generator Ultra',
-        currentPrice: 97.00,
-        category: 'Conteúdo',
-        description: 'Gerador de ebooks ultra-técnico',
-        isActive: true
-      },
-      {
-        id: 'growth-engine',
-        name: 'Motor de Crescimento',
-        currentPrice: 397.00,
-        category: 'Crescimento',
-        description: 'Sistema de crescimento exponencial',
-        isActive: true
-      }
-    ];
 
     // Planos de assinatura
     const subscriptionPlans = [
@@ -111,13 +61,41 @@ const AdminToolsPricingPage: React.FC = () => {
       }
     ];
 
+    // Planos de Anúncio
+    const advertisingPlans = [
+      {
+        id: 'ad-weekly',
+        name: '1 Semana',
+        currentPrice: 99.90,
+        category: 'Plano de Anúncio',
+        description: 'Anúncio na página inicial por 7 dias',
+        isActive: true
+      },
+      {
+        id: 'ad-biweekly',
+        name: '15 Dias',
+        currentPrice: 179.90,
+        category: 'Plano de Anúncio',
+        description: 'Anúncio na página inicial por 15 dias',
+        isActive: true
+      },
+      {
+        id: 'ad-monthly',
+        name: '30 Dias',
+        currentPrice: 299.90,
+        category: 'Plano de Anúncio',
+        description: 'Anúncio na página inicial por 30 dias',
+        isActive: true
+      }
+    ];
+
     if (savedPricing) {
       const savedTools = JSON.parse(savedPricing);
-      // Combinar ferramentas e planos de assinatura
-      const allItems = [...savedTools, ...subscriptionPlans];
+      // Combinar assinaturas e planos de anúncio
+      const allItems = [...subscriptionPlans, ...advertisingPlans];
       setTools(allItems);
     } else {
-      const allItems = [...defaultTools, ...subscriptionPlans];
+      const allItems = [...subscriptionPlans, ...advertisingPlans];
       setTools(allItems);
       localStorage.setItem('admin_tools_pricing', JSON.stringify(allItems));
     }
@@ -133,6 +111,7 @@ const AdminToolsPricingPage: React.FC = () => {
     
     localStorage.setItem('viraliza_plans', JSON.stringify(plansForLanding));
     localStorage.setItem('subscription_plans', JSON.stringify(plansForLanding));
+    localStorage.setItem('advertising_plans', JSON.stringify(advertisingPlans));
     localStorage.setItem('pricing_updated', Date.now().toString());
   };
 
@@ -224,7 +203,8 @@ const AdminToolsPricingPage: React.FC = () => {
       'IA': 'bg-purple-500/20 text-purple-300',
       'Conteúdo': 'bg-green-500/20 text-green-300',
       'Crescimento': 'bg-orange-500/20 text-orange-300',
-      'Assinatura': 'bg-yellow-500/20 text-yellow-300'
+      'Assinatura': 'bg-yellow-500/20 text-yellow-300',
+      'Plano de Anúncio': 'bg-pink-500/20 text-pink-300'
     };
     return colors[category as keyof typeof colors] || 'bg-gray-500/20 text-gray-300';
   };
@@ -243,8 +223,8 @@ const AdminToolsPricingPage: React.FC = () => {
   return (
     <div className="p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-light mb-2">💰 Gerenciar Preços das Ferramentas</h1>
-        <p className="text-gray-400">Controle os preços das ferramentas vendidas avulsamente para usuários</p>
+        <h1 className="text-3xl font-bold text-light mb-2">💰 Gerenciar Preços</h1>
+        <p className="text-gray-400">Controle os preços das assinaturas e planos de anúncio</p>
       </div>
 
       {notification && (

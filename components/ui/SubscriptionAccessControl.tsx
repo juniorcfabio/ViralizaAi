@@ -1,6 +1,7 @@
-import React from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import StripeService from '../../services/stripeService';
+import { SUBSCRIPTION_PLANS } from '../../data/plansConfig';
 
 interface SubscriptionAccessControlProps {
   children: React.ReactNode;
@@ -73,14 +74,16 @@ const SubscriptionAccessControl: React.FC<SubscriptionAccessControlProps> = ({
     try {
       const stripeService = StripeService.getInstance();
       
-      const plans = {
-        monthly: { price: 59.90, name: 'Plano Mensal' },
-        quarterly: { price: 159.90, name: 'Plano Trimestral' },
-        semiannual: { price: 259.90, name: 'Plano Semestral' },
-        annual: { price: 399.90, name: 'Plano Anual' }
-      };
+      // Usar planos dinâmicos do plansConfig
+      const planMap: { [key: string]: any } = {};
+      SUBSCRIPTION_PLANS.forEach(p => {
+        const key = p.name.toLowerCase().includes('mensal') ? 'monthly' :
+                   p.name.toLowerCase().includes('trimestral') ? 'quarterly' :
+                   p.name.toLowerCase().includes('semestral') ? 'semiannual' : 'annual';
+        planMap[key] = { price: p.price, name: p.name };
+      });
       
-      const plan = plans[planType as keyof typeof plans];
+      const plan = planMap[planType];
       
       const subscriptionData = {
         amount: plan.price,
@@ -210,41 +213,39 @@ const SubscriptionAccessControl: React.FC<SubscriptionAccessControlProps> = ({
           <div>
             <h3 className="text-2xl font-bold text-white mb-4">📅 Planos de Assinatura</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-primary/50 p-4 rounded-lg border border-gray-600">
-                <h4 className="text-lg font-bold text-white mb-2">Plano Mensal</h4>
-                <div className="text-2xl font-bold text-green-400 mb-3">R$ 59,90/mês</div>
-                <ul className="text-sm text-gray-300 mb-4 space-y-1">
-                  <li>• Acesso a todas as ferramentas</li>
-                  <li>• Degustação de 24h</li>
-                  <li>• Suporte prioritário</li>
-                </ul>
-                <button
-                  onClick={() => purchaseSubscription('monthly')}
-                  className="w-full bg-green-600 text-white font-bold py-2 px-4 rounded hover:bg-green-700 transition-colors"
-                >
-                  Assinar Agora
-                </button>
-              </div>
-
-              <div className="bg-primary/50 p-4 rounded-lg border border-purple-500">
-                <div className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full inline-block mb-2">
-                  RECOMENDADO
-                </div>
-                <h4 className="text-lg font-bold text-white mb-2">Plano Semestral</h4>
-                <div className="text-2xl font-bold text-purple-400 mb-3">R$ 259,90/6 meses</div>
-                <ul className="text-sm text-gray-300 mb-4 space-y-1">
-                  <li>• Tudo do mensal</li>
-                  <li>• Economia de 28%</li>
-                  <li>• Relatórios avançados</li>
-                  <li>• API de integração</li>
-                </ul>
-                <button
-                  onClick={() => purchaseSubscription('semiannual')}
-                  className="w-full bg-purple-600 text-white font-bold py-2 px-4 rounded hover:bg-purple-700 transition-colors"
-                >
-                  Assinar Agora
-                </button>
-              </div>
+              {SUBSCRIPTION_PLANS.slice(0, 2).map((plan, index) => {
+                const planType = plan.name.toLowerCase().includes('mensal') ? 'monthly' : 'semiannual';
+                const isRecommended = plan.name.toLowerCase().includes('semestral');
+                return (
+                  <div key={plan.id || index} className={`bg-primary/50 p-4 rounded-lg border ${isRecommended ? 'border-purple-500' : 'border-gray-600'}`}>
+                    {isRecommended && (
+                      <div className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full inline-block mb-2">
+                        RECOMENDADO
+                      </div>
+                    )}
+                    <h4 className="text-lg font-bold text-white mb-2">{plan.name}</h4>
+                    <div className={`text-2xl font-bold mb-3 ${isRecommended ? 'text-purple-400' : 'text-green-400'}`}>
+                      R$ {typeof plan.price === 'number' ? plan.price.toFixed(2) : plan.price}
+                      {plan.period || (plan.name.toLowerCase().includes('mensal') ? '/mês' : '/6 meses')}
+                    </div>
+                    <ul className="text-sm text-gray-300 mb-4 space-y-1">
+                      {(Array.isArray(plan.features) ? plan.features : [plan.features]).slice(0, 4).map((feature, i) => (
+                        <li key={i}>• {feature}</li>
+                      ))}
+                    </ul>
+                    <button
+                      onClick={() => purchaseSubscription(planType)}
+                      className={`w-full font-bold py-2 px-4 rounded transition-colors ${
+                        isRecommended 
+                          ? 'bg-purple-600 text-white hover:bg-purple-700' 
+                          : 'bg-green-600 text-white hover:bg-green-700'
+                      }`}
+                    >
+                      Assinar Agora
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

@@ -3,6 +3,7 @@
 
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { supabase } from '../lib/supabase';
+import { useState } from 'react';
 
 // Chave pública do Stripe (ambiente)
 const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY || 
@@ -296,6 +297,15 @@ class StripeService {
 
 // Instância singleton
 export const stripeService = new StripeService();
+
+// Garantir que o método de compatibilidade está disponível na instância
+(stripeService as any).processSubscriptionPayment = stripeService.processSubscriptionPayment.bind(stripeService);
+
+// Função standalone para máxima compatibilidade
+export const processSubscriptionPayment = async (subscriptionData: any): Promise<void> => {
+  console.warn('⚠️ processSubscriptionPayment (standalone) está deprecated. Use createPublicCheckout.');
+  return stripeService.createPublicCheckout(subscriptionData);
+};
 
 // Hook React para usar o Stripe
 export const useStripe = () => {

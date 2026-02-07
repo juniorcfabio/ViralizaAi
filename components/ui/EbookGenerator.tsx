@@ -73,7 +73,9 @@ const EbookGenerator: React.FC<EbookGeneratorProps> = ({
     }
 
     try {
-      // Método 1: Tentar download direto com data URL
+      console.log('🔄 Iniciando download do ebook...');
+      
+      // Criar conteúdo HTML completo e otimizado
       const htmlContent = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -170,54 +172,74 @@ const EbookGenerator: React.FC<EbookGeneratorProps> = ({
 
       const fileName = `${generatedEbook.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase()}`;
       
-      // MÉTODO INFALÍVEL 1: Window.open com data URL
-      const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent);
-      const newWindow = window.open(dataUrl, '_blank');
+      // MÉTODO PRINCIPAL: Download direto via Blob (mais confiável)
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
       
-      if (newWindow) {
-        // Aguardar carregamento e tentar salvar
-        setTimeout(() => {
-          try {
-            newWindow.document.title = fileName;
-            // Instrução para o usuário
-            alert('✅ Ebook aberto em nova aba!\n\n📋 Para salvar:\n• Pressione Ctrl+S (Windows) ou Cmd+S (Mac)\n• Escolha "Página da Web, completa"\n• Clique em Salvar');
-          } catch (e) {
-            console.log('Método 1 falhou, tentando método 2...');
-          }
-        }, 1000);
-      } else {
-        throw new Error('Popup bloqueado');
-      }
-
-      // MÉTODO INFALÍVEL 2: Blob download como backup
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName + '.html';
+      link.style.display = 'none';
+      
+      // Adicionar ao DOM, clicar e remover
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup após download
       setTimeout(() => {
-        try {
-          const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-          const url = URL.createObjectURL(blob);
-          
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = fileName + '.html';
-          link.style.display = 'none';
-          
-          document.body.appendChild(link);
-          link.click();
-          
-          setTimeout(() => {
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-          }, 100);
-          
-        } catch (e) {
-          console.log('Método 2 falhou, tentando método 3...');
-          // MÉTODO INFALÍVEL 3: Texto simples
-          downloadAsText();
-        }
-      }, 2000);
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        console.log('✅ Download concluído com sucesso!');
+        
+        // Mostrar instruções para o usuário
+        alert('✅ Ebook baixado com sucesso!\n\n📋 Instruções:\n• Arquivo salvo como HTML\n• Abra o arquivo baixado\n• Use Ctrl+P para imprimir como PDF\n• Ou abra em qualquer navegador');
+        
+      }, 100);
 
     } catch (error) {
-      console.error('Erro principal:', error);
-      downloadAsText();
+      console.error('❌ Erro no download principal:', error);
+      
+      // MÉTODO BACKUP: Texto simples
+      try {
+        const textContent = `
+═══════════════════════════════════════════════════════════════════════════════
+                            ${generatedEbook?.title || 'EBOOK PREMIUM'}
+                        Guia Completo e Estratégico para ${businessName}
+═══════════════════════════════════════════════════════════════════════════════
+
+${generatedEbook?.chapters.map((chapter, index) => `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CAPÍTULO ${index + 1}: ${chapter.title}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${chapter.content.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()}
+
+`).join('')}
+
+═══════════════════════════════════════════════════════════════════════════════
+© ${new Date().getFullYear()} ${businessName} - Todos os direitos reservados
+Gerado pela Viraliza.AI - Tecnologia Premium
+═══════════════════════════════════════════════════════════════════════════════
+        `;
+        
+        const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${generatedEbook?.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase() || 'ebook'}.txt`;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        alert('✅ Ebook baixado em formato TXT!\nConteúdo completo salvo com sucesso.');
+        
+      } catch (backupError) {
+        console.error('❌ Erro no método backup:', backupError);
+        alert('❌ Erro ao baixar ebook.\nTente:\n• Desabilitar bloqueador de popup\n• Usar outro navegador\n• Contatar suporte');
+      }
     }
 
     // Restaurar botão
@@ -226,7 +248,7 @@ const EbookGenerator: React.FC<EbookGeneratorProps> = ({
         button.disabled = false;
         button.innerHTML = '📥 Baixar Ebook Premium';
       }
-    }, 3000);
+    }, 2000);
   };
 
   // MÉTODO INFALÍVEL 3: Download como texto simples

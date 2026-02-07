@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContextFixed';
+import { SUBSCRIPTION_PLANS } from '../../data/plansConfig';
 import { StatCardData, User } from '../../types';
 
 // Icons
@@ -43,13 +44,11 @@ const AdminDashboardPageReal: React.FC = () => {
             const activeUsers = platformUsers.filter(u => u.status === 'Ativo' && u.type === 'client');
             const totalUsers = platformUsers.filter(u => u.type === 'client');
             
-            // Preços dos planos reais
-            const planPrices: { [key: string]: number } = { 
-                'Anual': 399.90, 
-                'Semestral': 259.90, 
-                'Trimestral': 159.90, 
-                'Mensal': 59.90 
-            };
+            // Preços dos planos dinâmicos do plansConfig
+            const planPrices: { [key: string]: number } = {};
+            SUBSCRIPTION_PLANS.forEach(plan => {
+                planPrices[plan.name] = typeof plan.price === 'number' ? plan.price : parseFloat(String(plan.price));
+            });
             
             // Receita real baseada nos usuários ativos
             const mrr = activeUsers.reduce((total, user) => {

@@ -1,14 +1,13 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, Plan, BillingRecord, FeatureKey } from '../types';
-import { API_BASE_URL, clearAuthToken, setAuthToken, getAuthHeaders } from '../src/config/api';
-import {
-  initDB,
-  getAllUsersDB,
-  addUserDB,
-  updateUserDB,
-  deleteUsersDB
-} from '../services/dbService';
-// import GoogleOAuthReal from '../services/googleOAuthReal';
+import { 
+  registerUser, 
+  loginUser, 
+  logoutUser, 
+  getCurrentUser, 
+  getSession, 
+  onAuthStateChange 
+} from '../src/services/auth';
 
 export type RegistrationData = Omit<User, 'id' | 'type' | 'status' | 'joinedDate'>;
 export type AdminUserData = Omit<User, 'id' | 'joinedDate'>;
@@ -26,6 +25,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isSubscriptionActive: () => boolean;
   hasAccess: (feature: FeatureKey) => boolean;
+  hasToolAccess: (toolName: string) => boolean;
+  getPlanPermissions: () => any;
   login: (cpf: string, password: string) => Promise<User | { error: string }>;
   loginWithGoogle: () => Promise<User | { error: string }>;
   register: (data: RegistrationData) => Promise<RegistrationResult>;
@@ -36,6 +37,7 @@ interface AuthContextType {
   activateAffiliate: (userId: string, affiliateData?: any) => Promise<void>;
   subscribeUserToPlan: (userId: string, plan: Plan) => Promise<boolean>;
   purchaseAddOn: (userId: string, feature: FeatureKey, price: number) => Promise<boolean>;
+  activatePlanPermissions: (planType: string, permissions: any) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -87,101 +89,65 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const initializeAuth = async () => {
       try {
         setIsLoading(true);
-        await initDB();
-
-        // Verificar se deve evitar logout
-        const preventLogout = localStorage.getItem('prevent_logout') === 'true';
-        const userShouldStay = localStorage.getItem('user_should_stay_logged') === 'true';
-        const paymentProcessing = localStorage.getItem('payment_processing') === 'true';
-        const toolActivationForced = localStorage.getItem('tool_activation_forced');
         
-        if (preventLogout || userShouldStay || paymentProcessing || toolActivationForced) {
-          console.log('🔒 Logout prevenido - mantendo sessão ativa');
-          localStorage.removeItem('prevent_logout');
-          localStorage.removeItem('user_should_stay_logged');
-          localStorage.removeItem('payment_processing');
+        // Verificar sessão do Supabase
+        const session = await getSession();
+        if (session?.user) {
+          console.log('✅ Sessão Supabase encontrada:', session.user.email);
+          
+          const userData: User = {
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
+            email: session.user.email || '',
+            type: 'client',
+            status: 'Ativo',
+            joinedDate: new Date().toISOString().split('T')[0],
+            socialAccounts: [],
+            paymentMethods: [],
+            billingHistory: []
+          };
+          
+          setUser(userData);
+          setIsAuthenticated(true);
+        } else {
+          console.log('❌ Nenhuma sessão Supabase encontrada');
+          setUser(null);
+          setIsAuthenticated(false);
         }
         
-        // Tentar carregar usuário salvo
-        const savedUser = localStorage.getItem('viraliza_ai_active_user_v1');
-        const backupUser = localStorage.getItem('viraliza_ai_backup_user');
-        
-        if (savedUser) {
-          try {
-            const userData = JSON.parse(savedUser);
-            console.log('👤 Usuário encontrado no localStorage:', userData.email);
-            
-            // Verificar se há ativação de ferramenta pendente
-            if (toolActivationForced) {
-              const activationData = JSON.parse(toolActivationForced);
-              console.log('🔥 Aplicando ativação de ferramenta:', activationData);
-              
-              if (!userData.addOns) userData.addOns = [];
-              if (!userData.addOns.includes(activationData.toolId)) {
-                userData.addOns.push(activationData.toolId);
-              }
-              if (!userData.addOns.includes('ai_video_generator')) {
-                userData.addOns.push('ai_video_generator');
-              }
-              if (!userData.addOns.includes('ai-video-generator')) {
-                userData.addOns.push('ai-video-generator');
-              }
-              
-              if (!userData.purchasedTools) userData.purchasedTools = {};
-              userData.purchasedTools[activationData.toolId] = {
-                purchasedAt: new Date().toISOString(),
-                active: true,
-                sessionId: activationData.sessionId
-              };
-              userData.purchasedTools['ai_video_generator'] = {
-                purchasedAt: new Date().toISOString(),
-                active: true,
-                sessionId: activationData.sessionId
-              };
-              userData.purchasedTools['ai-video-generator'] = {
-                purchasedAt: new Date().toISOString(),
-                active: true,
-                sessionId: activationData.sessionId
-              };
-              
-              // Salvar usuário atualizado
-              localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(userData));
-              localStorage.removeItem('tool_activation_forced');
-              
-              console.log('✅ Ferramenta ativada no contexto de autenticação');
-            }
+        // Listener para mudanças de autenticação
+        const { data: { subscription } } = onAuthStateChange((event, session) => {
+          console.log('🔄 Auth state changed:', event, session?.user?.email);
+          
+          if (event === 'SIGNED_IN' && session?.user) {
+            const userData: User = {
+              id: session.user.id,
+              name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
+              email: session.user.email || '',
+              type: 'client',
+              status: 'Ativo',
+              joinedDate: new Date().toISOString().split('T')[0],
+              socialAccounts: [],
+              paymentMethods: [],
+              billingHistory: []
+            };
             
             setUser(userData);
             setIsAuthenticated(true);
-          } catch (error) {
-            console.error('❌ Erro ao carregar usuário:', error);
-            
-            // Tentar backup
-            if (backupUser) {
-              try {
-                const backupData = JSON.parse(backupUser);
-                console.log('🔄 Usando backup do usuário:', backupData.email);
-                setUser(backupData);
-                setIsAuthenticated(true);
-                localStorage.setItem('viraliza_ai_active_user_v1', backupUser);
-              } catch (backupError) {
-                console.error('❌ Erro no backup também:', backupError);
-              }
-            }
+          } else if (event === 'SIGNED_OUT') {
+            setUser(null);
+            setIsAuthenticated(false);
           }
-        } else if (backupUser) {
-          try {
-            const backupData = JSON.parse(backupUser);
-            console.log('🔄 Restaurando do backup:', backupData.email);
-            setUser(backupData);
-            setIsAuthenticated(true);
-            localStorage.setItem('viraliza_ai_active_user_v1', backupUser);
-          } catch (error) {
-            console.error('❌ Erro ao restaurar backup:', error);
-          }
-        }
+        });
+        
+        return () => {
+          subscription.unsubscribe();
+        };
+        
       } catch (error) {
         console.error('❌ Erro na inicialização da autenticação:', error);
+        setUser(null);
+        setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
@@ -192,41 +158,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const register = async (data: RegistrationData): Promise<RegistrationResult> => {
     try {
-      console.log('🔄 Iniciando cadastro:', { name: data.name, email: data.email });
+      console.log('🔄 Iniciando cadastro SUPABASE:', { name: data.name, email: data.email });
 
-      const existingUsers = await getAllUsersDB();
-      const emailExists = existingUsers.find(u => u.email.toLowerCase() === data.email.toLowerCase());
+      const authData = await registerUser(data.email, data.password);
+      
+      if (authData.user) {
+        // Criar perfil no Supabase
+        const { supabaseStorage } = await import('../src/services/supabaseStorage');
+        await supabaseStorage.createUserProfile({
+          name: data.name,
+          email: data.email,
+          user_type: 'client',
+          status: 'active',
+          joined_date: new Date().toISOString(),
+          preferences: {}
+        });
 
-      if (emailExists) {
-        return { success: false, message: 'Email já cadastrado' };
+        const userData: User = {
+          id: authData.user.id,
+          name: data.name,
+          email: data.email,
+          type: 'client',
+          status: 'Ativo',
+          joinedDate: new Date().toISOString().split('T')[0],
+          socialAccounts: [],
+          paymentMethods: [],
+          billingHistory: []
+        };
+
+        // Log da atividade
+        await supabaseStorage.logActivity({
+          action: 'user_registered',
+          details: { email: data.email, name: data.name }
+        });
+
+        console.log('✅ Usuário cadastrado no SUPABASE com perfil criado');
+        return { success: true, user: userData };
       }
 
-      const newUser: User = {
-        id: `user_${Date.now()}`,
-        name: data.name,
-        email: data.email,
-        cpf: data.cpf ? String(data.cpf).replace(/\D/g, '') : undefined,
-        type: 'client',
-        status: 'Ativo',
-        joinedDate: new Date().toISOString().split('T')[0],
-        socialAccounts: [],
-        paymentMethods: [],
-        billingHistory: [],
-        plan: 'Plano Mensal',
-        trialStartDate: new Date().toISOString(),
-        trialFollowers: 0,
-        trialSales: 0,
-        password: data.password
-      };
-
-      await addUserDB(newUser);
-      setPlatformUsers(prev => [...prev, newUser]);
-
-      console.log('✅ Usuário cadastrado localmente com sucesso');
-      return { success: true, user: newUser };
-    } catch (error) {
-      console.error('❌ Erro crítico no cadastro:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao cadastrar. Tente novamente.';
+      return { success: false, message: 'Erro no cadastro' };
+    } catch (error: any) {
+      console.error('❌ Erro no cadastro SUPABASE:', error);
+      const errorMessage = error.message || 'Erro ao cadastrar. Tente novamente.';
       return { success: false, message: errorMessage };
     }
   };
@@ -260,110 +233,53 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const login = async (loginField: string, password: string): Promise<User | { error: string }> => {
-    console.log('🔄 Iniciando login:', { loginField, password: '***' });
+  const login = async (email: string, password: string): Promise<User | { error: string }> => {
+    try {
+      console.log('🔄 Iniciando login SUPABASE:', { email, password: '***' });
 
-    // Credenciais de admin
-    const adminCredentials = [
-      { email: 'admin@viralizaai.com', cpf: '01484270657', password: '123456' },
-      { email: 'viralizaai.com', cpf: '01484270657', password: '123456' },
-      { email: 'admin@viraliza.ai', cpf: '01484270657', password: '123456' },
-    ];
+      const authData = await loginUser(email, password);
+      
+      if (authData.user) {
+        const userData: User = {
+          id: authData.user.id,
+          name: authData.user.user_metadata?.name || authData.user.email?.split('@')[0] || 'Usuário',
+          email: authData.user.email || '',
+          type: 'client',
+          status: 'Ativo',
+          joinedDate: new Date().toISOString().split('T')[0],
+          socialAccounts: [],
+          paymentMethods: [],
+          billingHistory: []
+        };
 
-    const cleanLoginField = loginField.trim().toLowerCase();
-    const cleanCpf = String(loginField).replace(/\D/g, '');
-
-    const adminMatch = adminCredentials.find(admin =>
-      admin.email === cleanLoginField ||
-      admin.cpf === cleanCpf ||
-      cleanLoginField.includes('admin') ||
-      cleanLoginField.includes('viralizaai')
-    );
-
-    if (adminMatch && (password === '123456' || password === 'admin')) {
-      console.log('✅ Login admin direto detectado');
-
-      const adminUser: User = {
-        id: 'admin_direct',
-        name: 'Administrador',
-        email: 'admin@viralizaai.com',
-        cpf: '01484270657',
-        type: 'admin',
-        status: 'Ativo',
-        joinedDate: new Date().toISOString().split('T')[0],
-        socialAccounts: [],
-        paymentMethods: [],
-        billingHistory: [],
-        password: ''
-      };
-
-      setUser(adminUser);
-      setIsAuthenticated(true);
-      localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(adminUser));
-
-      console.log('✅ Admin logado com sucesso');
-      return adminUser;
-    }
-
-    // Login local
-    const localUsers = await getAllUsersDB();
-    const isEmail = loginField.includes('@');
-    
-    const localUser = localUsers.find(user => {
-      if (isEmail) {
-        return user.email.toLowerCase() === loginField.trim().toLowerCase();
-      } else {
-        const userCpf = user.cpf ? String(user.cpf).replace(/\D/g, '') : '';
-        return userCpf === cleanCpf;
-      }
-    });
-
-    if (localUser) {
-      console.log('✅ Usuário encontrado localmente:', localUser.email);
-
-      if (localUser.password && localUser.password === password) {
-        setUser(localUser);
+        setUser(userData);
         setIsAuthenticated(true);
-        localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(localUser));
-        console.log('✅ Login local bem-sucedido');
-        return localUser;
-      } else if (!localUser.password) {
-        setUser(localUser);
-        setIsAuthenticated(true);
-        localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(localUser));
-        console.log('✅ Login local bem-sucedido (sem verificação de senha)');
-        return localUser;
-      } else {
-        console.log('❌ Senha incorreta');
-        return { error: 'Senha incorreta' };
+        console.log('✅ Login SUPABASE realizado com sucesso');
+        return userData;
       }
-    } else {
-      console.log('❌ Usuário não encontrado');
-      return { error: 'Usuário não encontrado' };
+
+      return { error: 'Erro no login' };
+    } catch (error: any) {
+      console.error('❌ Erro no login SUPABASE:', error);
+      return { error: error.message || 'Credenciais inválidas' };
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    clearAuthToken();
-
-    // Logout do Google se necessário
+  const logout = async () => {
     try {
-      localStorage.removeItem('google_user_data');
-      localStorage.removeItem('google_access_token');
-      localStorage.removeItem('google_oauth_state');
+      await logoutUser();
+      setUser(null);
+      setIsAuthenticated(false);
+      console.log('✅ Logout SUPABASE realizado');
     } catch (error) {
-      console.log('Erro ao limpar dados do Google');
+      console.error('❌ Erro no logout SUPABASE:', error);
+      setUser(null);
+      setIsAuthenticated(false);
     }
-
-    localStorage.removeItem('viraliza_ai_active_user_v1');
-    localStorage.removeItem('viraliza_ai_backup_user');
-
-    console.log('✅ Logout realizado');
   };
 
   const addUser = async (data: AdminUserData): Promise<User | null> => {
+    // Função administrativa - não usa Supabase Auth
     const emailToCheck = data.email.trim().toLowerCase();
 
     if (platformUsers.find((u) => u.email.trim().toLowerCase() === emailToCheck)) {
@@ -378,37 +294,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       joinedDate: new Date().toISOString().split('T')[0]
     };
 
-    await addUserDB(newUser);
     setPlatformUsers((prev) => [...prev, newUser]);
     return newUser;
   };
 
   const updateUser = async (userId: string, data: Partial<User>) => {
-    const users = await getAllUsersDB();
-    const userToUpdate = users.find((u) => u.id === userId);
+    // Função administrativa - não usa Supabase Auth
+    const userToUpdate = platformUsers.find((u) => u.id === userId);
 
     if (!userToUpdate) return;
 
     const updatedUser = { ...userToUpdate, ...data };
 
-    await updateUserDB(updatedUser);
     setPlatformUsers((prev) => prev.map((u) => (u.id === userId ? updatedUser : u)));
 
     if (user && user.id === userId) {
       setUser(updatedUser);
-      localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(updatedUser));
     }
   };
 
   const deleteUsers = async (userIds: string[]) => {
-    await deleteUsersDB(userIds);
+    // Função administrativa - não usa Supabase Auth
     setPlatformUsers((prev) => prev.filter((u) => !userIds.includes(u.id)));
 
     if (user && userIds.includes(user.id)) {
-      setUser(null);
-      setIsAuthenticated(false);
-      localStorage.removeItem('viraliza_ai_active_user_v1');
-      clearAuthToken();
+      await logout();
     }
   };
 
@@ -433,8 +343,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const subscribeUserToPlan = async (userId: string, plan: Plan): Promise<boolean> => {
-    const users = await getAllUsersDB();
-    const userToUpdate = users.find((u) => u.id === userId);
+    const userToUpdate = platformUsers.find((u) => u.id === userId);
 
     if (!userToUpdate) return false;
 
@@ -473,8 +382,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     feature: FeatureKey,
     price: number
   ): Promise<boolean> => {
-    const users = await getAllUsersDB();
-    const userToUpdate = users.find((u) => u.id === userId);
+    const userToUpdate = platformUsers.find((u) => u.id === userId);
     if (!userToUpdate) return false;
 
     const newBillingRecord: BillingRecord = {
@@ -496,6 +404,68 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return true;
   };
 
+  // 🔐 VERIFICAR ACESSO A FERRAMENTA ESPECÍFICA
+  const hasToolAccess = (toolName: string): boolean => {
+    if (!user) return false;
+    
+    // Admin tem acesso a tudo
+    if (user.type === 'admin') return true;
+    
+    // Verificar se tem assinatura ativa
+    if (!isSubscriptionActive()) return false;
+    
+    // Verificar permissões do plano
+    const permissions = getPlanPermissions();
+    if (!permissions) return false;
+    
+    return permissions.tools.includes(toolName) || permissions.tools.includes('all_tools');
+  };
+
+  // 📋 OBTER PERMISSÕES DO PLANO ATUAL
+  const getPlanPermissions = () => {
+    if (!user || !user.plan) return null;
+    
+    const planPermissions = {
+      'mensal': {
+        tools: ['basic_tools', 'social_media', 'content_generator'],
+        features: ['basic_analytics', 'standard_support'],
+        limits: { videos_per_month: 10, ebooks_per_month: 5 }
+      },
+      'trimestral': {
+        tools: ['basic_tools', 'social_media', 'content_generator', 'advanced_analytics'],
+        features: ['advanced_analytics', 'priority_support', 'custom_templates'],
+        limits: { videos_per_month: 30, ebooks_per_month: 15 }
+      },
+      'semestral': {
+        tools: ['basic_tools', 'social_media', 'content_generator', 'advanced_analytics', 'ai_tools'],
+        features: ['advanced_analytics', 'priority_support', 'custom_templates', 'white_label'],
+        limits: { videos_per_month: 60, ebooks_per_month: 30 }
+      },
+      'anual': {
+        tools: ['all_tools', 'premium_features', 'enterprise_tools'],
+        features: ['all_features', 'dedicated_support', 'custom_integrations', 'api_access'],
+        limits: { videos_per_month: 'unlimited', ebooks_per_month: 'unlimited' }
+      }
+    };
+
+    return planPermissions[user.plan.toLowerCase()] || null;
+  };
+
+  // ⚡ ATIVAR PERMISSÕES DO PLANO
+  const activatePlanPermissions = (planType: string, permissions: any) => {
+    if (!user) return;
+    
+    const updatedUser = {
+      ...user,
+      plan: planType,
+      planExpiresAt: permissions.expiresAt,
+      planPermissions: permissions.permissions
+    };
+    
+    setUser(updatedUser);
+    console.log('🔓 Permissões ativadas:', permissions.permissions);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -514,7 +484,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         subscribeUserToPlan,
         purchaseAddOn,
         isSubscriptionActive,
-        hasAccess
+        hasAccess,
+        hasToolAccess,
+        getPlanPermissions,
+        activatePlanPermissions
       }}
     >
       {children}

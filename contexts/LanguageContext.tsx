@@ -16,32 +16,22 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     const [language, setLanguage] = useState<Language>('pt');
 
     useEffect(() => {
-        const detectLanguage = async () => {
+        // PROTEÇÃO TOTAL SSR
+        if (typeof window !== "undefined" && typeof navigator !== 'undefined') {
             try {
-                const geoService = GeolocationService.getInstance();
-                const location = await geoService.detectUserLocation();
-                const detectedLang = location.language as Language;
-                
+                const browserLang = navigator.language.split('-')[0] as Language;
                 const supportedLanguages: Language[] = ['pt', 'en', 'es', 'fr', 'de', 'it', 'ru', 'zh', 'ja', 'ko', 'hi', 'ar'];
                 
-                if (supportedLanguages.includes(detectedLang)) {
-                    setLanguage(detectedLang);
+                if (supportedLanguages.includes(browserLang)) {
+                    setLanguage(browserLang);
                 } else {
-                    const browserLang = navigator.language.split('-')[0] as Language;
-                    if (supportedLanguages.includes(browserLang)) {
-                        setLanguage(browserLang);
-                    } else {
-                        setLanguage('en');
-                    }
+                    setLanguage('pt');
                 }
             } catch (error) {
                 console.warn('Language detection failed:', error);
-                const browserLang = navigator.language.split('-')[0] as Language;
-                setLanguage(['pt', 'en', 'es', 'fr', 'de', 'it', 'ru', 'zh', 'ja', 'ko', 'hi', 'ar'].includes(browserLang) ? browserLang : 'en');
+                setLanguage('pt');
             }
-        };
-
-        detectLanguage();
+        }
     }, []);
 
     const t = (key: string) => {

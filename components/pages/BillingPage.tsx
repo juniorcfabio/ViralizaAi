@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import StripeService from '../../services/stripeService';
+import { SUBSCRIPTION_PLANS } from '../../data/plansConfig';
+import PixPaymentModal from '../ui/PixPaymentModal';
 
 interface Plan {
     id: string;
@@ -34,39 +36,23 @@ const BillingPage: React.FC = () => {
     const [subscribingPlan, setSubscribingPlan] = useState<string | null>(null);
     const [buyingGrowthEngine, setBuyingGrowthEngine] = useState<string | null>(null);
     const [growthEnginePlan, setGrowthEnginePlan] = useState<string | null>(null);
+    const [pixModalOpen, setPixModalOpen] = useState(false);
+    const [pixSelectedPlan, setPixSelectedPlan] = useState<Plan | null>(null);
+    const [pixGrowthEngineOpen, setPixGrowthEngineOpen] = useState(false);
+    const [pixGrowthEngineData, setPixGrowthEngineData] = useState<{label: string, price: number} | null>(null);
 
     const API_BASE_URL = 'https://viralizaai.vercel.app/api';
 
-    const plans: Plan[] = [
-        {
-            id: 'mensal',
-            name: 'Mensal',
-            price: 59.90,
-            period: '/mês',
-            features: ['Crescimento Orgânico', 'Gestão de Conteúdo', 'Análises Básicas']
-        },
-        {
-            id: 'trimestral',
-            name: 'Trimestral',
-            price: 159.90,
-            period: '/trimestre',
-            features: ['Tudo do Mensal', 'Análises Avançadas', 'Tags de Conversão']
-        },
-        {
-            id: 'semestral',
-            name: 'Semestral',
-            price: 259.90,
-            period: '/semestre',
-            features: ['Tudo do Trimestral', 'Relatórios Estratégicos', 'Acesso Beta']
-        },
-        {
-            id: 'anual',
-            name: 'Anual',
-            price: 399.90,
-            period: '/ano',
-            features: ['Tudo do Semestral', 'API de Integração', 'Tendências Futuras IA']
-        }
-    ];
+    // Usar planos dinâmicos do plansConfig.ts
+    const plans: Plan[] = SUBSCRIPTION_PLANS.map(plan => ({
+        id: plan.id || plan.name.toLowerCase(),
+        name: plan.name,
+        price: plan.price,
+        period: plan.period || (plan.name.toLowerCase().includes('mensal') ? '/mês' : 
+                               plan.name.toLowerCase().includes('trimestral') ? '/trimestre' :
+                               plan.name.toLowerCase().includes('semestral') ? '/semestre' : '/ano'),
+        features: Array.isArray(plan.features) ? plan.features : [plan.features]
+    }));
 
     const growthEnginePricing = {
         quinzenal: 49.90,
@@ -219,6 +205,16 @@ const BillingPage: React.FC = () => {
         } finally {
             setBuyingGrowthEngine(null);
         }
+    };
+
+    const handlePixPayment = (plan: Plan) => {
+        setPixSelectedPlan(plan);
+        setPixModalOpen(true);
+    };
+
+    const handlePixGrowthEngine = (label: string, price: number) => {
+        setPixGrowthEngineData({label, price});
+        setPixGrowthEngineOpen(true);
     };
 
     const getStatusChip = (status: 'Pago' | 'Pendente') => {
@@ -397,13 +393,21 @@ const BillingPage: React.FC = () => {
                                     <li key={index}>• {feature}</li>
                                 ))}
                             </ul>
-                            <button
-                                disabled={subscribingPlan === plan.name}
-                                onClick={() => handleSubscribe(plan)}
-                                className="w-full py-2 rounded-full font-semibold transition-colors bg-accent text-light hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
-                            >
-                                {subscribingPlan === plan.name ? 'Processando...' : 'Assine Agora'}
-                            </button>
+                            <div className="space-y-2">
+                                <button
+                                    disabled={subscribingPlan === plan.name}
+                                    onClick={() => handleSubscribe(plan)}
+                                    className="w-full py-2 rounded-full font-semibold transition-colors bg-accent text-light hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
+                                >
+                                    {subscribingPlan === plan.name ? 'Processando...' : '💳 Cartão/Boleto'}
+                                </button>
+                                <button
+                                    onClick={() => handlePixPayment(plan)}
+                                    className="w-full py-2 rounded-full font-semibold transition-colors bg-green-600 text-white hover:bg-green-700"
+                                >
+                                    ⚡ PIX
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -436,23 +440,50 @@ const BillingPage: React.FC = () => {
                                         Ativo para esta conta ({opt.label})
                                     </span>
                                 )}
-                                <button
-                                    disabled={buyingGrowthEngine === opt.label || isCurrent}
-                                    onClick={() => handlePurchaseGrowthEngine(opt.label, opt.price)}
-                                    className="w-full py-2 rounded-full font-semibold transition-colors bg-accent text-light hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed mt-2"
-                                >
-                                    {buyingGrowthEngine === opt.label
-                                        ? 'Processando...'
-                                        : isCurrent
-                                        ? 'Ativo'
-                                        : 'Ativar Motor de Crescimento'}
-                                </button>
+                                <div className="space-y-2 mt-2">
+                                    <button
+                                        disabled={buyingGrowthEngine === opt.label || isCurrent}
+                                        onClick={() => handlePurchaseGrowthEngine(opt.label, opt.price)}
+                                        className="w-full py-2 rounded-full font-semibold transition-colors bg-accent text-light hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
+                                    >
+                                        {buyingGrowthEngine === opt.label
+                                            ? 'Processando...'
+                                            : isCurrent
+                                            ? 'Ativo'
+                                            : '💳 Cartão/Boleto'}
+                                    </button>
+                                    {!isCurrent && (
+                                        <button
+                                            onClick={() => handlePixGrowthEngine(opt.label, opt.price)}
+                                            className="w-full py-2 rounded-full font-semibold transition-colors bg-green-600 text-white hover:bg-green-700"
+                                        >
+                                            ⚡ PIX
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         );
                     })}
                 </div>
             </div>
 
+            {/* Modal PIX para Planos */}
+            <PixPaymentModal
+                isOpen={pixModalOpen}
+                onClose={() => setPixModalOpen(false)}
+                amount={pixSelectedPlan ? (typeof pixSelectedPlan.price === 'number' ? pixSelectedPlan.price : parseFloat(String(pixSelectedPlan.price))) : 0}
+                planName={pixSelectedPlan ? `Assinatura ${pixSelectedPlan.name} - ViralizaAI` : ''}
+                pixKey="caccb1b4-6b25-4e5a-98a0-17121d31780e"
+            />
+
+            {/* Modal PIX para Ferramentas Avulsas */}
+            <PixPaymentModal
+                isOpen={pixGrowthEngineOpen}
+                onClose={() => setPixGrowthEngineOpen(false)}
+                amount={pixGrowthEngineData ? pixGrowthEngineData.price : 0}
+                planName={pixGrowthEngineData ? `Motor de Crescimento Viraliza - ${pixGrowthEngineData.label}` : ''}
+                pixKey="caccb1b4-6b25-4e5a-98a0-17121d31780e"
+            />
         </>
     );
 };

@@ -10,6 +10,7 @@ export const translations = {
     'nav.register': 'Cadastre',
     'nav.dashboard': 'Dashboard',
     'sidebar.dashboard': 'Dashboard',
+    'sidebar.ultraTools': 'Ultra Tools',
     'sidebar.social': 'Perfis de Marca',
     'sidebar.socialMediaTools': 'Ferramentas Sociais',
     'sidebar.viralAnalyzer': 'Analisador Viral IA',

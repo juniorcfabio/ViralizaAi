@@ -8,30 +8,25 @@ export const getApiBaseUrl = (): string => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
+// DEPRECATED: Auth tokens now managed by Supabase Auth
 export const AUTH_TOKEN_STORAGE_KEY = 'viraliza_ai_auth_token_v1';
 
 export const getAuthToken = (): string | null => {
-  try {
-    return localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
-  } catch {
-    return null;
-  }
+  console.warn('⚠️ DEPRECATED: Use Supabase session instead');
+  return null;
 };
 
 export const setAuthToken = (token: string) => {
-  localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+  console.warn('⚠️ DEPRECATED: Use Supabase session instead');
 };
 
 export const clearAuthToken = () => {
-  localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  console.warn('⚠️ DEPRECATED: Use Supabase session instead');
 };
 
 export const getAuthHeaders = (): Record<string, string> => {
-  const token = getAuthToken();
-  if (!token) return {};
-  return {
-    Authorization: `Bearer ${token}`,
-  };
+  console.warn('⚠️ DEPRECATED: Use Supabase session instead');
+  return {};
 };
 
 // Configuração para requisições

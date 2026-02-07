@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import { useNavigate } from 'react-router-dom';
 import FeatureLockedOverlay from '../ui/FeatureLockedOverlay';
 import WithdrawalSection from '../ui/WithdrawalSection';

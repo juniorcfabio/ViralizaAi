@@ -1,0 +1,426 @@
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { crypto } from 'https://deno.land/std@0.177.0/crypto/mod.ts';
+
+const STRIPE_SIGNING_SECRET = Deno.env.get('STRIPE_SIGNING_SECRET');
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+function computeSignature(payload, secret) {
+  const encoder = new TextEncoder();
+  const key = encoder.encode(secret);
+  const data = encoder.encode(payload);
+  const cryptoKey = crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return cryptoKey.then(k => crypto.subtle.sign('HMAC', k, data)).then(sig => {
+    const b = new Uint8Array(sig);
+    return Array.from(b).map(x => x.toString(16).padStart(2, '0')).join('');
+  });
+}
+
+// Parse Stripe-Signature header and validate
+async function verifyStripeSignature(header, payload) {
+  if (!header) return false;
+  const parts = header.split(',').map(p => p.split('='));
+  const map = Object.fromEntries(parts.map(([k,v]) => [k, v]));
+  const t = map['t'];
+  const v1 = map['v1'];
+  if (!t || !v1) return false;
+  const signedPayload = `${t}.${payload}`;
+  const expected = await computeSignature(signedPayload, STRIPE_SIGNING_SECRET);
+  return timingSafeEqual(expected, v1);
+}
+
+function timingSafeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let res = 0;
+  for (let i = 0; i < a.length; i++) res |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return res === 0;
+}
+
+// Função para fazer requisições ao Supabase
+async function supabaseRequest(endpoint, options = {}) {
+  const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
+  const defaultHeaders = {
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    'Content-Type': 'application/json',
+  };
+  
+  return fetch(url, {
+    ...options,
+    headers: { ...defaultHeaders, ...options.headers }
+  });
+}
+
+// Handler para checkout.session.completed
+async function handleCheckoutCompleted(session) {
+  console.log('🎉 Checkout completed:', session.id);
+  
+  try {
+    const userId = session.metadata?.user_id;
+    const planId = session.metadata?.plan_id;
+    const affiliateId = session.metadata?.affiliate_id;
+    
+    if (!userId) {
+      throw new Error('user_id não encontrado nos metadados');
+    }
+
+    // Criar/atualizar assinatura
+    const subscriptionData = {
+      user_id: userId,
+      stripe_customer_id: session.customer,
+      stripe_subscription_id: session.subscription,
+      status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    if (planId) {
+      subscriptionData.plan_id = planId;
+    }
+
+    await supabaseRequest('subscriptions', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify(subscriptionData)
+    });
+
+    // Log da atividade
+    await supabaseRequest('activity_logs', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: crypto.randomUUID(),
+        user_id: userId,
+        action: 'checkout_completed',
+        details: {
+          session_id: session.id,
+          subscription_id: session.subscription,
+          amount: session.amount_total / 100,
+          currency: session.currency,
+          plan_id: planId,
+          affiliate_id: affiliateId
+        },
+        resource_type: 'payment'
+      })
+    });
+
+    return { success: true, message: 'Checkout processed successfully' };
+  } catch (error) {
+    console.error('❌ Erro no checkout completed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Handler para subscription events
+async function handleSubscriptionCreated(subscription) {
+  console.log('🎉 New subscription created:', subscription.id);
+  
+  try {
+    const userId = await getUserIdFromCustomer(subscription.customer);
+    
+    if (!userId) {
+      throw new Error('Usuário não encontrado para customer: ' + subscription.customer);
+    }
+
+    // Atualizar assinatura com dados completos
+    await supabaseRequest('subscriptions', {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        status: subscription.status,
+        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        cancel_at_period_end: subscription.cancel_at_period_end,
+        updated_at: new Date().toISOString()
+      })
+    });
+
+    // Log da atividade
+    await supabaseRequest('activity_logs', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: crypto.randomUUID(),
+        user_id: userId,
+        action: 'subscription_created',
+        details: {
+          subscription_id: subscription.id,
+          status: subscription.status,
+          plan: subscription.items.data[0]?.price?.nickname || 'Unknown',
+          period_start: subscription.current_period_start,
+          period_end: subscription.current_period_end
+        },
+        resource_type: 'subscription'
+      })
+    });
+
+    return { success: true, message: 'Subscription created successfully' };
+  } catch (error) {
+    console.error('❌ Erro ao processar subscription created:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Handler para payment_intent.succeeded (ATUALIZADO PARA PAGAMENTOS AVULSOS)
+async function handlePaymentIntentSucceeded(paymentIntent) {
+  console.log('💳 Payment intent succeeded:', paymentIntent.id);
+  
+  try {
+    const userId = paymentIntent.metadata?.user_id;
+    const productId = paymentIntent.metadata?.product_id;
+    const affiliateId = paymentIntent.metadata?.affiliate_id;
+    
+    if (!userId) {
+      console.log('ℹ️ user_id não encontrado nos metadados do payment intent');
+      return { success: true, message: 'Payment intent processed (no user_id)' };
+    }
+
+    // Se tem product_id, é uma compra avulsa
+    if (productId) {
+      // Atualizar status da compra
+      await supabaseRequest(`purchases?stripe_payment_intent_id=eq.${paymentIntent.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'completed',
+          updated_at: new Date().toISOString()
+        })
+      });
+
+      // Buscar dados da compra para processar
+      const purchaseResp = await supabaseRequest(`purchases?stripe_payment_intent_id=eq.${paymentIntent.id}&select=*,products(*)`);
+      const purchases = await purchaseResp.json();
+      const purchase = purchases[0];
+
+      if (purchase) {
+        // Processar baseado no tipo de produto
+        await processProductPurchase(purchase, userId);
+
+        // Processar comissão de afiliado se houver
+        if (affiliateId && purchase.commission_amount > 0) {
+          await processAffiliateCommission(purchase, affiliateId);
+        }
+      }
+    }
+
+    // Registrar atividade
+    await supabaseRequest('activity_logs', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: crypto.randomUUID(),
+        user_id: userId,
+        action: 'payment_intent_succeeded',
+        details: {
+          payment_intent_id: paymentIntent.id,
+          amount: paymentIntent.amount / 100,
+          currency: paymentIntent.currency,
+          product_id: productId,
+          affiliate_id: affiliateId
+        },
+        resource_type: 'payment'
+      })
+    });
+
+    return { success: true, message: 'Payment intent processed successfully' };
+  } catch (error) {
+    console.error('❌ Erro ao processar payment intent succeeded:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Processar compra baseado no tipo de produto
+async function processProductPurchase(purchase, userId) {
+  const product = purchase.products;
+  
+  switch (product.type) {
+    case 'ad_credit':
+      // Adicionar créditos de anúncios
+      const creditAmount = product.metadata?.credit_amount || purchase.amount;
+      await supabaseRequest('ad_credits', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: crypto.randomUUID(),
+          user_id: userId,
+          purchase_id: purchase.id,
+          amount: creditAmount,
+          expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 ano
+        })
+      });
+      
+      console.log(`💰 Créditos de anúncios adicionados: R$ ${creditAmount}`);
+      break;
+      
+    case 'tool':
+      // Registrar acesso à ferramenta
+      await supabaseRequest('activity_logs', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: crypto.randomUUID(),
+          user_id: userId,
+          action: 'tool_purchased',
+          details: {
+            tool_name: product.name,
+            purchase_id: purchase.id,
+            credits: product.metadata?.credits || 1
+          },
+          resource_type: 'tool'
+        })
+      });
+      
+      console.log(`🔧 Ferramenta comprada: ${product.name}`);
+      break;
+      
+    case 'service':
+    case 'course':
+      // Registrar acesso ao serviço/curso
+      await supabaseRequest('activity_logs', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: crypto.randomUUID(),
+          user_id: userId,
+          action: 'service_purchased',
+          details: {
+            service_name: product.name,
+            service_type: product.type,
+            purchase_id: purchase.id,
+            metadata: product.metadata
+          },
+          resource_type: 'service'
+        })
+      });
+      
+      console.log(`📚 Serviço/Curso comprado: ${product.name}`);
+      break;
+  }
+}
+
+// Processar comissão de afiliado para compras avulsas
+async function processAffiliateCommission(purchase, affiliateId) {
+  try {
+    // Criar registro de comissão
+    await supabaseRequest('affiliate_commissions', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: crypto.randomUUID(),
+        affiliate_id: affiliateId,
+        source_type: 'purchase',
+        source_id: purchase.id,
+        amount: purchase.commission_amount,
+        commission_rate: (purchase.commission_amount / purchase.amount) * 100,
+        status: 'approved' // Aprovado automaticamente para compras
+      })
+    });
+
+    // Atualizar totais do afiliado
+    await supabaseRequest('rpc/update_affiliate_earnings', {
+      method: 'POST',
+      body: JSON.stringify({
+        affiliate_id: affiliateId,
+        amount: purchase.commission_amount
+      })
+    });
+
+    // Registrar atividade
+    const affiliateResp = await supabaseRequest(`affiliates?id=eq.${affiliateId}&select=user_id`);
+    const affiliates = await affiliateResp.json();
+    const affiliate = affiliates[0];
+
+    if (affiliate) {
+      await supabaseRequest('activity_logs', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: crypto.randomUUID(),
+          user_id: affiliate.user_id,
+          action: 'commission_earned',
+          details: {
+            source_type: 'purchase',
+            source_id: purchase.id,
+            amount: purchase.commission_amount,
+            product_name: purchase.products?.name
+          },
+          resource_type: 'affiliate'
+        })
+      });
+    }
+
+    console.log(`💸 Comissão processada: R$ ${purchase.commission_amount}`);
+  } catch (error) {
+    console.error('❌ Erro ao processar comissão:', error);
+  }
+}
+
+// Função para buscar user_id pelo customer_id
+async function getUserIdFromCustomer(customerId) {
+  try {
+    const resp = await supabaseRequest(`subscriptions?stripe_customer_id=eq.${customerId}&select=user_id`);
+    const data = await resp.json();
+    return data[0]?.user_id || null;
+  } catch (error) {
+    console.error('❌ Erro ao buscar user_id:', error);
+    return null;
+  }
+}
+
+// MAIN HANDLER
+Deno.serve(async (req) => {
+  try {
+    const body = await req.text();
+    const sig = req.headers.get('stripe-signature');
+    
+    if (!STRIPE_SIGNING_SECRET) {
+      console.error('Missing STRIPE_SIGNING_SECRET');
+      return new Response('server misconfigured', { status: 500 });
+    }
+    
+    const verified = await verifyStripeSignature(sig, body);
+    if (!verified) {
+      console.warn('Invalid stripe signature');
+      return new Response('invalid signature', { status: 400 });
+    }
+    
+    const event = JSON.parse(body);
+    const eventId = event.id;
+
+    // Idempotency: check processed_webhook_events
+    const checkResp = await supabaseRequest(`processed_webhook_events?id=eq.${encodeURIComponent(eventId)}`);
+    const existing = await checkResp.json();
+    
+    if (existing && existing.length > 0) {
+      return new Response('Event already processed', { status: 200 });
+    }
+
+    let result = { success: false, message: 'Event type not handled' };
+
+    // Processar eventos
+    switch (event.type) {
+      case 'checkout.session.completed':
+        result = await handleCheckoutCompleted(event.data.object);
+        break;
+      case 'customer.subscription.created':
+        result = await handleSubscriptionCreated(event.data.object);
+        break;
+      case 'payment_intent.succeeded':
+        result = await handlePaymentIntentSucceeded(event.data.object);
+        break;
+      default:
+        console.log('ℹ️ Evento não processado:', event.type);
+        result = { success: true, message: `Event ${event.type} received but not processed` };
+    }
+
+    // Marcar evento como processado
+    await supabaseRequest('processed_webhook_events', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        id: eventId,
+        event_type: event.type,
+        processed: true,
+        result: result,
+        processed_at: new Date().toISOString()
+      })
+    });
+
+    console.log(`✅ Evento processado: ${event.type}`);
+    return new Response('ok', { status: 200 });
+    
+  } catch (err) {
+    console.error('❌ Erro no webhook:', err);
+    return new Response('error', { status: 500 });
+  }
+});

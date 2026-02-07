@@ -14,9 +14,20 @@ import AdminFinancialPageReal from './components/pages/AdminFinancialPageReal';
 import SocialAccountsPage from './components/pages/SocialAccountsPage';
 import AnalyticsPage from './components/pages/AnalyticsPage';
 import BillingPage from './components/pages/BillingPage';
-import TargetingAreasPage from './components/pages/TargetingAreasPage';
+import AdminDashboard from './components/admin/AdminDashboard';
+import AdminDashboardUltra from './src/pages/AdminDashboard';
+import UserDashboardUltra from './src/pages/UserDashboard';
+import AdminMarketplacePage from './components/pages/AdminMarketplacePage';
+import AdminFranchiseSystemPage from './components/pages/AdminFranchiseSystemPage';
+import AdminWhiteLabelSystemPage from './components/pages/AdminWhiteLabelSystemPage';
+import AdminGlobalAPIPage from './components/pages/AdminGlobalAPIPage';
+import AdminAIToolCreatorPage from './components/pages/AdminAIToolCreatorPage';
+import AdminCommandCenterPage from './components/pages/AdminCommandCenterPage';
 import AdminUsersPage from './components/pages/AdminUsersPage';
 import AdminWithdrawalsPageFixed from './components/pages/AdminWithdrawalsPageFixed';
+import ArchitectureDiagram from './components/architecture/ArchitectureDiagram';
+import InvestorPlan from './components/investors/InvestorPlan';
+import TermsIntegration from './components/legal/TermsIntegration';
 import AdminMarketingPage from './components/pages/AdminMarketingPage';
 import AdminSettingsPage from './components/pages/AdminSettingsPage';
 import AffiliatePage from './components/pages/AffiliatePage';
@@ -49,6 +60,10 @@ import SocialMediaToolsPage from './components/pages/SocialMediaToolsPage';
 import ViralProductAnalyzerPage from './components/pages/ViralProductAnalyzerPage';
 import AdminSocialToolsPage from './components/pages/AdminSocialToolsPage';
 import AdminMusicGeneratorPage from './components/pages/AdminMusicGeneratorPage';
+import AdvertisingPlansPage from './components/pages/AdvertisingPlansPage';
+import AdvertisingSuccessPage from './components/pages/AdvertisingSuccessPage';
+import TargetingAreasPage from './components/pages/TargetingAreasPage';
+import PricingPage from './components/pages/PricingPage';
 
 const UpdateModal: React.FC = () => {
     const [hasUpdate, setHasUpdate] = useState(false);
@@ -68,7 +83,9 @@ const UpdateModal: React.FC = () => {
     }, []);
 
     const handleUpdate = () => {
-        window.location.reload();
+        if (typeof window !== "undefined") {
+            window.location.reload();
+        }
     };
 
     if (!hasUpdate) return null;
@@ -102,7 +119,7 @@ const AppRoutes: React.FC = () => {
         user: user?.email, 
         userType: user?.type, 
         isLoading,
-        currentPath: window.location.pathname 
+        currentPath: typeof window !== 'undefined' ? window.location.pathname : 'SSR'
     });
 
     if (isLoading) {
@@ -124,6 +141,7 @@ const AppRoutes: React.FC = () => {
                 element={user?.type === 'client' ? <ClientLayout /> : <Navigate to="/" />}
             >
                 <Route index element={<DashboardPage />} />
+                <Route path="ultra-tools" element={<UserDashboardUltra />} />
                 <Route path="social" element={<SocialAccountsPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="billing" element={<BillingPage />} />
@@ -146,6 +164,7 @@ const AppRoutes: React.FC = () => {
                 element={user?.type === 'admin' ? <AdminLayout /> : <Navigate to="/" />}
             >
                 <Route index element={<AdminDashboardPageReal />} />
+                <Route path="ultra-imperio" element={<AdminDashboardUltra />} />
                 <Route path="financial" element={<AdminFinancialPageReal />} />
                 <Route path="autonomous-promotion" element={<AutonomousPromotionPage />} />
                 <Route path="payments" element={<AdminPaymentsPage />} />
@@ -170,7 +189,24 @@ const AppRoutes: React.FC = () => {
                 <Route path="social-tools" element={<AdminSocialToolsPage />} />
                 <Route path="viral-analyzer" element={<ViralProductAnalyzerPage />} />
                 <Route path="music-generator" element={<AdminMusicGeneratorPage />} />
+                <Route path="marketplace" element={<AdminMarketplacePage />} />
+                <Route path="franchise-system" element={<AdminFranchiseSystemPage />} />
+                <Route path="whitelabel-system" element={<AdminWhiteLabelSystemPage />} />
+                <Route path="global-api" element={<AdminGlobalAPIPage />} />
+                <Route path="ai-tool-creator" element={<AdminAIToolCreatorPage />} />
+                <Route path="smart-pricing" element={<AdminToolsPricingPage />} />
+                <Route path="ai-support" element={<AdminTaskMonitoringPage />} />
+                <Route path="command-center" element={<AdminCommandCenterPage />} />
+                <Route path="architecture" element={<ArchitectureDiagram />} />
+                <Route path="investors" element={<InvestorPlan />} />
             </Route>
+
+            {/* Advertising Routes */}
+            <Route path="/advertising-plans" element={<AdvertisingPlansPage />} />
+            <Route path="/advertising-success" element={<AdvertisingSuccessPage />} />
+            
+            {/* Pricing Route */}
+            <Route path="/pricing" element={<PricingPage />} />
 
             {/* Payment Success Route */}
             <Route path="/payment-success" element={<PaymentSuccessPageUltraRobust />} />
@@ -194,10 +230,12 @@ const App: React.FC = () => {
             const stripeHandler = StripeReturnHandler.getInstance();
             stripeHandler.checkPendingReturns();
             
-            // Suporte a links sem hash (ex.: tracking do e-mail remove o fragment '#').
+            // 🔒 PROTEÇÃO SSR TOTAL - Suporte a links sem hash (ex.: tracking do e-mail remove o fragment '#').
             // Se chegar em /reset-password?token=..., reescreve para HashRouter.
             if (
                 typeof window !== 'undefined' &&
+                typeof document !== 'undefined' &&
+                window.location &&
                 window.location.pathname.endsWith('/reset-password') &&
                 !window.location.hash
             ) {

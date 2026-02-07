@@ -8,6 +8,7 @@ export interface Plan {
   features: string[] | string;
   highlight?: boolean;
   includedTools?: FeatureKey[]; // Ferramentas incluídas no plano
+  description?: string; // Descrição do plano
 }
 
 export interface Testimonial {

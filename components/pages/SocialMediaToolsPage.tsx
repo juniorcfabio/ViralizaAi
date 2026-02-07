@@ -1,9 +1,11 @@
-// PÁGINA DE FERRAMENTAS DE MÍDIA SOCIAL AVANÇADAS
-// Interface completa para todas as ferramentas por plano
+// =======================
+// 🔐 PÁGINA SEGURA DE FERRAMENTAS SOCIAIS
+// =======================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
-import SocialMediaToolsEngine from '../../services/socialMediaToolsEngine';
+import SecureAPIClient from '../../services/apiClient';
+import SecurityService from '../../services/securityService';
 import StripeService from '../../services/stripeService';
 
 // Ícones
@@ -93,12 +95,15 @@ const ToolCard: React.FC<ToolCardProps> = ({ title, description, icon, available
 const SocialMediaToolsPage: React.FC = () => {
   const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('automation');
-  const [toolsEngine] = useState(() => SocialMediaToolsEngine.getInstance());
+  const [apiClient] = useState(() => SecureAPIClient.getInstance());
+  const [securityService] = useState(() => SecurityService.getInstance());
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [csrfToken] = useState(() => SecurityService.getInstance().generateCSRFToken());
 
   const userPlan = user?.plan || 'mensal';
+  const isAdmin = window.location.pathname.includes('/admin') || window.location.hash.includes('/admin');
 
   // Detectar retorno do pagamento Stripe e ativar plano
   useEffect(() => {
@@ -161,31 +166,39 @@ const SocialMediaToolsPage: React.FC = () => {
       ]
     },
     media: {
-      title: '🎬 Criação Avançada de Mídia',
+      title: '🎬 Criação de Mídia',
       tools: [
         {
           id: 'video_editor',
-          title: 'Editor de Vídeo com IA',
-          description: 'Cortes automáticos, legendas dinâmicas, trilhas sonoras livres de direitos e transições modernas.',
+          title: 'Editor de Vídeo IA',
+          description: 'Edição automática com IA avançada',
           icon: <VideoIcon />,
-          requiredPlan: 'semestral',
+          requiredPlan: 'mensal',
           action: 'editVideo'
         },
         {
           id: 'animations',
-          title: 'Gerador de Animações 3D/2D',
-          description: 'Transforme fotos em animações interativas otimizadas para TikTok, Reels e Stories.',
+          title: 'Gerador de Animações',
+          description: 'Animações 3D/2D profissionais',
           icon: <VideoIcon />,
-          requiredPlan: 'semestral',
+          requiredPlan: 'mensal',
           action: 'generateAnimation'
         },
         {
           id: 'music_ai',
           title: 'Banco de Música IA',
-          description: 'Músicas originais criadas por IA com base no estilo da marca, 100% livres de direitos.',
+          description: 'Músicas originais geradas por IA',
           icon: <MusicIcon />,
-          requiredPlan: 'anual',
+          requiredPlan: 'mensal',
           action: 'generateMusic'
+        },
+        {
+          id: 'thumbnails',
+          title: 'Criador de miniaturas',
+          description: 'Miniaturas que aumentam cliques',
+          icon: <VideoIcon />,
+          requiredPlan: 'mensal',
+          action: 'generateThumbnails'
         }
       ]
     },
@@ -283,8 +296,8 @@ const SocialMediaToolsPage: React.FC = () => {
     return planHierarchy[userPlan] >= planHierarchy[requiredPlan];
   };
 
-  // Função para processar checkout de plano específico
-  const handlePlanCheckout = async (requiredPlan: string) => {
+  // Função segura para processar checkout de plano específico
+  const handleSecureCheckout = async (requiredPlan: string) => {
     try {
       console.log('🚀 SocialMediaTools - Redirecionando para checkout do plano:', requiredPlan);
       
@@ -350,26 +363,34 @@ const SocialMediaToolsPage: React.FC = () => {
     }
   };
 
-  const handleToolAction = async (action: string, toolId: string) => {
+  const handleToolAction = useCallback(async (action: string, toolId: string) => {
+    // Validações de segurança
+    if (!securityService.checkRateLimit(`${user?.id}_${action}`)) {
+      alert('Muitas requisições. Aguarde um momento.');
+      return;
+    }
+
     // Encontrar a ferramenta para verificar se está disponível
     const currentCategory = toolCategories[activeTab];
     const tool = currentCategory.tools.find(t => t.action === action);
     
     if (!tool) {
+      securityService.logSecurityEvent('tool_not_found', { action, toolId }, 'medium');
       alert('Ferramenta não encontrada.');
       return;
     }
 
-    // Se a ferramenta não estiver disponível, redirecionar para checkout
-    if (!isToolAvailable(tool.requiredPlan)) {
+    // Validar acesso ao plano
+    const planValidation = await apiClient.validatePlan(tool.requiredPlan);
+    if (!planValidation.success || !planValidation.data?.hasAccess) {
       const confirmUpgrade = confirm(
         `Esta ferramenta requer o plano ${tool.requiredPlan}.\n\n` +
-        `Você será redirecionado para o checkout do Stripe para fazer upgrade.\n\n` +
-        `Deseja continuar?`
+        `Você será redirecionado para o checkout seguro.\n\n` +
+        `Deseja continuar?` 
       );
       
       if (confirmUpgrade) {
-        await handlePlanCheckout(tool.requiredPlan);
+        await handleSecureCheckout(tool.requiredPlan);
       }
       return;
     }
@@ -378,115 +399,152 @@ const SocialMediaToolsPage: React.FC = () => {
     setResults(null);
 
     try {
+      // Log da ação
+      securityService.logSecurityEvent('tool_action_started', { 
+        action, 
+        toolId, 
+        userPlan,
+        isAdmin 
+      }, 'low');
+
       let result;
       
       switch (action) {
         case 'scheduleContent':
-          result = await toolsEngine.scheduleMultiplatform(
-            {
-              text: 'Conteúdo de exemplo para agendamento',
-              scheduledTime: new Date(Date.now() + 3600000).toISOString()
-            },
-            ['Instagram', 'TikTok', 'Facebook'],
-            userPlan
-          );
+          result = await apiClient.callToolAPI(action, {
+            text: 'Conteúdo de exemplo para agendamento',
+            scheduledTime: new Date(Date.now() + 3600000).toISOString(),
+            platforms: ['Instagram', 'TikTok', 'Facebook'],
+            csrfToken
+          });
           break;
           
         case 'generateCopy':
-          result = await toolsEngine.generateAICopywriting(
-            'Dicas de marketing digital para pequenas empresas',
-            'Instagram',
-            userPlan
-          );
+          result = await apiClient.callToolAPI(action, {
+            prompt: 'Dicas de marketing digital para pequenas empresas',
+            platform: 'Instagram',
+            csrfToken
+          });
           break;
           
         case 'translateContent':
-          result = await toolsEngine.translateContent(
-            'Transforme seu negócio com estratégias de marketing digital!',
-            ['en', 'es', 'fr'],
-            userPlan
-          );
+          result = await apiClient.callToolAPI(action, {
+            content: 'Transforme seu negócio com estratégias de marketing digital!',
+            targetLanguages: ['en', 'es', 'fr'],
+            csrfToken
+          });
           break;
           
         case 'editVideo':
-          result = await toolsEngine.editVideoWithAI(
-            {
-              duration: 30,
-              transcript: 'Este é um vídeo sobre marketing digital...',
-              mood: 'upbeat'
-            },
-            userPlan
-          );
+          result = await apiClient.callToolAPI(action, {
+            duration: 30,
+            transcript: 'Este é um vídeo sobre marketing digital...',
+            mood: 'upbeat',
+            csrfToken
+          });
           break;
           
         case 'generateAnimation':
-          result = await toolsEngine.generateAnimations(
-            { imageUrl: 'https://example.com/image.jpg' },
-            '3d_transform',
-            userPlan
-          );
+          result = await apiClient.callToolAPI(action, {
+            imageUrl: 'https://example.com/image.jpg',
+            animationType: '3d_transform',
+            csrfToken
+          });
           break;
           
         case 'generateMusic':
-          result = await toolsEngine.generateOriginalMusic('upbeat_electronic', 30, userPlan);
+          result = await apiClient.callToolAPI(action, {
+            style: 'upbeat_electronic',
+            duration: 30,
+            csrfToken
+          });
+          break;
+          
+        case 'generateThumbnails':
+          result = await apiClient.callToolAPI(action, {
+            title: 'Como Viralizar no TikTok',
+            style: 'modern',
+            colors: ['#FF6B6B', '#4ECDC4', '#45B7D1'],
+            csrfToken
+          });
           break;
           
         case 'generateHashtags':
-          result = await toolsEngine.generateSmartHashtags(
-            'Marketing digital para pequenas empresas',
-            'Instagram',
-            userPlan
-          );
+          result = await apiClient.callToolAPI(action, {
+            content: 'Marketing digital para pequenas empresas',
+            platform: 'Instagram',
+            csrfToken
+          });
           break;
           
         case 'createChatbot':
-          result = await toolsEngine.createChatbot(
-            'Telegram',
-            {
+          result = await apiClient.callToolAPI(action, {
+            platform: 'Telegram',
+            responses: {
               welcome: 'Olá! Como posso ajudar?',
               fallback: 'Desculpe, não entendi. Pode reformular?'
             },
-            userPlan
-          );
+            csrfToken
+          });
           break;
           
         case 'createGamification':
-          result = await toolsEngine.createGamification(
-            'quiz',
-            {
+          result = await apiClient.callToolAPI(action, {
+            type: 'quiz',
+            content: {
               title: 'Qual seu perfil de empreendedor?',
               questions: ['Pergunta 1', 'Pergunta 2', 'Pergunta 3']
             },
-            userPlan
-          );
+            csrfToken
+          });
           break;
           
         case 'showDashboard':
-          result = await toolsEngine.getUnifiedDashboard(
-            ['Instagram', 'TikTok', 'Facebook', 'Twitter'],
-            userPlan
-          );
+          result = await apiClient.callToolAPI(action, {
+            platforms: ['Instagram', 'TikTok', 'Facebook', 'Twitter'],
+            csrfToken
+          });
           break;
           
         case 'detectTrends':
-          result = await toolsEngine.detectTrends('marketing', userPlan);
+          result = await apiClient.callToolAPI(action, {
+            niche: 'marketing',
+            csrfToken
+          });
           break;
           
         case 'generateSalesLinks':
-          result = await toolsEngine.generateSalesLinks(
-            [
+          result = await apiClient.callToolAPI(action, {
+            products: [
               { id: '1', name: 'Curso de Marketing', price: 197 },
               { id: '2', name: 'Consultoria 1:1', price: 497 }
             ],
-            userPlan
-          );
+            csrfToken
+          });
+          break;
+          
+        case 'setupLeadCapture':
+          result = await apiClient.callToolAPI(action, {
+            formType: 'popup',
+            fields: ['name', 'email', 'phone'],
+            integrations: ['mailchimp', 'hubspot'],
+            csrfToken
+          });
           break;
           
         case 'setupRemarketing':
-          result = await toolsEngine.setupRemarketing(
-            { size: 1000, interests: ['marketing', 'business'] },
-            userPlan
-          );
+          result = await apiClient.callToolAPI(action, {
+            audience: { size: 1000, interests: ['marketing', 'business'] },
+            csrfToken
+          });
+          break;
+          
+        case 'analyzeCompetitors':
+          result = await apiClient.callToolAPI(action, {
+            competitors: ['@concorrente1', '@concorrente2'],
+            platforms: ['Instagram', 'TikTok'],
+            csrfToken
+          });
           break;
           
         default:
@@ -494,12 +552,27 @@ const SocialMediaToolsPage: React.FC = () => {
       }
       
       setResults(result);
+      
+      // Log de sucesso
+      securityService.logSecurityEvent('tool_action_completed', { 
+        action, 
+        toolId, 
+        success: result.success 
+      }, 'low');
+      
     } catch (error: any) {
+      // Log de erro
+      securityService.logSecurityEvent('tool_action_failed', { 
+        action, 
+        toolId, 
+        error: error.message 
+      }, 'medium');
+      
       setResults({ success: false, message: error.message });
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, activeTab, apiClient, securityService, csrfToken]);
 
   const tabs = Object.keys(toolCategories);
 
@@ -561,7 +634,7 @@ const SocialMediaToolsPage: React.FC = () => {
               available={isToolAvailable(tool.requiredPlan)}
               requiredPlan={tool.requiredPlan}
               onClick={() => handleToolAction(tool.action, tool.id)}
-              onUpgrade={() => handlePlanCheckout(tool.requiredPlan)}
+              onUpgrade={() => handleSecureCheckout(tool.requiredPlan)}
             />
           ))}
         </div>

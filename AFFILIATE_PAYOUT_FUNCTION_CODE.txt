@@ -1,0 +1,275 @@
+// COPIE ESTE CÓDIGO PARA A FUNÇÃO "affiliate-payout" NO DASHBOARD SUPABASE
+// FUNÇÃO PARA PROCESSAR PAGAMENTOS DE COMISSÕES DE AFILIADOS
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
+
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+  apiVersion: '2022-11-15',
+})
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+serve(async (req) => {
+  try {
+    if (req.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405 })
+    }
+
+    const { action, affiliateId, amount, method, accountInfo } = await req.json()
+
+    // Ações disponíveis: 'request_withdrawal', 'process_payout', 'get_balance'
+    switch (action) {
+      case 'get_balance':
+        return await getAffiliateBalance(affiliateId)
+      
+      case 'request_withdrawal':
+        return await requestWithdrawal(affiliateId, amount, method, accountInfo)
+      
+      case 'process_payout':
+        return await processPayout(affiliateId)
+      
+      default:
+        return new Response('Invalid action', { status: 400 })
+    }
+
+  } catch (error) {
+    console.error('Erro no affiliate payout:', error)
+    return new Response(JSON.stringify({
+      error: 'Internal server error',
+      message: error.message
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+})
+
+// Função para obter saldo do afiliado
+async function getAffiliateBalance(affiliateId: string) {
+  try {
+    // Buscar afiliado
+    const { data: affiliate, error: affiliateError } = await supabase
+      .from('affiliates')
+      .select('*, user_profiles(name, email)')
+      .eq('id', affiliateId)
+      .single()
+
+    if (affiliateError || !affiliate) {
+      return new Response('Affiliate not found', { status: 404 })
+    }
+
+    // Calcular comissões pendentes
+    const { data: pendingCommissions } = await supabase
+      .from('affiliate_commissions')
+      .select('amount')
+      .eq('affiliate_id', affiliateId)
+      .eq('status', 'approved')
+
+    const pendingAmount = pendingCommissions?.reduce((sum, comm) => sum + parseFloat(comm.amount), 0) || 0
+
+    // Calcular total já pago
+    const { data: paidCommissions } = await supabase
+      .from('affiliate_commissions')
+      .select('amount')
+      .eq('affiliate_id', affiliateId)
+      .eq('status', 'paid')
+
+    const paidAmount = paidCommissions?.reduce((sum, comm) => sum + parseFloat(comm.amount), 0) || 0
+
+    // Buscar saques pendentes
+    const { data: pendingWithdrawals } = await supabase
+      .from('affiliate_withdrawals')
+      .select('amount, status, created_at')
+      .eq('affiliate_id', affiliateId)
+      .in('status', ['requested', 'processing'])
+      .order('created_at', { ascending: false })
+
+    return new Response(JSON.stringify({
+      affiliate: {
+        id: affiliate.id,
+        name: affiliate.user_profiles?.name,
+        email: affiliate.user_profiles?.email,
+        referral_code: affiliate.referral_code,
+        commission_rate: affiliate.commission_rate
+      },
+      balance: {
+        available: pendingAmount,
+        total_earned: affiliate.total_earnings,
+        total_paid: paidAmount,
+        total_referrals: affiliate.total_referrals
+      },
+      pending_withdrawals: pendingWithdrawals || []
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+
+  } catch (error) {
+    console.error('Erro ao buscar saldo:', error)
+    return new Response('Error fetching balance', { status: 500 })
+  }
+}
+
+// Função para solicitar saque
+async function requestWithdrawal(affiliateId: string, amount: number, method: string, accountInfo: any) {
+  try {
+    // Verificar saldo disponível
+    const { data: pendingCommissions } = await supabase
+      .from('affiliate_commissions')
+      .select('amount')
+      .eq('affiliate_id', affiliateId)
+      .eq('status', 'approved')
+
+    const availableAmount = pendingCommissions?.reduce((sum, comm) => sum + parseFloat(comm.amount), 0) || 0
+
+    if (amount > availableAmount) {
+      return new Response('Insufficient balance', { status: 400 })
+    }
+
+    // Valor mínimo para saque
+    if (amount < 50) {
+      return new Response('Minimum withdrawal amount is R$ 50.00', { status: 400 })
+    }
+
+    // Buscar dados do afiliado
+    const { data: affiliate } = await supabase
+      .from('affiliates')
+      .select('user_id')
+      .eq('id', affiliateId)
+      .single()
+
+    if (!affiliate) {
+      return new Response('Affiliate not found', { status: 404 })
+    }
+
+    // Criar solicitação de saque
+    const { data: withdrawal, error: withdrawalError } = await supabase
+      .from('affiliate_withdrawals')
+      .insert({
+        affiliate_id: affiliateId,
+        user_id: affiliate.user_id,
+        amount: amount,
+        method: method,
+        account_info: accountInfo,
+        status: 'requested'
+      })
+      .select()
+      .single()
+
+    if (withdrawalError) {
+      console.error('Erro ao criar saque:', withdrawalError)
+      return new Response('Error creating withdrawal request', { status: 500 })
+    }
+
+    // Registrar atividade
+    await supabase.from('activity_logs').insert({
+      user_id: affiliate.user_id,
+      action: 'withdrawal_requested',
+      details: {
+        withdrawal_id: withdrawal.id,
+        amount: amount,
+        method: method
+      },
+      resource_type: 'affiliate'
+    })
+
+    return new Response(JSON.stringify({
+      success: true,
+      withdrawal_id: withdrawal.id,
+      message: 'Withdrawal request created successfully'
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+
+  } catch (error) {
+    console.error('Erro ao solicitar saque:', error)
+    return new Response('Error requesting withdrawal', { status: 500 })
+  }
+}
+
+// Função para processar pagamento (admin only)
+async function processPayout(withdrawalId: string) {
+  try {
+    // Buscar saque
+    const { data: withdrawal, error: withdrawalError } = await supabase
+      .from('affiliate_withdrawals')
+      .select(`
+        *,
+        affiliates (
+          user_id,
+          user_profiles (name, email)
+        )
+      `)
+      .eq('id', withdrawalId)
+      .eq('status', 'requested')
+      .single()
+
+    if (withdrawalError || !withdrawal) {
+      return new Response('Withdrawal not found', { status: 404 })
+    }
+
+    // Processar via Stripe (se método for stripe_transfer)
+    let stripeTransferId = null
+    if (withdrawal.method === 'stripe_transfer') {
+      // Aqui você implementaria a transferência via Stripe Connect
+      // Por enquanto, vamos simular
+      console.log('Processing Stripe transfer for:', withdrawal.amount)
+    }
+
+    // Atualizar status do saque
+    const { error: updateError } = await supabase
+      .from('affiliate_withdrawals')
+      .update({
+        status: 'completed',
+        stripe_transfer_id: stripeTransferId,
+        processed_at: new Date().toISOString()
+      })
+      .eq('id', withdrawalId)
+
+    if (updateError) {
+      console.error('Erro ao atualizar saque:', updateError)
+      return new Response('Error updating withdrawal', { status: 500 })
+    }
+
+    // Marcar comissões como pagas
+    await supabase
+      .from('affiliate_commissions')
+      .update({
+        status: 'paid',
+        paid_at: new Date().toISOString()
+      })
+      .eq('affiliate_id', withdrawal.affiliate_id)
+      .eq('status', 'approved')
+
+    // Registrar atividade
+    await supabase.from('activity_logs').insert({
+      user_id: withdrawal.affiliates.user_id,
+      action: 'withdrawal_completed',
+      details: {
+        withdrawal_id: withdrawalId,
+        amount: withdrawal.amount,
+        method: withdrawal.method,
+        stripe_transfer_id: stripeTransferId
+      },
+      resource_type: 'affiliate'
+    })
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Payout processed successfully'
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+
+  } catch (error) {
+    console.error('Erro ao processar pagamento:', error)
+    return new Response('Error processing payout', { status: 500 })
+  }
+}

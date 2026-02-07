@@ -1,0 +1,454 @@
+// COPIE ESTE CÓDIGO PARA A FUNÇÃO "stripe-webhook" NO DASHBOARD SUPABASE
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
+
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+  apiVersion: '2022-11-15',
+})
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+})
+
+serve(async (req) => {
+  const startTime = Date.now()
+  let eventId = 'unknown'
+  
+  try {
+    if (req.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405 })
+    }
+
+    const body = await req.text()
+    const signature = req.headers.get('stripe-signature')
+
+    console.log('🔄 Webhook recebido, tamanho:', body.length, 'bytes')
+
+    let event: Stripe.Event
+    
+    if (webhookSecret && signature) {
+      try {
+        event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+        console.log('✅ Signature válida para evento:', event.type)
+      } catch (err) {
+        console.error('❌ Signature inválida:', err.message)
+        return new Response('Invalid signature', { status: 400 })
+      }
+    } else {
+      event = JSON.parse(body) as Stripe.Event
+      console.log('⚠️ Processando sem validação de signature:', event.type)
+    }
+
+    eventId = event.id
+
+    // Verificar idempotência
+    const { data: existingEvent } = await supabase
+      .from('processed_webhook_events')
+      .select('id')
+      .eq('stripe_event_id', event.id)
+      .single()
+
+    if (existingEvent) {
+      console.log('ℹ️ Evento já processado:', event.id)
+      return new Response('Event already processed', { status: 200 })
+    }
+
+    // Registrar evento
+    await supabase.from('processed_webhook_events').insert({
+      stripe_event_id: event.id,
+      event_type: event.type,
+      data: event,
+      processed: false
+    })
+
+    let result = { success: false, message: 'Event type not handled' }
+
+    // Processar eventos
+    switch (event.type) {
+      case 'checkout.session.completed':
+        result = await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
+        break
+      case 'customer.subscription.created':
+        result = await handleSubscriptionCreated(event.data.object as Stripe.Subscription)
+        break
+      case 'customer.subscription.updated':
+        result = await handleSubscriptionUpdated(event.data.object as Stripe.Subscription)
+        break
+      case 'customer.subscription.deleted':
+        result = await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
+        break
+      case 'invoice.payment_succeeded':
+        result = await handlePaymentSucceeded(event.data.object as Stripe.Invoice)
+        break
+      case 'invoice.payment_failed':
+        result = await handlePaymentFailed(event.data.object as Stripe.Invoice)
+        break
+      case 'payment_intent.succeeded':
+        result = await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent)
+        break
+      default:
+        console.log('ℹ️ Evento não processado:', event.type)
+        result = { success: true, message: `Event ${event.type} received but not processed` }
+    }
+
+    // Marcar como processado
+    await supabase
+      .from('processed_webhook_events')
+      .update({ 
+        processed: true, 
+        result: result,
+        processed_at: new Date().toISOString()
+      })
+      .eq('stripe_event_id', event.id)
+
+    const processingTime = Date.now() - startTime
+    console.log(`✅ Evento processado: ${event.type} em ${processingTime}ms`)
+
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+
+  } catch (error) {
+    console.error('❌ Erro no webhook:', error)
+    
+    const processingTime = Date.now() - startTime
+    
+    return new Response(JSON.stringify({
+      error: 'Internal server error',
+      eventId,
+      processingTime 
+    }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+})
+
+// HANDLERS DE EVENTOS
+
+async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+  console.log('🎉 Checkout completed:', session.id)
+  
+  try {
+    const userId = session.metadata?.user_id
+    const planId = session.metadata?.plan_id
+    const affiliateId = session.metadata?.affiliate_id
+    
+    if (!userId) {
+      throw new Error('user_id não encontrado nos metadados')
+    }
+
+    // Criar/atualizar assinatura
+    const subscriptionData: any = {
+      user_id: userId,
+      stripe_customer_id: session.customer as string,
+      stripe_subscription_id: session.subscription as string,
+      status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+
+    if (planId) {
+      subscriptionData.plan_id = planId
+    }
+
+    const { error: subError } = await supabase
+      .from('subscriptions')
+      .upsert(subscriptionData, { onConflict: 'stripe_subscription_id' })
+
+    if (subError) {
+      console.error('❌ Erro ao criar assinatura:', subError)
+    }
+
+    // Log da atividade
+    await supabase.from('activity_logs').insert({
+      user_id: userId,
+      action: 'checkout_completed',
+      details: {
+        session_id: session.id,
+        subscription_id: session.subscription,
+        amount: session.amount_total / 100,
+        currency: session.currency,
+        plan_id: planId,
+        affiliate_id: affiliateId
+      },
+      resource_type: 'payment'
+    })
+
+    return { success: true, message: 'Checkout processed successfully' }
+  } catch (error) {
+    console.error('❌ Erro no checkout completed:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
+  console.log('🎉 New subscription created:', subscription.id)
+  
+  try {
+    const userId = await getUserIdFromCustomer(subscription.customer as string)
+    
+    if (!userId) {
+      throw new Error('Usuário não encontrado para customer: ' + subscription.customer)
+    }
+
+    // Atualizar assinatura com dados completos
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({
+        status: subscription.status,
+        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        cancel_at_period_end: subscription.cancel_at_period_end,
+        updated_at: new Date().toISOString()
+      })
+      .eq('stripe_subscription_id', subscription.id)
+
+    if (error) {
+      console.error('❌ Erro ao atualizar assinatura:', error)
+    }
+
+    // Log da atividade
+    await supabase.from('activity_logs').insert({
+      user_id: userId,
+      action: 'subscription_created',
+      details: {
+        subscription_id: subscription.id,
+        status: subscription.status,
+        plan: subscription.items.data[0]?.price?.nickname || 'Unknown',
+        period_start: subscription.current_period_start,
+        period_end: subscription.current_period_end
+      },
+      resource_type: 'subscription'
+    })
+
+    return { success: true, message: 'Subscription created successfully' }
+  } catch (error) {
+    console.error('❌ Erro ao processar subscription created:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
+  console.log('🔄 Subscription updated:', subscription.id)
+  
+  try {
+    const userId = await getUserIdFromCustomer(subscription.customer as string)
+    
+    if (!userId) {
+      throw new Error('Usuário não encontrado para customer: ' + subscription.customer)
+    }
+
+    // Atualizar assinatura
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({
+        status: subscription.status,
+        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        cancel_at_period_end: subscription.cancel_at_period_end,
+        updated_at: new Date().toISOString()
+      })
+      .eq('stripe_subscription_id', subscription.id)
+
+    if (error) {
+      console.error('❌ Erro ao atualizar assinatura:', error)
+    }
+
+    // Log da atividade
+    await supabase.from('activity_logs').insert({
+      user_id: userId,
+      action: 'subscription_updated',
+      details: {
+        subscription_id: subscription.id,
+        status: subscription.status,
+        cancel_at_period_end: subscription.cancel_at_period_end
+      },
+      resource_type: 'subscription'
+    })
+
+    return { success: true, message: 'Subscription updated successfully' }
+  } catch (error) {
+    console.error('❌ Erro ao processar subscription updated:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+  console.log('❌ Subscription canceled:', subscription.id)
+  
+  try {
+    const userId = await getUserIdFromCustomer(subscription.customer as string)
+    
+    if (!userId) {
+      throw new Error('Usuário não encontrado para customer: ' + subscription.customer)
+    }
+
+    // Cancelar assinatura
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({
+        status: 'canceled',
+        updated_at: new Date().toISOString()
+      })
+      .eq('stripe_subscription_id', subscription.id)
+
+    if (error) {
+      console.error('❌ Erro ao cancelar assinatura:', error)
+    }
+
+    // Log da atividade
+    await supabase.from('activity_logs').insert({
+      user_id: userId,
+      action: 'subscription_canceled',
+      details: {
+        subscription_id: subscription.id,
+        canceled_at: new Date().toISOString(),
+        reason: 'stripe_webhook'
+      },
+      resource_type: 'subscription'
+    })
+
+    return { success: true, message: 'Subscription canceled successfully' }
+  } catch (error) {
+    console.error('❌ Erro ao processar subscription deleted:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
+  console.log('💰 Payment succeeded:', invoice.id)
+  
+  try {
+    const userId = await getUserIdFromCustomer(invoice.customer as string)
+    
+    if (!userId) {
+      throw new Error('Usuário não encontrado para customer: ' + invoice.customer)
+    }
+
+    // Registrar pagamento
+    await supabase.from('activity_logs').insert({
+      user_id: userId,
+      action: 'payment_succeeded',
+      details: {
+        invoice_id: invoice.id,
+        subscription_id: invoice.subscription,
+        amount: invoice.amount_paid / 100,
+        currency: invoice.currency,
+        period_start: invoice.period_start,
+        period_end: invoice.period_end
+      },
+      resource_type: 'payment'
+    })
+
+    return { success: true, message: 'Payment processed successfully' }
+  } catch (error) {
+    console.error('❌ Erro ao processar payment succeeded:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+async function handlePaymentFailed(invoice: Stripe.Invoice) {
+  console.log('❌ Payment failed:', invoice.id)
+  
+  try {
+    const userId = await getUserIdFromCustomer(invoice.customer as string)
+    
+    if (!userId) {
+      throw new Error('Usuário não encontrado para customer: ' + invoice.customer)
+    }
+
+    // Registrar falha no pagamento
+    await supabase.from('activity_logs').insert({
+      user_id: userId,
+      action: 'payment_failed',
+      details: {
+        invoice_id: invoice.id,
+        subscription_id: invoice.subscription,
+        amount: invoice.amount_due / 100,
+        currency: invoice.currency,
+        failure_reason: 'stripe_payment_failed'
+      },
+      resource_type: 'payment'
+    })
+
+    // Atualizar status da assinatura se necessário
+    if (invoice.subscription) {
+      await supabase
+        .from('subscriptions')
+        .update({
+          status: 'past_due',
+          updated_at: new Date().toISOString()
+        })
+        .eq('stripe_subscription_id', invoice.subscription)
+    }
+
+    return { success: true, message: 'Payment failure processed successfully' }
+  } catch (error) {
+    console.error('❌ Erro ao processar payment failed:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+  console.log('💳 Payment intent succeeded:', paymentIntent.id)
+  
+  try {
+    const userId = paymentIntent.metadata?.user_id
+    
+    if (!userId) {
+      console.log('ℹ️ user_id não encontrado nos metadados do payment intent')
+      return { success: true, message: 'Payment intent processed (no user_id)' }
+    }
+
+    // Registrar pagamento único (não assinatura)
+    await supabase.from('activity_logs').insert({
+      user_id: userId,
+      action: 'payment_intent_succeeded',
+      details: {
+        payment_intent_id: paymentIntent.id,
+        amount: paymentIntent.amount / 100,
+        currency: paymentIntent.currency,
+        payment_method: paymentIntent.payment_method
+      },
+      resource_type: 'payment'
+    })
+
+    return { success: true, message: 'Payment intent processed successfully' }
+  } catch (error) {
+    console.error('❌ Erro ao processar payment intent succeeded:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+// FUNÇÕES UTILITÁRIAS
+
+async function getUserIdFromCustomer(customerId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select('user_id')
+      .eq('stripe_customer_id', customerId)
+      .single()
+    
+    if (error) {
+      console.error('❌ Erro ao buscar user_id:', error)
+      return null
+    }
+    
+    return data?.user_id || null
+  } catch (error) {
+    console.error('❌ Erro ao buscar user_id:', error)
+    return null
+  }
+}

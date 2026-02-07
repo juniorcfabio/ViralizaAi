@@ -4,13 +4,6 @@ import { AdPartner, AdPricingConfig } from '../../types';
 import { getAdPricingConfig } from '../../services/dbService';
 import { useNavigate } from 'react-router-dom';
 
-import { API_BASE_URL, getAuthHeaders } from '../../src/config/api';
-
-const buildAppBaseUrl = () => {
-    // Mesma ideia do BillingPage: base do app para montar URLs de retorno
-    return window.location.origin;
-};
-
 // Icons
 const UploadIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg
@@ -87,49 +80,41 @@ const AdvertisePage: React.FC = () => {
         if (!selectedPlan || !user) return;
 
         const amount = getPrice(selectedPlan);
-        const appBaseUrl = buildAppBaseUrl();
-
         setIsProcessing(true);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/payments/checkout`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...getAuthHeaders(),
-                },
-                body: JSON.stringify({
-                    userId: user.id,
-                    itemType: 'addon', // diferenciamos de assinatura de plano
-                    itemId:
-                        selectedPlan === '1_week'
-                            ? 'Anúncio 1 Semana'
-                            : selectedPlan === '15_days'
-                            ? 'Anúncio 15 Dias'
-                            : 'Anúncio 30 Dias',
-                    amount,
-                    currency: 'BRL',
-                    provider: 'stripe',
-                    // Ao concluir ou cancelar o pagamento, o usuário volta para a tela de Anúncio
-                    successUrl: `${appBaseUrl}/#/dashboard/advertise`,
-                    cancelUrl: `${appBaseUrl}/#/dashboard/advertise`
-                })
+            console.log('📅 MODAL 28/01/2026 - Iniciando pagamento anúncio:', {
+                selectedPlan,
+                amount,
+                companyName: formData.companyName,
+                userEmail: user?.email
             });
 
-            if (!response.ok) {
-                throw new Error(`Erro ao iniciar checkout: ${response.status}`);
-            }
+            // Importar o serviço Stripe do dia 28/01/2026 que funcionava perfeitamente
+            const { default: stripeService28Jan } = await import('../../services/stripeService28Jan.js');
 
-            const data = await response.json();
+            const adName = selectedPlan === '1_week' 
+                ? 'Anúncio 1 Semana' 
+                : selectedPlan === '15_days' 
+                ? 'Anúncio 15 Dias' 
+                : 'Anúncio 30 Dias';
 
-            if (data.checkoutUrl) {
-                // Redireciona para a Stripe
-                window.location.href = data.checkoutUrl;
-            } else {
-                throw new Error('Resposta do backend sem checkoutUrl.');
-            }
+            // Preparar dados do anúncio exatamente como dia 28/01/2026
+            const adData = {
+                plan: selectedPlan,
+                name: adName,
+                amount: amount,
+                companyName: formData.companyName,
+                email: user?.email,
+                userId: user?.id,
+                type: 'ad'
+            };
+
+            // Usar o sistema do dia 28/01/2026
+            await stripeService28Jan.createAdCheckout(adData);
+
         } catch (error) {
-            console.error(error);
+            console.error('❌ Erro no sistema 28/01/2026:', error);
             alert('Houve um erro ao iniciar o pagamento do anúncio. Tente novamente.');
         } finally {
             setIsProcessing(false);
@@ -349,9 +334,9 @@ const AdvertisePage: React.FC = () => {
                                 disabled={isProcessing}
                                 className="w-full md:w-auto bg-green-600 text-white font-bold py-3 px-12 rounded-full hover:bg-green-500 transition-colors shadow-lg shadow-green-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isProcessing
-                                    ? 'Redirecionando para pagamento...'
-                                    : `Pagar R$ ${getPrice(selectedPlan).toFixed(2)} e Ativar`}
+{isProcessing
+                                    ? 'Redirecionando para Stripe...'
+                                    : `💳 Pagar R$ ${getPrice(selectedPlan).toFixed(2)} via Stripe`}
                             </button>
                             <p className="text-xs text-gray-500 mt-2">
                                 Pagamento seguro processado via Stripe.
@@ -364,34 +349,6 @@ const AdvertisePage: React.FC = () => {
                             </button>
                         </div>
                     )}
-                </div>
-            )}
-
-            {step === 3 && (
-                <div className="bg-secondary p-12 rounded-lg border border-green-500/30 text-center animate-fade-in-up">
-                    <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <CheckCircleIcon className="w-10 h-10 text-green-400" />
-                    </div>
-                    <h3 className="text-3xl font-bold text-white mb-4">
-                        Parabéns! Anúncio Ativado.
-                    </h3>
-                    <p className="text-gray-300 max-w-md mx-auto mb-8">
-                        Seu anúncio foi configurado com sucesso e já está na fila de exibição da
-                        página inicial do Viraliza.ai.
-                    </p>
-                    <button
-                        onClick={() => navigate('/')}
-                        className="bg-primary border border-gray-600 text-light font-semibold py-3 px-8 rounded-full hover:bg-gray-700 transition-colors"
-                    >
-                        Ver na Página Inicial
-                    </button>
-                    <br />
-                    <button
-                        onClick={() => navigate('/dashboard')}
-                        className="text-accent mt-6 hover:underline"
-                    >
-                        Voltar ao Dashboard
-                    </button>
                 </div>
             )}
         </div>
