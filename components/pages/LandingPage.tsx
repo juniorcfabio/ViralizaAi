@@ -11,7 +11,7 @@ import InteractiveAIPersona from '../ui/InteractiveAIPersona';
 import DraggableHelpButton from '../ui/DraggableHelpButton';
 import { getPartnersDB, getTestimonialsDB, getTrustedCompaniesDB } from '../../services/dbService';
 import AdminCredentialsFix from '../ui/AdminCredentialsFix';
-import StripeService from '../../services/stripeService';
+import stripeService from '../../services/stripeService';
 
 const CampaignIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -209,40 +209,37 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 body: JSON.stringify({ email }),
             });
 
-            const data = await res.json().catch(() => null);
-            const message = (data && (data.message || data.error)) || 'Se o e-mail existir, enviaremos um link para redefinir a senha.';
-
-            if (!res.ok) {
-                setError(String(message));
-                return;
+            const data = await res.json();
+            if (res.ok) {
+                setForgotMessage(data.message || 'Link de redefinição enviado para seu e-mail.');
+            } else {
+                setError(data.message || 'Erro ao enviar link de redefinição.');
             }
-
-            setForgotMessage(String(message));
-        } catch (err) {
-            setError('Erro ao solicitar redefinição de senha. Tente novamente.');
+        } catch (error) {
+            setError('Erro de conexão. Tente novamente.');
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSupabaseLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-
         setIsLoggingIn(true);
 
         try {
-            const user = await login(loginField, password);
-            if (user && typeof user === 'object' && 'error' in user) {
-                setError((user as any).error || 'Erro ao processar login. Tente novamente.');
+            const result = await login(loginField, password);
+            
+            if (result && typeof result === 'object' && 'error' in result) {
+                setError(result.error || 'Erro ao fazer login');
                 return;
             }
-
-            if (user) {
-                navigate(user.type === 'admin' ? '/admin' : '/dashboard');
-            } else {
-                setError('Credenciais inválidas. Por favor, tente novamente.');
-            }
-        } catch (err) {
-            setError('Erro ao processar login. Tente novamente.');
+            
+            console.log('✅ Login Supabase realizado com sucesso');
+            onClose();
+            navigate('/dashboard');
+            
+        } catch (error: any) {
+            console.error('❌ Erro no login Supabase:', error);
+            setError(error.message || 'Erro ao fazer login');
         } finally {
             setIsLoggingIn(false);
         }
@@ -316,7 +313,7 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSupabaseLogin} className="space-y-4">
                     <input 
                         type="text" 
                         placeholder="CPF ou E-mail" 
@@ -446,7 +443,7 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSupabaseRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
@@ -463,18 +460,19 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             }
         }
 
-        const dataToRegister: any = { ...formData };
-        if (accountType === 'individual') {
-            delete dataToRegister.cnpj;
-        } else {
-            delete dataToRegister.cpf;
-        }
-
-        const result = await register(dataToRegister);
-        if (result.success) {
-            setSuccessMessage('Cadastro realizado! Verifique seu e-mail para confirmar a conta e depois faça login.');
-        } else {
-            setError(result.message || 'Ocorreu um erro no cadastro.');
+        try {
+            const result = await register(formData);
+            
+            if (result.success) {
+                console.log(' Cadastro Supabase realizado com sucesso');
+                setSuccessMessage('Cadastro realizado! Verifique seu e-mail para confirmar a conta e depois faça login.');
+            } else {
+                setError(result.message || 'Erro ao fazer cadastro');
+            }
+            
+        } catch (error: any) {
+            console.error(' Erro no cadastro Supabase:', error);
+            setError(error.message || 'Erro ao fazer cadastro');
         }
     };
 
@@ -510,7 +508,7 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSupabaseRegister} className="space-y-4">
                     <div className="flex bg-primary rounded-lg p-1 border border-gray-700">
                         <button type="button" onClick={() => handleAccountTypeChange('business')} className={`flex-1 py-1 rounded-md text-sm transition-colors ${accountType === 'business' ? 'bg-accent text-white shadow' : 'text-gray-dark hover:bg-secondary'}`}>Empresa</button>
                         <button type="button" onClick={() => handleAccountTypeChange('individual')} className={`flex-1 py-1 rounded-md text-sm transition-colors ${accountType === 'individual' ? 'bg-accent text-white shadow' : 'text-gray-dark hover:bg-secondary'}`}>Pessoa Física</button>
@@ -1127,7 +1125,7 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
         try {
             console.log('🚀 LandingPage - Processando pagamento do plano:', plan.name);
             
-            const stripeService = StripeService.getInstance();
+            // Usar instância direta do stripeService
             const amount = parseFloat(String(plan.price).replace(',', '.'));
             const appBaseUrl = window.location.origin;
 
@@ -1342,13 +1340,13 @@ const AffiliateSection: React.FC<{ onRegister: () => void }> = ({ onRegister }) 
 const ClientLogos: React.FC = () => {
     const [isPaused, setIsPaused] = useState(false);
 
-    // Logos com cores REAIS oficiais das empresas
+    // Logos com cores das marcas para exibição visual 3D ultra-realista
     const logos = [
-        { id: '1', name: 'Microsoft', url: 'https://microsoft.com', color: '#00A4EF' },
+        { id: '1', name: 'Microsoft', url: 'https://microsoft.com', color: '#00BCF2' },
         { id: '2', name: 'Google', url: 'https://google.com', color: '#4285F4' },
         { id: '3', name: 'Amazon', url: 'https://amazon.com', color: '#FF9900' },
         { id: '4', name: 'Meta', url: 'https://meta.com', color: '#1877F2' },
-        { id: '5', name: 'Apple', url: 'https://apple.com', color: '#007AFF' },
+        { id: '5', name: 'Apple', url: 'https://apple.com', color: '#000000' },
         { id: '6', name: 'Tesla', url: 'https://tesla.com', color: '#CC0000' },
         { id: '7', name: 'Netflix', url: 'https://netflix.com', color: '#E50914' },
         { id: '8', name: 'Spotify', url: 'https://spotify.com', color: '#1DB954' },
@@ -1359,7 +1357,7 @@ const ClientLogos: React.FC = () => {
         { id: '13', name: 'Intel', url: 'https://intel.com', color: '#0071C5' },
         { id: '14', name: 'NVIDIA', url: 'https://nvidia.com', color: '#76B900' },
         { id: '15', name: 'Samsung', url: 'https://samsung.com', color: '#1428A0' },
-        { id: '16', name: 'Sony', url: 'https://sony.com', color: '#0070F3' },
+        { id: '16', name: 'Sony', url: 'https://sony.com', color: '#000000' },
         { id: '17', name: 'Uber', url: 'https://uber.com', color: '#000000' },
         { id: '18', name: 'Airbnb', url: 'https://airbnb.com', color: '#FF5A5F' },
         { id: '19', name: 'PayPal', url: 'https://paypal.com', color: '#003087' },
@@ -1367,9 +1365,9 @@ const ClientLogos: React.FC = () => {
         { id: '21', name: 'Zoom', url: 'https://zoom.us', color: '#2D8CFF' },
         { id: '22', name: 'Slack', url: 'https://slack.com', color: '#4A154B' },
         { id: '23', name: 'Dropbox', url: 'https://dropbox.com', color: '#0061FF' },
-        { id: '24', name: 'X (Twitter)', url: 'https://x.com', color: '#000000' },
-        { id: '25', name: 'LinkedIn', url: 'https://linkedin.com', color: '#0A66C2' },
-        { id: '26', name: 'TikTok', url: 'https://tiktok.com', color: '#FF0050' },
+        { id: '24', name: 'Twitter', url: 'https://twitter.com', color: '#1DA1F2' },
+        { id: '25', name: 'LinkedIn', url: 'https://linkedin.com', color: '#0077B5' },
+        { id: '26', name: 'TikTok', url: 'https://tiktok.com', color: '#000000' },
         { id: '27', name: 'Instagram', url: 'https://instagram.com', color: '#E4405F' },
         { id: '28', name: 'WhatsApp', url: 'https://whatsapp.com', color: '#25D366' },
         { id: '29', name: 'YouTube', url: 'https://youtube.com', color: '#FF0000' },
