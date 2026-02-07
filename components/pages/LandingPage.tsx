@@ -11,7 +11,7 @@ import InteractiveAIPersona from '../ui/InteractiveAIPersona';
 import DraggableHelpButton from '../ui/DraggableHelpButton';
 import { getPartnersDB, getTestimonialsDB, getTrustedCompaniesDB } from '../../services/dbService';
 import AdminCredentialsFix from '../ui/AdminCredentialsFix';
-import processSimpleCheckout from '../../src/services/simpleCheckout';
+import { processSubscriptionPayment } from '../../src/services/workingCheckout';
 
 const CampaignIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1167,7 +1167,7 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
             };
 
             console.log('📋 Dados da assinatura (LandingPage):', subscriptionData);
-            await processSimpleCheckout(subscriptionData);
+            await processSubscriptionPayment(subscriptionData);
 
         } catch (error) {
             console.error('❌ Erro ao processar pagamento na LandingPage:', error);
