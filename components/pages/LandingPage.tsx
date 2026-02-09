@@ -660,17 +660,8 @@ const Hero: React.FC<{ onRegister: () => void; onPersonaClick: () => void }> = (
                 <h1 className="text-4xl md:text-6xl font-extrabold text-light mb-4 leading-tight">
                    {t('hero.title')}
                 </h1>
-                <p className="text-lg md:text-xl text-gray-dark max-w-3xl mx-auto mb-8">
-                   {t('affiliate.subtitle')}
-                </p>
                 <div className="flex justify-center mb-8">
                     <AIPersona onClick={onPersonaClick} />
-                    <button 
-                        onClick={onRegister}
-                        className="bg-black text-white font-bold py-4 px-8 rounded-full hover:bg-gray-800 transition-all transform hover:scale-105 shadow-lg"
-                    >
-                        Quero Ser Afiliado Agora!
-                    </button>
                 </div>
             </div>
         </section>
@@ -1325,12 +1316,6 @@ const AffiliateSection: React.FC<{ onRegister: () => void }> = ({ onRegister }) 
                     <p className="text-black/80 mb-6">
                         Cadastre-se gratuitamente e comece a ganhar comissões hoje mesmo
                     </p>
-                    <button 
-                        onClick={onRegister}
-                        className="bg-black text-white font-bold py-4 px-8 rounded-full hover:bg-gray-800 transition-all transform hover:scale-105 shadow-lg"
-                    >
-                        Quero Ser Afiliado Agora!
-                    </button>
                 </div>
             </div>
         </section>
@@ -1422,10 +1407,11 @@ const ClientLogos: React.FC = () => {
                                 >
                                     {/* Texto ultra-nítido 8K */}
                                     <span 
-                                        className="text-lg font-extrabold transition-all duration-300 transform group-hover:scale-105 relative z-10 logo-8k-text"
+                                        className="text-lg font-extrabold transition-all duration-300 transform group-hover:scale-105 relative z-10 logo-8k-text animate-spin-slow"
                                         style={{
                                             color: logo.color,
-                                            textShadow: `0 1px 2px ${logo.color}40, 0 0 8px ${logo.color}20`
+                                            textShadow: `0 1px 2px ${logo.color}40, 0 0 8px ${logo.color}20`,
+                                            animation: 'spin 8s linear infinite'
                                         }}
                                     >
                                         {logo.name}

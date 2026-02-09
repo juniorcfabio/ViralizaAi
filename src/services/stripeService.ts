@@ -53,9 +53,9 @@ class StripeService {
         throw new Error('Stripe não inicializado');
       }
 
-      // Usar API Supabase Edge Function
-      const apiUrl = 'https://ymmswnmietxoupeazmok.supabase.co/functions/v1/create-checkout-session';
-      console.log('🔗 Chamando API Supabase:', apiUrl);
+      // Usar API funcional stripe-test
+      const apiUrl = '/api/stripe-test';
+      console.log('🔗 Chamando API funcional:', apiUrl);
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -63,15 +63,10 @@ class StripeService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          mode: 'payment',
-          planId: planData.planId || 'basic',
-          userId: 'anonymous',
-          billingInterval: planData.billingCycle || 'monthly',
-          currency: 'brl',
-          userEmail: 'usuario@viralizaai.com',
-          userName: 'Usuário ViralizaAI',
+          planName: planData.line_items[0].price_data.product_data.name,
           amount: planData.line_items[0].price_data.unit_amount,
-          planName: planData.line_items[0].price_data.product_data.name
+          successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/cancel`
         })
       });
 

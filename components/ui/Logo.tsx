@@ -14,7 +14,10 @@ const Logo: React.FC<{ className?: string }> = ({ className = 'h-8 w-8' }) => {
             >
                 <div 
                     className="absolute inset-0 w-full h-full animate-spin-3d" 
-                    style={{ transformStyle: 'preserve-3d' }}
+                    style={{ 
+                        transformStyle: 'preserve-3d',
+                        animation: 'spin 8s linear infinite'
+                    }}
                 >
                     {/* Camada Traseira (Sombra/Profundidade) */}
                     <svg 
