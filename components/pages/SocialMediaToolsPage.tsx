@@ -317,17 +317,19 @@ const SocialMediaToolsPage: React.FC = () => {
         return;
       }
 
-      // Usar a API funcional stripe-test
+      // Usar a API Supabase Edge Function
       const paymentData = {
+        mode: 'payment',
         planName: `Assinatura ${planInfo.name} - ViralizaAI`,
         amount: Math.round(planInfo.price * 100), // Converter para centavos
+        currency: 'brl',
         successUrl: `${appBaseUrl}/#/dashboard/social-tools?payment=success&plan=${encodeURIComponent(planInfo.name)}`,
         cancelUrl: `${appBaseUrl}/#/dashboard/social-tools?payment=cancelled`
       };
 
-      console.log('📋 Dados da assinatura (SocialTools):', paymentData);
+      console.log('📋 Dados da assinatura SocialTools (Supabase):', paymentData);
       
-      const response = await fetch('/api/stripe-test', {
+      const response = await fetch('https://ymmswnmietxoupeazmok.supabase.co/functions/v1/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

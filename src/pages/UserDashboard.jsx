@@ -53,17 +53,19 @@ const UserDashboard = () => {
         // Extrair valor numérico do preço
         const priceValue = parseFloat(tool.price.replace('R$', '').replace(',', '.').trim());
         
-        // Usar a API funcional stripe-test
+        // Usar a API Supabase Edge Function
         const paymentData = {
+          mode: 'payment',
           planName: `${tool.name} - Ferramenta ViralizaAI`,
           amount: Math.round(priceValue * 100), // Converter para centavos
+          currency: 'brl',
           successUrl: `${window.location.origin}/dashboard?payment=success&tool=${encodeURIComponent(tool.name)}`,
           cancelUrl: `${window.location.origin}/dashboard?payment=cancelled`
         };
 
-        console.log('📋 Dados do pagamento da ferramenta:', paymentData);
+        console.log('📋 Dados do pagamento da ferramenta (Supabase):', paymentData);
         
-        const response = await fetch('/api/stripe-test', {
+        const response = await fetch('https://ymmswnmietxoupeazmok.supabase.co/functions/v1/create-checkout-session', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -117,17 +117,19 @@ const SubscriptionAccessControl: React.FC<SubscriptionAccessControlProps> = ({
     try {
       console.log('🛠️ Comprando ferramenta:', toolName, 'Preço:', toolPrice);
       
-      // Usar a API funcional stripe-test
+      // Usar a API Supabase Edge Function
       const paymentData = {
+        mode: 'payment',
         planName: `${toolName} - Ferramenta Avulsa ViralizaAI`,
         amount: Math.round(toolPrice * 100), // Converter para centavos
+        currency: 'brl',
         successUrl: `${window.location.origin}/dashboard?payment=success&tool=${encodeURIComponent(toolName)}`,
         cancelUrl: `${window.location.origin}/dashboard?payment=cancelled`
       };
 
-      console.log('📋 Dados do pagamento da ferramenta:', paymentData);
+      console.log('📋 Dados do pagamento da ferramenta (Supabase):', paymentData);
       
-      const response = await fetch('/api/stripe-test', {
+      const response = await fetch('https://ymmswnmietxoupeazmok.supabase.co/functions/v1/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

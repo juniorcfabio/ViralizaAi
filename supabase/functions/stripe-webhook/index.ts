@@ -1,387 +1,201 @@
-// EDGE FUNCTION WEBHOOK STRIPE COMPLETO - VIRALIZAAI
-// Corrige: validação de assinatura, idempotência, processamento completo
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
-
-// Configuração de ambiente
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2022-11-15',
-})
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
-
-serve(async (req) => {
-  const startTime = Date.now()
-  let eventId = 'unknown'
-  
+/**
+ * Edge Function: stripe-webhook
+ * - Receives Stripe webhooks and updates public.stripe_sessions, subscriptions/purchases as appropriate.
+ * - Uses processed_webhook_events table to avoid duplicate processing.
+ *
+ * Env variables required:
+ *  - STRIPE_SECRET
+ *  - STRIPE_WEBHOOK_SECRET  (optional for signature validation; we use event fetch as fallback)
+ *
+ * Note:
+ *  - For secure signature verification prefer using stripe-node to verify signatures.
+ *  - This implementation fetches the event from Stripe by event id to validate the event server-side
+ *    (avoids adding npm deps, functional for many use cases).
+ */
+declare const Deno: any;
+Deno.serve(async (req: Request) => {
   try {
-    // Verificar método
-    if (req.method !== 'POST') {
-      console.log('❌ Method not allowed:', req.method)
-      return new Response('Method not allowed', { status: 405 })
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204 });
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const STRIPE_SECRET = Deno.env.get('STRIPE_SECRET');
+    // STRIPE_WEBHOOK_SECRET could be used with stripe-node to verify signatures; not used here.
+    const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? null;
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !STRIPE_SECRET) {
+      return new Response('Missing environment variables', { status: 500 });
     }
-
-    // Obter body e signature
-    const body = await req.text()
-    const signature = req.headers.get('stripe-signature')
-
-    console.log('🔄 Webhook recebido, tamanho:', body.length, 'bytes')
-
-    // Verificar se temos webhook secret
-    if (!webhookSecret) {
-      console.warn('⚠️ STRIPE_WEBHOOK_SECRET não configurado - processando sem validação')
-    }
-
-    // Verificar webhook signature (se secret disponível)
-    let event: Stripe.Event
-    
-    if (webhookSecret && signature) {
-      try {
-        event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-        console.log('✅ Webhook signature verified:', event.type)
-      } catch (err) {
-        console.error('❌ Webhook signature verification failed:', err.message)
-        return new Response('Webhook signature verification failed', { status: 400 })
-      }
-    } else {
-      // Parse manual se não temos secret (desenvolvimento)
-      try {
-        event = JSON.parse(body) as Stripe.Event
-        console.log('⚠️ Processando webhook sem validação de assinatura:', event.type)
-      } catch (err) {
-        console.error('❌ Invalid JSON payload:', err.message)
-        return new Response('Invalid JSON payload', { status: 400 })
-      }
-    }
-
-    eventId = event.id
-
-    // Verificar idempotência
-    const { data: existingEvent } = await supabase
-      .from('processed_webhook_events')
-      .select('id')
-      .eq('stripe_event_id', event.id)
-      .single()
-
-    if (existingEvent) {
-      console.log('✅ Evento já processado (idempotente):', event.id)
-      return new Response('Event already processed', { status: 200 })
-    }
-
-    // Registrar evento como processando
-    await supabase
-      .from('processed_webhook_events')
-      .insert({
-        stripe_event_id: event.id,
-        event_type: event.type,
-        processed: false,
-        data: event,
-        created_at: new Date().toISOString()
-      })
-
-    console.log('🔄 Processando evento:', event.type, event.id)
-
-    // Processar eventos específicos
-    let processResult = null
-    
-    switch (event.type) {
-      case 'checkout.session.completed':
-        processResult = await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
-        break
-      case 'customer.subscription.created':
-        processResult = await handleSubscriptionCreated(event.data.object as Stripe.Subscription)
-        break
-      case 'customer.subscription.updated':
-        processResult = await handleSubscriptionUpdated(event.data.object as Stripe.Subscription)
-        break
-      case 'customer.subscription.deleted':
-        processResult = await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
-        break
-      case 'invoice.payment_succeeded':
-        processResult = await handlePaymentSucceeded(event.data.object as Stripe.Invoice)
-        break
-      case 'invoice.payment_failed':
-        processResult = await handlePaymentFailed(event.data.object as Stripe.Invoice)
-        break
-      case 'payment_intent.succeeded':
-        processResult = await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent)
-        break
-      default:
-        console.log('ℹ️ Evento não processado:', event.type)
-        processResult = { success: true, message: 'Event type not handled' }
-    }
-
-    // Marcar evento como processado
-    await supabase
-      .from('processed_webhook_events')
-      .update({ 
-        processed: true, 
-        result: processResult,
-        processed_at: new Date().toISOString()
-      })
-      .eq('stripe_event_id', event.id)
-
-    const processingTime = Date.now() - startTime
-    console.log(`✅ Webhook processado com sucesso: ${event.type} (${processingTime}ms)`)
-
-    return new Response(JSON.stringify({ 
-      success: true, 
-      eventId: event.id,
-      eventType: event.type,
-      processingTime 
-    }), { 
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
-
-  } catch (error) {
-    const processingTime = Date.now() - startTime
-    console.error(`❌ Webhook error (${processingTime}ms):`, error)
-    
-    // Log do erro no banco
+    const rawBody = await req.text();
+    let parsed;
     try {
-      await supabase.from('activity_logs').insert({
-        user_id: null,
-        action: 'webhook_error',
-        details: {
-          event_id: eventId,
-          error: error.message,
-          processing_time: processingTime
-        },
-        resource_type: 'webhook'
-      })
-    } catch (logError) {
-      console.error('❌ Erro ao registrar log:', logError)
+      parsed = JSON.parse(rawBody);
+    } catch (err) {
+      return new Response('Invalid JSON', { status: 400 });
     }
-
-    return new Response(JSON.stringify({ 
-      error: 'Internal server error',
-      eventId,
-      processingTime 
-    }), { 
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    const eventId = parsed?.id;
+    if (!eventId) return new Response('Missing event id', { status: 400 });
+    // Idempotency: check if event already processed
+    const checkResp = await fetch(`${SUPABASE_URL}/rest/v1/processed_webhook_events?id=eq.${encodeURIComponent(eventId)}`, {
+      headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` }
+    });
+    if (checkResp.ok) {
+      const rows = await checkResp.json();
+      if (Array.isArray(rows) && rows.length > 0) {
+        return new Response('Event already processed', { status: 200 });
+      }
+    }
+    // Validate event with Stripe by fetching it by id (fallback to signature verification)
+    const stripeEventRes = await fetch(`https://api.stripe.com/v1/events/${encodeURIComponent(eventId)}`, {
+      headers: { Authorization: `Bearer ${STRIPE_SECRET}` }
+    });
+    if (!stripeEventRes.ok) {
+      const txt = await stripeEventRes.text();
+      console.error('Stripe event fetch error:', stripeEventRes.status, txt);
+      return new Response('Invalid event', { status: 400 });
+    }
+    const stripeEvent = await stripeEventRes.json();
+    const type = stripeEvent.type;
+    // Mark event as processed (insert into processed_webhook_events)
+    await fetch(`${SUPABASE_URL}/rest/v1/processed_webhook_events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+      body: JSON.stringify({ id: eventId })
+    });
+    // Helper: update stripe_sessions by stripe_session_id
+    const patchStripeSession = async (sessionId: string, patch: any) => {
+      await fetch(`${SUPABASE_URL}/rest/v1/stripe_sessions?stripe_session_id=eq.${encodeURIComponent(sessionId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+        body: JSON.stringify(patch)
+      });
+    };
+    // Process main events
+    if (type === 'checkout.session.completed') {
+      const session = stripeEvent.data.object;
+      // Update stripe_sessions
+      await patchStripeSession(session.id, {
+        status: 'succeeded',
+        stripe_payment_intent_id: session.payment_intent ?? null,
+        stripe_customer_id: session.customer ?? null,
+        stripe_subscription_id: session.subscription ?? null,
+        raw_payload: session
+      });
+      // If subscription created, fetch subscription and upsert into subscriptions table
+      if (session.subscription) {
+        // Get subscription details
+        const subRes = await fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(session.subscription)}`, {
+          headers: { Authorization: `Bearer ${STRIPE_SECRET}` }
+        });
+        if (subRes.ok) {
+          const sub = await subRes.json();
+          // Try to get user_id from stripe_sessions where stripe_subscription_id or stripe_session_id
+          let user_id: string | null = null;
+          // first try find by stripe_session_id
+          const findResp = await fetch(`${SUPABASE_URL}/rest/v1/stripe_sessions?stripe_session_id=eq.${encodeURIComponent(session.id)}`, {
+            headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` }
+          });
+          if (findResp.ok) {
+            const srows = await findResp.json();
+            if (Array.isArray(srows) && srows.length > 0) user_id = srows[0].user_id ?? null;
+          }
+          const upsertSub = {
+            user_id,
+            plan_type: sub.items?.data?.[0]?.price?.nickname ?? null,
+            status: sub.status,
+            stripe_subscription_id: sub.id,
+            stripe_customer_id: sub.customer,
+            current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
+            current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          // Insert subscription record (simple insert; adjust as required to avoid duplicates)
+          await fetch(`${SUPABASE_URL}/rest/v1/subscriptions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+            body: JSON.stringify(upsertSub)
+          });
+        }
+      }
+      // If it's a one-time payment (payment mode), create a purchases record optionally
+      if (session.mode === 'payment') {
+        // Find stripe_sessions record to glean product_id and user_id
+        const findResp2 = await fetch(`${SUPABASE_URL}/rest/v1/stripe_sessions?stripe_session_id=eq.${encodeURIComponent(session.id)}`, {
+          headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` }
+        });
+        if (findResp2.ok) {
+          const srows = await findResp2.json();
+          if (Array.isArray(srows) && srows.length > 0) {
+            const rec = srows[0];
+            // Insert purchase
+            const purchase = {
+              user_id: rec.user_id ?? null,
+              product_id: rec.product_id ?? null,
+              stripe_payment_intent_id: session.payment_intent ?? null,
+              stripe_customer_id: session.customer ?? null,
+              amount: rec.amount ?? null,
+              currency: rec.currency ?? 'BRL',
+              status: 'completed',
+              metadata: { stripe_session: session.id },
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+            await fetch(`${SUPABASE_URL}/rest/v1/purchases`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+              body: JSON.stringify(purchase)
+            });
+          }
+        }
+      }
+    } else if (type === 'invoice.paid') {
+      // Optionally update subscriptions/purchases: mark as paid
+      const invoice = stripeEvent.data.object;
+      // find by invoice.subscription or invoice.payment_intent
+      if (invoice.subscription) {
+        // Update subscriptions table where stripe_subscription_id = invoice.subscription
+        await fetch(`${SUPABASE_URL}/rest/v1/subscriptions?stripe_subscription_id=eq.${encodeURIComponent(invoice.subscription)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+          body: JSON.stringify({ status: 'active', updated_at: new Date().toISOString() })
+        });
+      }
+    } else if (type.startsWith('customer.subscription.')) {
+      // Handle subscription created/updated/deleted
+      const sub = stripeEvent.data.object;
+      // Upsert or update subscriptions table
+      await fetch(`${SUPABASE_URL}/rest/v1/subscriptions?stripe_subscription_id=eq.${encodeURIComponent(sub.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+        body: JSON.stringify({
+          status: sub.status,
+          current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
+          current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+          stripe_customer_id: sub.customer ?? null,
+          updated_at: new Date().toISOString()
+        })
+      }).catch(async () => {
+        // If PATCH fails (no existing record), create
+        const upsert = {
+          user_id: null,
+          plan_type: sub.items?.data?.[0]?.price?.nickname ?? null,
+          status: sub.status,
+          stripe_subscription_id: sub.id,
+          stripe_customer_id: sub.customer ?? null,
+          current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
+          current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        await fetch(`${SUPABASE_URL}/rest/v1/subscriptions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+          body: JSON.stringify(upsert)
+        });
+      });
+    }
+    return new Response('ok', { status: 200 });
+  } catch (err) {
+    console.error('stripe-webhook error', err);
+    return new Response('internal error', { status: 500 });
   }
-})
-
-// ==================== HANDLERS DE EVENTOS ====================
-
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  console.log('🎉 Checkout completed:', session.id)
-  
-  try {
-    const userId = session.metadata?.user_id
-    const planId = session.metadata?.plan_id
-    const affiliateId = session.metadata?.affiliate_id
-    
-    if (!userId) {
-      throw new Error('user_id não encontrado nos metadados')
-    }
-
-    // Criar/atualizar assinatura
-    const subscriptionData: any = {
-      user_id: userId,
-      stripe_customer_id: session.customer as string,
-      stripe_subscription_id: session.subscription as string,
-      status: 'active',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-
-    if (planId) {
-      subscriptionData.plan_id = planId
-    }
-
-    const { error: subError } = await supabase
-      .from('subscriptions')
-      .upsert(subscriptionData, { onConflict: 'stripe_subscription_id' })
-
-    if (subError) {
-      console.error('❌ Erro ao criar assinatura:', subError)
-    }
-
-    // Processar afiliado se houver
-    if (affiliateId) {
-      await processAffiliateCommission(userId, session.amount_total / 100)
-    }
-
-    // Log da atividade
-    await supabase.from('activity_logs').insert({
-      user_id: userId,
-      action: 'checkout_completed',
-      details: {
-        session_id: session.id,
-        subscription_id: session.subscription,
-        amount: session.amount_total / 100,
-        currency: session.currency,
-        plan_id: planId,
-        affiliate_id: affiliateId
-      },
-      resource_type: 'payment'
-    })
-
-    return { success: true, message: 'Checkout processed successfully' }
-  } catch (error) {
-    console.error('❌ Erro no checkout completed:', error)
-    return { success: false, error: error.message }
-  }
-}
-
-async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
-  console.log('🎉 New subscription created:', subscription.id)
-  
-  try {
-    const userId = await getUserIdFromCustomer(subscription.customer as string)
-    
-    if (!userId) {
-      throw new Error('Usuário não encontrado para customer: ' + subscription.customer)
-    }
-
-    // Atualizar assinatura com dados completos
-    const { error } = await supabase
-      .from('subscriptions')
-      .update({
-        status: subscription.status,
-        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-        cancel_at_period_end: subscription.cancel_at_period_end,
-        updated_at: new Date().toISOString()
-      })
-      .eq('stripe_subscription_id', subscription.id)
-
-    if (error) {
-      console.error('❌ Erro ao atualizar assinatura:', error)
-    }
-
-    // Log da atividade
-    await supabase.from('activity_logs').insert({
-      user_id: userId,
-      action: 'subscription_created',
-      details: {
-        subscription_id: subscription.id,
-        status: subscription.status,
-        plan: subscription.items.data[0]?.price?.nickname || 'Unknown',
-        period_start: subscription.current_period_start,
-        period_end: subscription.current_period_end
-      },
-      resource_type: 'subscription'
-    })
-
-    return { success: true, message: 'Subscription created successfully' }
-  } catch (error) {
-    console.error('❌ Erro ao processar subscription created:', error)
-    return { success: false, error: error.message }
-  }
-}
-
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  console.log('🔄 Subscription updated:', subscription.id)
-  
-  await supabase.from('activity_logs').insert({
-    user_id: await getUserIdFromCustomer(subscription.customer as string),
-    action: 'subscription_updated',
-    details: {
-      subscription_id: subscription.id,
-      status: subscription.status
-    }
-  })
-}
-
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  console.log('❌ Subscription canceled:', subscription.id)
-  
-  await supabase.from('activity_logs').insert({
-    user_id: await getUserIdFromCustomer(subscription.customer as string),
-    action: 'subscription_canceled',
-    details: {
-      subscription_id: subscription.id,
-      canceled_at: new Date().toISOString()
-    }
-  })
-}
-
-async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
-  console.log('💰 Payment succeeded:', invoice.id)
-  
-  const userId = await getUserIdFromCustomer(invoice.customer as string)
-  
-  // Registrar pagamento
-  await supabase.from('activity_logs').insert({
-    user_id: userId,
-    action: 'payment_succeeded',
-    details: {
-      invoice_id: invoice.id,
-      amount: invoice.amount_paid / 100,
-      currency: invoice.currency
-    }
-  })
-
-  // Processar comissões de afiliados se houver
-  await processAffiliateCommission(userId, invoice.amount_paid / 100)
-}
-
-async function handlePaymentFailed(invoice: Stripe.Invoice) {
-  console.log('❌ Payment failed:', invoice.id)
-  
-  await supabase.from('activity_logs').insert({
-    user_id: await getUserIdFromCustomer(invoice.customer as string),
-    action: 'payment_failed',
-    details: {
-      invoice_id: invoice.id,
-      amount: invoice.amount_due / 100,
-      currency: invoice.currency
-    }
-  })
-}
-
-async function getUserIdFromCustomer(customerId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('subscriptions')
-    .select('user_id')
-    .eq('stripe_customer_id', customerId)
-    .single()
-  
-  return data?.user_id || null
-}
-
-async function processAffiliateCommission(userId: string, amount: number) {
-  // Verificar se o usuário foi referenciado
-  const { data: referral } = await supabase
-    .from('referrals')
-    .select('affiliate_id, commission_amount')
-    .eq('referred_user_id', userId)
-    .eq('commission_paid', false)
-    .single()
-
-  if (referral) {
-    const commissionAmount = referral.commission_amount || (amount * 0.1) // 10% padrão
-    
-    // Marcar comissão como paga
-    await supabase
-      .from('referrals')
-      .update({ commission_paid: true })
-      .eq('referred_user_id', userId)
-
-    // Atualizar earnings do afiliado
-    await supabase.rpc('increment', {
-      table_name: 'affiliates',
-      row_id: referral.affiliate_id,
-      column_name: 'total_earnings',
-      increment_value: commissionAmount
-    })
-
-    console.log('💸 Affiliate commission processed:', commissionAmount)
-  }
-}
+});

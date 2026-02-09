@@ -99,10 +99,12 @@ const AdvertisingPlansPage: React.FC = () => {
       
       console.log('💳 Usando API funcional stripe-test');
 
-      // Usar a mesma API que funciona na LandingPage
+      // Usar a API Supabase Edge Function
       const paymentData = {
+        mode: 'payment',
         planName: `Plano de Anúncio ${plan.name} - ${plan.description}`,
         amount: Math.round(plan.currentPrice * 100), // Converter para centavos
+        currency: 'brl',
         successUrl: `${window.location.origin}/advertising-success?plan=${plan.id}`,
         cancelUrl: `${window.location.origin}/advertising-plans`
       };
@@ -113,9 +115,9 @@ const AdvertisingPlansPage: React.FC = () => {
       localStorage.setItem('selected_advertising_plan', JSON.stringify(plan));
       console.log('💾 Plano salvo no localStorage');
 
-      // Usar a API funcional
-      console.log('🚀 Chamando API stripe-test...');
-      const response = await fetch('/api/stripe-test', {
+      // Usar a API Supabase Edge Function
+      console.log('🚀 Chamando API Supabase...');
+      const response = await fetch('https://ymmswnmietxoupeazmok.supabase.co/functions/v1/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

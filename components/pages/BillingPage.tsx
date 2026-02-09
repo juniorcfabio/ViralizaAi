@@ -92,18 +92,20 @@ const BillingPage: React.FC = () => {
             const appBaseUrl = buildAppBaseUrl();
 
             // Usar API funcional stripe-test
-            console.log('💳 Usando API funcional stripe-test para assinatura');
+            console.log('💳 Usando API Supabase Edge Function para assinatura');
             
             const paymentData = {
+                mode: 'payment',
                 planName: `Assinatura ${plan.name} - ViralizaAI`,
                 amount: Math.round(amount * 100), // Converter para centavos
+                currency: 'brl',
                 successUrl: `${appBaseUrl}/#/dashboard/social-tools?payment=success&plan=${encodeURIComponent(plan.name)}`,
                 cancelUrl: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`
             };
 
             showNotification('Redirecionando para o pagamento seguro...');
             
-            const response = await fetch('/api/stripe-test', {
+            const response = await fetch('https://ymmswnmietxoupeazmok.supabase.co/functions/v1/create-checkout-session', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -160,18 +162,20 @@ const BillingPage: React.FC = () => {
             
             const appBaseUrl = buildAppBaseUrl();
 
-            // Usar API funcional stripe-test
+            // Usar API Supabase Edge Function
             const paymentData = {
+                mode: 'payment',
                 planName: `Motor de Crescimento Viraliza - ${label}`,
                 amount: Math.round(price * 100), // Converter para centavos
+                currency: 'brl',
                 successUrl: `${appBaseUrl}/#/dashboard/growth-engine?payment=success&addon=${encodeURIComponent(label)}`,
                 cancelUrl: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`
             };
 
-            console.log('📋 Dados da compra Motor de Crescimento:', paymentData);
+            console.log('📋 Dados da compra Motor de Crescimento (Supabase):', paymentData);
             showNotification('Redirecionando para pagamento...');
             
-            const response = await fetch('/api/stripe-test', {
+            const response = await fetch('https://ymmswnmietxoupeazmok.supabase.co/functions/v1/create-checkout-session', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
