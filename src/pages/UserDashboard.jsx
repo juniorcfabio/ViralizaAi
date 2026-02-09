@@ -1,11 +1,14 @@
 // 👤 PAINEL DO USUÁRIO - FERRAMENTAS E RECURSOS
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import PixPaymentModalFixed from '../../components/ui/PixPaymentModalFixed';
 
 const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState('tools');
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [selectedTool, setSelectedTool] = useState(null);
 
   // 📊 DADOS REAIS DO USUÁRIO
   const realUserStats = {
@@ -90,6 +93,12 @@ const UserDashboard = () => {
         alert('Erro ao processar pagamento. Tente novamente.');
       }
     }
+  };
+
+  // 🏦 FUNÇÃO PIX PARA FERRAMENTAS
+  const handlePixPurchase = (tool) => {
+    setSelectedTool(tool);
+    setShowPixModal(true);
   };
 
   // 🛠️ FERRAMENTAS DISPONÍVEIS
@@ -249,12 +258,20 @@ const UserDashboard = () => {
                   ✨ Usar Agora
                 </button>
               ) : (
-                <button 
-                  onClick={() => handlePurchaseTool(tool)}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-                >
-                  💰 Comprar
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handlePurchaseTool(tool)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                  >
+                    💳 Cartão
+                  </button>
+                  <button 
+                    onClick={() => handlePixPurchase(tool)}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                  >
+                    🏦 PIX
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -456,6 +473,24 @@ const UserDashboard = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {tabs.find(tab => tab.id === activeTab)?.component()}
       </div>
+
+      {/* Modal PIX */}
+      {showPixModal && selectedTool && (
+        <PixPaymentModalFixed
+          isOpen={showPixModal}
+          onClose={() => {
+            setShowPixModal(false);
+            setSelectedTool(null);
+          }}
+          planName={selectedTool.name}
+          amount={parseFloat(selectedTool.price.replace('R$', '').replace(',', '.'))}
+          onPaymentSuccess={() => {
+            setShowPixModal(false);
+            setSelectedTool(null);
+            alert('✅ Pagamento PIX realizado! Ferramenta ativada.');
+          }}
+        />
+      )}
     </div>
   );
 };

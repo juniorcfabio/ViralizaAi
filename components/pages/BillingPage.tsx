@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import StripeService from '../../services/stripeService';
 import { SUBSCRIPTION_PLANS } from '../../data/plansConfig';
-import PixPaymentModal from '../ui/PixPaymentModal';
+import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
 
 interface Plan {
     id: string;
@@ -462,22 +462,32 @@ const BillingPage: React.FC = () => {
             </div>
 
             {/* Modal PIX para Planos */}
-            <PixPaymentModal
-                isOpen={pixModalOpen}
-                onClose={() => setPixModalOpen(false)}
-                amount={pixSelectedPlan ? (typeof pixSelectedPlan.price === 'number' ? pixSelectedPlan.price : parseFloat(String(pixSelectedPlan.price))) : 0}
-                planName={pixSelectedPlan ? `Assinatura ${pixSelectedPlan.name} - ViralizaAI` : ''}
-                planType={pixSelectedPlan ? pixSelectedPlan.id : ''}
-            />
+            {pixModalOpen && pixSelectedPlan && (
+                <PixPaymentModalFixed
+                    isOpen={pixModalOpen}
+                    onClose={() => setPixModalOpen(false)}
+                    amount={typeof pixSelectedPlan.price === 'number' ? pixSelectedPlan.price : parseFloat(String(pixSelectedPlan.price))}
+                    planName={`Assinatura ${pixSelectedPlan.name} - ViralizaAI`}
+                    onPaymentSuccess={() => {
+                        setPixModalOpen(false);
+                        alert('✅ Pagamento PIX realizado! Plano ativado.');
+                    }}
+                />
+            )}
 
             {/* Modal PIX para Ferramentas Avulsas */}
-            <PixPaymentModal
-                isOpen={pixGrowthEngineOpen}
-                onClose={() => setPixGrowthEngineOpen(false)}
-                amount={pixGrowthEngineData ? pixGrowthEngineData.price : 0}
-                planName={pixGrowthEngineData ? `Motor de Crescimento Viraliza - ${pixGrowthEngineData.label}` : ''}
-                planType="growth_engine"
-            />
+            {pixGrowthEngineOpen && pixGrowthEngineData && (
+                <PixPaymentModalFixed
+                    isOpen={pixGrowthEngineOpen}
+                    onClose={() => setPixGrowthEngineOpen(false)}
+                    amount={pixGrowthEngineData.price}
+                    planName={`Motor de Crescimento Viraliza - ${pixGrowthEngineData.label}`}
+                    onPaymentSuccess={() => {
+                        setPixGrowthEngineOpen(false);
+                        alert('✅ Pagamento PIX realizado! Ferramenta ativada.');
+                    }}
+                />
+            )}
         </>
     );
 };

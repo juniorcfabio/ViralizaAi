@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContextFixed';
 import SecureAPIClient from '../../services/apiClient';
 import SecurityService from '../../services/securityService';
 import StripeService from '../../services/stripeService';
-import SimplePixModal from '../ui/SimplePixModal';
+import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
 
 // Ícones
 const ScheduleIcon = () => (
@@ -739,7 +739,7 @@ const SocialMediaToolsPage: React.FC = () => {
 
       {/* Modal PIX */}
       {showPixModal && selectedPlan && (
-        <SimplePixModal
+        <PixPaymentModalFixed
           isOpen={showPixModal}
           onClose={() => {
             setShowPixModal(false);
