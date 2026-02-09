@@ -143,20 +143,34 @@ const PlanCard: React.FC<PlanCardProps> = ({
           ))}
         </div>
 
-        {/* Botão de Assinatura */}
-        <button
-          onClick={handleSubscribe}
-          className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all duration-300 ${
-            isPopular
-              ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg'
-              : 'bg-gray-800 text-white hover:bg-gray-900'
-          }`}
-        >
-          <div className="flex items-center justify-center">
-            <span className="mr-2">💳</span>
-            Assinar com Stripe
-          </div>
-        </button>
+        {/* Botões de Pagamento */}
+        <div className="space-y-3">
+          {/* Botão Stripe */}
+          <button
+            onClick={handleSubscribe}
+            className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 ${
+              isPopular
+                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg'
+                : 'bg-gray-800 text-white hover:bg-gray-900'
+            }`}
+          >
+            <div className="flex items-center justify-center">
+              <span className="mr-2">💳</span>
+              Assinar com Cartão
+            </div>
+          </button>
+
+          {/* Botão PIX */}
+          <button
+            onClick={() => setShowPixModal(true)}
+            className="w-full py-4 px-6 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 shadow-lg"
+          >
+            <div className="flex items-center justify-center">
+              <span className="mr-2">🏦</span>
+              Pagar com PIX
+            </div>
+          </button>
+        </div>
 
         {/* Informações PIX */}
         <div className="mt-4 text-center">
