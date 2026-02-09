@@ -1287,6 +1287,24 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
                     ))}
                 </div>
             </div>
+
+            {/* Modal PIX */}
+            {showPixModal && selectedPlan && (
+                <PixPaymentModalFixed
+                    isOpen={showPixModal}
+                    onClose={() => {
+                        setShowPixModal(false);
+                        setSelectedPlan(null);
+                    }}
+                    planName={selectedPlan.name}
+                    amount={parseFloat(String(selectedPlan.price).replace(',', '.'))}
+                    onPaymentSuccess={() => {
+                        setShowPixModal(false);
+                        setSelectedPlan(null);
+                        alert('✅ Pagamento PIX realizado! Seu plano será ativado em breve.');
+                    }}
+                />
+            )}
         </section>
     );
 };
