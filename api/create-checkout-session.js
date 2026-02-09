@@ -131,7 +131,7 @@ export default async function handler(req, res) {
           acc[`metadata[${key}]`] = checkoutData.metadata[key];
           return acc;
         }, {})),
-        ...line_items.reduce((acc, item, index) => {
+        ...processedLineItems.reduce((acc, item, index) => {
           acc[`line_items[${index}][price_data][currency]`] = item.price_data.currency;
           acc[`line_items[${index}][price_data][product_data][name]`] = item.price_data.product_data.name;
           acc[`line_items[${index}][price_data][unit_amount]`] = item.price_data.unit_amount;
