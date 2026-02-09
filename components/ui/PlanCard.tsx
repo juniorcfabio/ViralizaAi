@@ -42,19 +42,17 @@ const PlanCard: React.FC<PlanCardProps> = ({
         userEmail: user?.email
       });
 
-      // Usar a nova API Supabase Edge Function
+      // Usar a API funcional stripe-test que está funcionando
       const paymentData = {
-        mode: 'payment',
         planName: `${planName} - ViralizaAI`,
         amount: Math.round(price * 100), // Converter para centavos
-        currency: 'brl',
         successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${window.location.origin}/cancel`
       };
 
-      console.log('📋 Dados do pagamento PlanCard (Supabase):', paymentData);
+      console.log('📋 Dados do pagamento PlanCard:', paymentData);
 
-      const response = await fetch('https://ymmswnmietxoupeazmok.supabase.co/functions/v1/create-checkout-session', {
+      const response = await fetch('/api/stripe-test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
