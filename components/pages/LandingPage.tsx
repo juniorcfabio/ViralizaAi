@@ -12,6 +12,7 @@ import DraggableHelpButton from '../ui/DraggableHelpButton';
 import { getPartnersDB, getTestimonialsDB, getTrustedCompaniesDB } from '../../services/dbService';
 import AdminCredentialsFix from '../ui/AdminCredentialsFix';
 import { processSubscriptionPayment } from '../../src/services/workingCheckout';
+import SimplePixModal from '../ui/SimplePixModal';
 
 const CampaignIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1110,6 +1111,8 @@ const Testimonials: React.FC = () => {
 
 const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
     const { t } = useLanguage();
+    const [showPixModal, setShowPixModal] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
     
     // Função para processar compra de plano via Stripe
     const handlePlanPurchase = async (plan: Plan) => {
@@ -1271,7 +1274,10 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
                                     💳 Assinar com Cartão
                                 </button>
                                 <button 
-                                    onClick={() => alert('PIX em desenvolvimento para Landing Page')} 
+                                    onClick={() => {
+                                        setSelectedPlan(plan);
+                                        setShowPixModal(true);
+                                    }} 
                                     className="w-full bg-green-600 text-white font-semibold py-3 rounded-full hover:bg-green-700 transition-colors"
                                 >
                                     🏦 Pagar com PIX
