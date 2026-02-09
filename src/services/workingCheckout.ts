@@ -29,9 +29,9 @@ class WorkingCheckoutService {
         planId: subscriptionData.planId || 'basic'
       };
 
-      // Usar a API que realmente funciona
-      const apiUrl = `${window.location.origin}/api/stripe-test`;
-      console.log('🔗 Chamando API funcional:', apiUrl);
+      // Usar a API Supabase Edge Function
+      const apiUrl = 'https://ymmswnmietxoupeazmok.supabase.co/functions/v1/create-checkout-session';
+      console.log('🔗 Chamando API Supabase:', apiUrl);
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -39,8 +39,10 @@ class WorkingCheckoutService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          mode: 'payment',
           planName: checkoutData.planName,
           amount: checkoutData.amount,
+          currency: 'brl',
           successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/cancel`
         })

@@ -53,18 +53,21 @@ class StripeService {
         throw new Error('Stripe não inicializado');
       }
 
-      // Usar Edge Function do Supabase diretamente
-      const supabaseUrl = 'https://ymmswnmietxoupeazmok.supabase.co';
-      const response = await fetch(`${supabaseUrl}/functions/v1/checkout`, {
+      // Usar API Supabase Edge Function
+      const apiUrl = 'https://ymmswnmietxoupeazmok.supabase.co/functions/v1/create-checkout-session';
+      console.log('🔗 Chamando API Supabase:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltbXN3bm1pZXR4b3VwZWF6bW9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2ODY2NjcsImV4cCI6MjA4MDI2MjY2N30.yvCcvTnqAMsNz9itandg4lyxeEmhsukcbqfkWZnkeu4`
         },
         body: JSON.stringify({
+          mode: 'payment',
           planId: planData.planId || 'basic',
           userId: 'anonymous',
           billingInterval: planData.billingCycle || 'monthly',
+          currency: 'brl',
           userEmail: 'usuario@viralizaai.com',
           userName: 'Usuário ViralizaAI',
           amount: planData.line_items[0].price_data.unit_amount,
