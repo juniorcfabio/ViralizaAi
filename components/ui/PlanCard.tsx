@@ -42,21 +42,37 @@ const PlanCard: React.FC<PlanCardProps> = ({
         userEmail: user?.email
       });
 
-      // Importar o serviço Stripe do dia 28/01/2026 que funcionava perfeitamente
-      const { default: stripeService28Jan } = await import('../../services/stripeService28Jan.js');
-      
-      // Preparar dados do plano exatamente como dia 28/01/2026
-      const planData = {
-        id: planType,
-        name: planName,
-        price: price,
-        email: user?.email,
-        userId: user?.id,
-        type: 'plan'
+      // Usar a API funcional stripe-test que está funcionando
+      const paymentData = {
+        planName: `${planName} - ViralizaAI`,
+        amount: Math.round(price * 100), // Converter para centavos
+        successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/cancel`
       };
 
-      // Usar o sistema do dia 28/01/2026
-      await stripeService28Jan.createCheckoutSession(planData);
+      console.log('📋 Dados do pagamento PlanCard:', paymentData);
+
+      const response = await fetch('/api/stripe-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.url) {
+        console.log('🔄 Redirecionando para Stripe:', result.url);
+        window.location.href = result.url;
+      } else {
+        throw new Error(result.error || 'Erro desconhecido');
+      }
 
     } catch (error) {
       console.error('❌ Erro no sistema 28/01/2026:', error);

@@ -97,28 +97,14 @@ const AdvertisingPlansPage: React.FC = () => {
       const advertiserData = JSON.parse(pendingAdvertiser);
       console.log('👤 Dados processados:', advertiserData);
       
-      const stripeService = StripeService.getInstance();
-      console.log('💳 StripeService inicializado');
+      console.log('💳 Usando API funcional stripe-test');
 
-      // Criar sessão de checkout do Stripe para plano de anúncio
+      // Usar a mesma API que funciona na LandingPage
       const paymentData = {
-        amount: plan.currentPrice,
-        currency: 'BRL',
-        description: `Plano de Anúncio ${plan.name} - ${plan.description}`,
-        productId: plan.id,
-        productType: 'advertising' as const,
-        userId: advertiserData.id,
-        userEmail: advertiserData.email,
+        planName: `Plano de Anúncio ${plan.name} - ${plan.description}`,
+        amount: Math.round(plan.currentPrice * 100), // Converter para centavos
         successUrl: `${window.location.origin}/advertising-success?plan=${plan.id}`,
-        cancelUrl: `${window.location.origin}/advertising-plans`,
-        metadata: {
-          planId: plan.id,
-          planName: plan.name,
-          planDays: (plan.days || 7).toString(),
-          companyName: advertiserData.companyName,
-          cnpj: advertiserData.cnpj,
-          advertiserId: advertiserData.id
-        }
+        cancelUrl: `${window.location.origin}/advertising-plans`
       };
 
       console.log('💰 Dados do pagamento:', paymentData);
@@ -127,10 +113,30 @@ const AdvertisingPlansPage: React.FC = () => {
       localStorage.setItem('selected_advertising_plan', JSON.stringify(plan));
       console.log('💾 Plano salvo no localStorage');
 
-      // Processar pagamento via Stripe
-      console.log('🚀 Iniciando processamento do pagamento...');
-      await stripeService.processAdvertisingPayment(paymentData);
-      console.log('✅ Pagamento processado com sucesso');
+      // Usar a API funcional
+      console.log('🚀 Chamando API stripe-test...');
+      const response = await fetch('/api/stripe-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Resposta da API:', result);
+
+      if (result.success && result.url) {
+        console.log('🔄 Redirecionando para Stripe:', result.url);
+        window.location.href = result.url;
+      } else {
+        throw new Error(result.error || 'Erro desconhecido');
+      }
 
     } catch (error) {
       console.error('❌ Erro ao processar pagamento:', error);

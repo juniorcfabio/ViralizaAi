@@ -91,49 +91,39 @@ const BillingPage: React.FC = () => {
             const amount = parseFloat(normalizedPrice.replace(',', '.'));
             const appBaseUrl = buildAppBaseUrl();
 
-            // Usar StripeService diretamente
-            const stripeService = StripeService.getInstance();
+            // Usar API funcional stripe-test
+            console.log('💳 Usando API funcional stripe-test para assinatura');
             
-            // Determinar ciclo de cobrança baseado no nome do plano
-            let billingCycle: 'monthly' | 'quarterly' | 'semiannual' | 'annual' = 'monthly';
-            const planName = plan.name.toLowerCase();
-            if (planName.includes('trimestral')) billingCycle = 'quarterly';
-            else if (planName.includes('semestral')) billingCycle = 'semiannual';
-            else if (planName.includes('anual')) billingCycle = 'annual';
-
-            const subscriptionData = {
-                mode: 'subscription',
-                line_items: [{
-                    price_data: {
-                        currency: 'brl',
-                        product_data: {
-                            name: `Assinatura ${plan.name} - ViralizaAI`
-                        },
-                        unit_amount: Math.round(amount * 100),
-                        recurring: {
-                            interval: billingCycle === 'monthly' ? 'month' : 
-                                     billingCycle === 'quarterly' ? 'month' :
-                                     billingCycle === 'semiannual' ? 'month' :
-                                     'year'
-                        }
-                    },
-                    quantity: 1
-                }],
-                success_url: `${appBaseUrl}/#/dashboard/social-tools?payment=success&plan=${encodeURIComponent(plan.name)}`,
-                cancel_url: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`,
-                customer_email: user.email,
-                metadata: {
-                    productType: 'subscription',
-                    planName: plan.name,
-                    planId: plan.id || plan.name,
-                    userId: user.id,
-                    userEmail: user.email,
-                    billingCycle: billingCycle
-                }
+            const paymentData = {
+                planName: `Assinatura ${plan.name} - ViralizaAI`,
+                amount: Math.round(amount * 100), // Converter para centavos
+                successUrl: `${appBaseUrl}/#/dashboard/social-tools?payment=success&plan=${encodeURIComponent(plan.name)}`,
+                cancelUrl: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`
             };
 
             showNotification('Redirecionando para o pagamento seguro...');
-            await stripeService.processSubscriptionPayment(subscriptionData);
+            
+            const response = await fetch('/api/stripe-test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(paymentData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success && result.url) {
+                console.log('🔄 Redirecionando para Stripe:', result.url);
+                window.location.href = result.url;
+            } else {
+                throw new Error(result.error || 'Erro desconhecido');
+            }
 
         } catch (error) {
             console.error('Erro no pagamento:', error);
@@ -168,36 +158,40 @@ const BillingPage: React.FC = () => {
         try {
             console.log('🚀 BillingPage - Processando compra Motor de Crescimento:', label, price);
             
-            const stripeService = StripeService.getInstance();
-            const appBaseUrl = window.location.origin;
+            const appBaseUrl = buildAppBaseUrl();
 
-            const subscriptionData = {
-                mode: 'payment',
-                line_items: [{
-                    price_data: {
-                        currency: 'brl',
-                        product_data: {
-                            name: `Motor de Crescimento Viraliza - ${label}`
-                        },
-                        unit_amount: Math.round(price * 100)
-                    },
-                    quantity: 1
-                }],
-                success_url: `${appBaseUrl}/#/dashboard/growth-engine?payment=success&addon=${encodeURIComponent(label)}`,
-                cancel_url: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`,
-                customer_email: user.email,
-                metadata: {
-                    productType: 'addon',
-                    addonName: 'Motor de Crescimento Viraliza',
-                    addonPeriod: label,
-                    userId: user.id,
-                    userEmail: user.email
-                }
+            // Usar API funcional stripe-test
+            const paymentData = {
+                planName: `Motor de Crescimento Viraliza - ${label}`,
+                amount: Math.round(price * 100), // Converter para centavos
+                successUrl: `${appBaseUrl}/#/dashboard/growth-engine?payment=success&addon=${encodeURIComponent(label)}`,
+                cancelUrl: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`
             };
 
-            console.log('📋 Dados da compra Motor de Crescimento:', subscriptionData);
+            console.log('📋 Dados da compra Motor de Crescimento:', paymentData);
             showNotification('Redirecionando para pagamento...');
-            await stripeService.processSubscriptionPayment(subscriptionData);
+            
+            const response = await fetch('/api/stripe-test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(paymentData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success && result.url) {
+                console.log('🔄 Redirecionando para Stripe:', result.url);
+                window.location.href = result.url;
+            } else {
+                throw new Error(result.error || 'Erro desconhecido');
+            }
 
         } catch (error) {
             console.error('❌ Erro ao processar compra Motor de Crescimento:', error);
@@ -473,7 +467,7 @@ const BillingPage: React.FC = () => {
                 onClose={() => setPixModalOpen(false)}
                 amount={pixSelectedPlan ? (typeof pixSelectedPlan.price === 'number' ? pixSelectedPlan.price : parseFloat(String(pixSelectedPlan.price))) : 0}
                 planName={pixSelectedPlan ? `Assinatura ${pixSelectedPlan.name} - ViralizaAI` : ''}
-                pixKey="caccb1b4-6b25-4e5a-98a0-17121d31780e"
+                planType={pixSelectedPlan ? pixSelectedPlan.id : ''}
             />
 
             {/* Modal PIX para Ferramentas Avulsas */}
@@ -482,7 +476,7 @@ const BillingPage: React.FC = () => {
                 onClose={() => setPixGrowthEngineOpen(false)}
                 amount={pixGrowthEngineData ? pixGrowthEngineData.price : 0}
                 planName={pixGrowthEngineData ? `Motor de Crescimento Viraliza - ${pixGrowthEngineData.label}` : ''}
-                pixKey="caccb1b4-6b25-4e5a-98a0-17121d31780e"
+                planType="growth_engine"
             />
         </>
     );
