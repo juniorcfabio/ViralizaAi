@@ -301,7 +301,6 @@ const SocialMediaToolsPage: React.FC = () => {
     try {
       console.log('🚀 SocialMediaTools - Redirecionando para checkout do plano:', requiredPlan);
       
-      const stripeService = StripeService.getInstance();
       const appBaseUrl = window.location.origin;
 
       // Mapear planos para preços
@@ -318,44 +317,37 @@ const SocialMediaToolsPage: React.FC = () => {
         return;
       }
 
-      // Determinar ciclo de cobrança
-      let billingCycle: 'monthly' | 'quarterly' | 'semiannual' | 'annual' = 'monthly';
-      if (requiredPlan === 'trimestral') billingCycle = 'quarterly';
-      else if (requiredPlan === 'semestral') billingCycle = 'semiannual';
-      else if (requiredPlan === 'anual') billingCycle = 'annual';
-
-      const subscriptionData = {
-        mode: 'subscription',
-        line_items: [{
-          price_data: {
-            currency: 'brl',
-            product_data: {
-              name: `Assinatura ${planInfo.name} - ViralizaAI`
-            },
-            unit_amount: Math.round(planInfo.price * 100),
-            recurring: {
-              interval: billingCycle === 'monthly' ? 'month' : 
-                       billingCycle === 'quarterly' ? 'month' :
-                       billingCycle === 'semiannual' ? 'month' :
-                       'year'
-            }
-          },
-          quantity: 1
-        }],
-        success_url: `${appBaseUrl}/#/dashboard/social-tools?payment=success&plan=${encodeURIComponent(planInfo.name)}`,
-        cancel_url: `${appBaseUrl}/#/dashboard/social-tools?payment=cancelled`,
-        customer_email: user?.email || 'usuario@viralizaai.com',
-        metadata: {
-          productType: 'subscription',
-          planName: planInfo.name,
-          planId: requiredPlan,
-          source: 'social_tools',
-          billingCycle: billingCycle
-        }
+      // Usar a API funcional stripe-test
+      const paymentData = {
+        planName: `Assinatura ${planInfo.name} - ViralizaAI`,
+        amount: Math.round(planInfo.price * 100), // Converter para centavos
+        successUrl: `${appBaseUrl}/#/dashboard/social-tools?payment=success&plan=${encodeURIComponent(planInfo.name)}`,
+        cancelUrl: `${appBaseUrl}/#/dashboard/social-tools?payment=cancelled`
       };
 
-      console.log('📋 Dados da assinatura (SocialTools):', subscriptionData);
-      await stripeService.processSubscriptionPayment(subscriptionData);
+      console.log('📋 Dados da assinatura (SocialTools):', paymentData);
+      
+      const response = await fetch('/api/stripe-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.url) {
+        console.log('🔄 Redirecionando para Stripe:', result.url);
+        window.location.href = result.url;
+      } else {
+        throw new Error(result.error || 'Erro desconhecido');
+      }
 
     } catch (error) {
       console.error('❌ Erro ao processar checkout do plano:', error);
