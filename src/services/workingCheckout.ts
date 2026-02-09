@@ -29,9 +29,9 @@ class WorkingCheckoutService {
         planId: subscriptionData.planId || 'basic'
       };
 
-      // Usar a API corrigida
-      const apiUrl = `${window.location.origin}/api/create-checkout-session`;
-      console.log('🔗 Chamando API corrigida:', apiUrl);
+      // Usar a API que realmente funciona
+      const apiUrl = `${window.location.origin}/api/stripe-test`;
+      console.log('🔗 Chamando API funcional:', apiUrl);
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -41,15 +41,8 @@ class WorkingCheckoutService {
         body: JSON.stringify({
           planName: checkoutData.planName,
           amount: checkoutData.amount,
-          billingCycle: checkoutData.billingCycle,
           successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${window.location.origin}/cancel`,
-          metadata: {
-            source: 'landing_page',
-            plan_name: checkoutData.planName,
-            billing_cycle: checkoutData.billingCycle,
-            plan_id: checkoutData.planId
-          }
+          cancelUrl: `${window.location.origin}/cancel`
         })
       });
 
