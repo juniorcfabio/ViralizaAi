@@ -1,5 +1,6 @@
 /* Conteúdo: CheckoutButton.tsx */
 import React, { useState } from "react";
+import { STRIPE_CONFIG, SITE_CONFIG } from '../src/config/stripe';
 
 type Props = {
   mode: "payment" | "subscription";
