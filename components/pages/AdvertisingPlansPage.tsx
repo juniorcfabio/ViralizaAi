@@ -115,9 +115,9 @@ const AdvertisingPlansPage: React.FC = () => {
       localStorage.setItem('selected_advertising_plan', JSON.stringify(plan));
       console.log('💾 Plano salvo no localStorage');
 
-      // Usar a API Supabase Edge Function
-      console.log('🚀 Chamando API Supabase...');
-      const response = await fetch('https://ymmswnmietxoupeazmok.supabase.co/functions/v1/create-checkout-session', {
+      // Usar a API funcional stripe-test
+      console.log('🚀 Chamando API funcional...');
+      const response = await fetch('/api/stripe-test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
