@@ -3,7 +3,7 @@
 // =======================
 
 import React, { useState } from 'react';
-import PixPaymentModal from './PixPaymentModal';
+import PixModalSimple from './PixModalSimple';
 import { useAuth } from '../../contexts/AuthContextFixed';
 
 interface PlanCardProps {
@@ -184,17 +184,13 @@ const PlanCard: React.FC<PlanCardProps> = ({
       </div>
 
       {/* Modal PIX */}
-      <PixPaymentModal
-        isOpen={showPixModal}
-        onClose={() => setShowPixModal(false)}
-        planName={planName}
-        planType={planType}
-        amount={price}
-        onPaymentSuccess={() => {
-          setShowPixModal(false);
-          // Callback de sucesso se necessário
-        }}
-      />
+      {showPixModal && (
+        <PixModalSimple
+          planName={planName}
+          amount={price}
+          onClose={() => setShowPixModal(false)}
+        />
+      )}
     </>
   );
 };
