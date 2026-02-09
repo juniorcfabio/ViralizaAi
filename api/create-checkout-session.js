@@ -1,20 +1,41 @@
-// API STRIPE CHECKOUT - FUNCIONAMENTO GARANTIDO
+// API STRIPE CHECKOUT - CORRIGIDA E FUNCIONAL
 export default async function handler(req, res) {
-  // CORS
+  console.log('🚀 API Stripe Checkout iniciada - Método:', req.method);
+  
+  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
+  // Handle preflight
   if (req.method === 'OPTIONS') {
+    console.log('✅ OPTIONS request handled');
     return res.status(200).end();
   }
 
+  // Handle GET for testing
+  if (req.method === 'GET') {
+    console.log('✅ GET request - API is alive');
+    return res.status(200).json({ 
+      status: 'API is working', 
+      timestamp: new Date().toISOString(),
+      methods: ['POST', 'OPTIONS', 'GET']
+    });
+  }
+
   if (req.method !== 'POST') {
+    console.log('❌ Method not allowed:', req.method);
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   try {
     console.log('🚀 STRIPE CHECKOUT API - Iniciando...');
+    console.log('📋 Body recebido:', JSON.stringify(req.body, null, 2));
+    
+    // Verificar variáveis de ambiente
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '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';
+    console.log('🔑 Stripe key disponível:', stripeSecretKey ? 'SIM' : 'NÃO');
+    console.log('🔑 Stripe key prefix:', stripeSecretKey.substring(0, 20) + '...');
     
     const { 
       line_items, 
@@ -72,10 +93,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'URLs são obrigatórias' });
     }
 
-    // Chave Stripe
-    const stripeSecretKey = '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';
-    
-    console.log('🔑 Chave Stripe configurada');
+    console.log('🔑 Usando chave Stripe já verificada');
 
     // Preparar dados para Stripe
     const checkoutData = {

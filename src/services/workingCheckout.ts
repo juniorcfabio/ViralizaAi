@@ -29,9 +29,9 @@ class WorkingCheckoutService {
         planId: subscriptionData.planId || 'basic'
       };
 
-      // Usar a API que realmente funciona
-      const apiUrl = `${window.location.origin}/api/stripe-checkout`;
-      console.log('🔗 Chamando API que funciona:', apiUrl);
+      // Usar a API corrigida
+      const apiUrl = `${window.location.origin}/api/create-checkout-session`;
+      console.log('🔗 Chamando API corrigida:', apiUrl);
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -39,19 +39,17 @@ class WorkingCheckoutService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          planName: checkoutData.planName,
           amount: checkoutData.amount,
-          currency: 'brl',
-          description: checkoutData.planName,
-          success_url: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${window.location.origin}/cancel`,
-          customer_email: 'usuario@viralizaai.com',
+          billingCycle: checkoutData.billingCycle,
+          successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/cancel`,
           metadata: {
             source: 'landing_page',
             plan_name: checkoutData.planName,
             billing_cycle: checkoutData.billingCycle,
             plan_id: checkoutData.planId
-          },
-          product_type: 'subscription'
+          }
         })
       });
 
