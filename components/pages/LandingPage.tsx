@@ -1263,12 +1263,20 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
                                     </li>
                                 ))}
                             </ul>
-                            <button 
-                                onClick={() => handlePlanPurchase(plan)} 
-                                className="w-full bg-accent text-light font-semibold py-3 mt-2 rounded-full hover:bg-blue-500 transition-colors"
-                            >
-                                Assine Agora
-                            </button>
+                            <div className="space-y-2">
+                                <button 
+                                    onClick={() => handlePlanPurchase(plan)} 
+                                    className="w-full bg-accent text-light font-semibold py-3 rounded-full hover:bg-blue-500 transition-colors"
+                                >
+                                    💳 Assinar com Cartão
+                                </button>
+                                <button 
+                                    onClick={() => alert('PIX em desenvolvimento para Landing Page')} 
+                                    className="w-full bg-green-600 text-white font-semibold py-3 rounded-full hover:bg-green-700 transition-colors"
+                                >
+                                    🏦 Pagar com PIX
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>

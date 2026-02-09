@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContextFixed';
 import SecureAPIClient from '../../services/apiClient';
 import SecurityService from '../../services/securityService';
 import StripeService from '../../services/stripeService';
+import SimplePixModal from '../ui/SimplePixModal';
 
 // Ícones
 const ScheduleIcon = () => (
@@ -83,9 +84,24 @@ const ToolCard: React.FC<ToolCardProps> = ({ title, description, icon, available
       {description}
     </p>
     {!available && (
-      <div className="mt-4 pt-4 border-t border-orange-200">
-        <button className="w-full bg-orange-500 text-white py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors font-medium">
-          🚀 Fazer Upgrade para {requiredPlan.charAt(0).toUpperCase() + requiredPlan.slice(1)}
+      <div className="mt-4 pt-4 border-t border-orange-200 space-y-2">
+        <button 
+          onClick={onUpgrade}
+          className="w-full bg-orange-500 text-white py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors font-medium"
+        >
+          💳 Upgrade com Cartão
+        </button>
+        <button 
+          onClick={() => {
+            // Trigger PIX modal - será implementado no componente pai
+            const event = new CustomEvent('openPixUpgrade', { 
+              detail: { requiredPlan } 
+            });
+            window.dispatchEvent(event);
+          }}
+          className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
+        >
+          🏦 Upgrade com PIX
         </button>
       </div>
     )}
@@ -101,9 +117,37 @@ const SocialMediaToolsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [csrfToken] = useState(() => SecurityService.getInstance().generateCSRFToken());
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<{name: string, price: number, type: string} | null>(null);
 
   const userPlan = user?.plan || 'mensal';
   const isAdmin = window.location.pathname.includes('/admin') || window.location.hash.includes('/admin');
+
+  // Listener para evento PIX
+  useEffect(() => {
+    const handlePixUpgrade = (event: CustomEvent) => {
+      const { requiredPlan } = event.detail;
+      const planPrices = {
+        'mensal': { price: 59.90, name: 'Mensal' },
+        'trimestral': { price: 159.90, name: 'Trimestral' },
+        'semestral': { price: 259.90, name: 'Semestral' },
+        'anual': { price: 399.90, name: 'Anual' }
+      };
+      
+      const planInfo = planPrices[requiredPlan];
+      if (planInfo) {
+        setSelectedPlan({
+          name: planInfo.name,
+          price: planInfo.price,
+          type: requiredPlan
+        });
+        setShowPixModal(true);
+      }
+    };
+
+    window.addEventListener('openPixUpgrade', handlePixUpgrade as EventListener);
+    return () => window.removeEventListener('openPixUpgrade', handlePixUpgrade as EventListener);
+  }, []);
 
   // Detectar retorno do pagamento Stripe e ativar plano
   useEffect(() => {
@@ -692,6 +736,25 @@ const SocialMediaToolsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal PIX */}
+      {showPixModal && selectedPlan && (
+        <SimplePixModal
+          isOpen={showPixModal}
+          onClose={() => {
+            setShowPixModal(false);
+            setSelectedPlan(null);
+          }}
+          planName={selectedPlan.name}
+          amount={selectedPlan.price}
+          onPaymentSuccess={() => {
+            setShowPixModal(false);
+            setSelectedPlan(null);
+            // Recarregar página após sucesso
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 };
