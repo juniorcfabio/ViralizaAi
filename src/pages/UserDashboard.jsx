@@ -48,26 +48,45 @@ const UserDashboard = () => {
     const confirmed = confirm(`💰 Comprar ${tool.name}\n\nPreço: ${tool.price}\n\nDeseja prosseguir com a compra?`);
     if (confirmed) {
       try {
-        console.log('� MODAL 28/01/2026 - Iniciando compra ferramenta:', tool);
+        console.log('🛠️ Iniciando compra ferramenta:', tool);
 
-        // Importar o serviço Stripe do dia 28/01/2026 que funcionava perfeitamente
-        const { default: stripeService28Jan } = await import('../../services/stripeService28Jan.js');
+        // Extrair valor numérico do preço
+        const priceValue = parseFloat(tool.price.replace('R$', '').replace(',', '.').trim());
         
-        // Preparar dados da ferramenta exatamente como dia 28/01/2026
-        const toolData = {
-          id: tool.id,
-          name: tool.name,
-          price: tool.price,
-          email: user?.email,
-          userId: user?.id,
-          type: 'tool'
+        // Usar a API funcional stripe-test
+        const paymentData = {
+          planName: `${tool.name} - Ferramenta ViralizaAI`,
+          amount: Math.round(priceValue * 100), // Converter para centavos
+          successUrl: `${window.location.origin}/dashboard?payment=success&tool=${encodeURIComponent(tool.name)}`,
+          cancelUrl: `${window.location.origin}/dashboard?payment=cancelled`
         };
 
-        // Usar o sistema do dia 28/01/2026
-        await stripeService28Jan.createToolCheckout(toolData);
+        console.log('📋 Dados do pagamento da ferramenta:', paymentData);
+        
+        const response = await fetch('/api/stripe-test', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(paymentData)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success && result.url) {
+          console.log('🔄 Redirecionando para Stripe:', result.url);
+          window.location.href = result.url;
+        } else {
+          throw new Error(result.error || 'Erro desconhecido');
+        }
 
       } catch (error) {
-        console.error('❌ Erro no sistema 28/01/2026:', error);
+        console.error('❌ Erro ao processar pagamento da ferramenta:', error);
         alert('Erro ao processar pagamento. Tente novamente.');
       }
     }

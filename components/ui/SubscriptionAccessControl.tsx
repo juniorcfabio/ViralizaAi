@@ -115,27 +115,42 @@ const SubscriptionAccessControl: React.FC<SubscriptionAccessControlProps> = ({
     if (!toolName || !toolPrice) return;
     
     try {
-      const stripeService = StripeService.getInstance();
+      console.log('🛠️ Comprando ferramenta:', toolName, 'Preço:', toolPrice);
       
+      // Usar a API funcional stripe-test
       const paymentData = {
-        amount: toolPrice,
-        currency: 'BRL',
-        description: `${toolName} - Ferramenta Avulsa`,
-        productId: toolName.toLowerCase().replace(/\s+/g, '-'),
-        productType: 'tool' as const,
-        userId: user?.id || 'guest_' + Date.now(),
-        userEmail: user?.email || 'usuario@exemplo.com',
-        successUrl: `${window.location.origin}/dashboard?payment=success`,
-        cancelUrl: `${window.location.origin}/dashboard?payment=cancelled`,
-        metadata: {
-          toolName,
-          purchaseType: 'standalone'
-        }
+        planName: `${toolName} - Ferramenta Avulsa ViralizaAI`,
+        amount: Math.round(toolPrice * 100), // Converter para centavos
+        successUrl: `${window.location.origin}/dashboard?payment=success&tool=${encodeURIComponent(toolName)}`,
+        cancelUrl: `${window.location.origin}/dashboard?payment=cancelled`
       };
+
+      console.log('📋 Dados do pagamento da ferramenta:', paymentData);
       
-      await stripeService.processToolPayment(paymentData);
+      const response = await fetch('/api/stripe-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.url) {
+        console.log('🔄 Redirecionando para Stripe:', result.url);
+        window.location.href = result.url;
+      } else {
+        throw new Error(result.error || 'Erro desconhecido');
+      }
+      
     } catch (error) {
-      console.error('Erro ao processar pagamento:', error);
+      console.error('❌ Erro ao processar pagamento da ferramenta:', error);
       alert('Erro ao processar pagamento. Tente novamente.');
     }
   };
