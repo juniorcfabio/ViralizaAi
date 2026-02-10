@@ -31,11 +31,19 @@ const UserDashboard = () => {
     setTimeout(() => {
       setUser(realUserStats);
       
+      // LIMPAR SISTEMA PARA TESTE REAL (apenas primeira vez)
+      if (authUser && authUser.type !== 'admin') {
+        // Limpar acessos antigos para usuários comuns
+        AccessControlService.resetSystem();
+        console.log('🧹 Sistema limpo para teste real');
+      }
+      
       // Carregar acessos do usuário
       if (authUser) {
         const access = AccessControlService.getUserToolAccess(authUser.id, authUser.type);
         setUserAccess(access);
         console.log('🔐 Acessos do usuário carregados:', access);
+        console.log('👤 Tipo de usuário:', authUser.type);
       }
       
       setLoading(false);
