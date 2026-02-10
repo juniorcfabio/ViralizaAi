@@ -46,25 +46,39 @@ const AdminMusicGeneratorPage: React.FC = () => {
 
     setIsGenerating(true);
     try {
-      // Simular geração de música
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Importar e usar o gerador real de música
+      const RealMusicGenerator = (await import('../../services/realMusicGenerator')).default;
+      const musicGenerator = RealMusicGenerator.getInstance();
       
-      const currentTime = new Date();
-      const musicData = {
-        id: `music_${Date.now()}`,
-        title: `Música ${musicStyle} ${currentTime.toLocaleTimeString('pt-BR')}`,
+      const musicConfig = {
         style: musicStyle,
         mood: mood,
         duration: duration,
         instruments: instruments,
+        tempo: 120,
+        key: 'C'
+      };
+      
+      console.log('🎵 Gerando música real com configuração:', musicConfig);
+      const generatedMusic = await musicGenerator.generateMusic(musicConfig);
+      
+      const currentTime = new Date();
+      // Usar dados reais da música gerada
+      const musicData = {
+        id: generatedMusic.id,
+        title: `Música ${musicStyle} ${currentTime.toLocaleTimeString('pt-BR')}`,
+        style: musicStyle,
+        mood: mood,
+        duration: generatedMusic.duration,
+        instruments: instruments,
         lyrics: lyrics,
-        createdAt: currentTime.toISOString(),
-        audioUrl: `https://example.com/generated-music-${Date.now()}.mp3`,
+        createdAt: generatedMusic.createdAt,
+        audioUrl: generatedMusic.audioUrl,
         waveform: generateWaveformData(),
-        bpm: Math.floor(Math.random() * 60) + 80,
-        key: ['C', 'D', 'E', 'F', 'G', 'A', 'B'][Math.floor(Math.random() * 7)] + (Math.random() > 0.5 ? ' Major' : ' Minor'),
+        bpm: musicConfig.tempo,
+        key: musicConfig.key + ' Major',
         copyright: 'Livre de direitos autorais - ViralizaAI',
-        downloadUrl: `https://viralizaai.com/download/music_${Date.now()}.mp3`
+        downloadUrl: generatedMusic.downloadUrl
       };
 
       setGeneratedMusic(musicData);

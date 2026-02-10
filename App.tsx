@@ -59,6 +59,12 @@ import EmergencyPaymentFix from './services/emergencyPaymentFix';
 import SocialMediaToolsPage from './components/pages/SocialMediaToolsPage';
 import ViralProductAnalyzerPage from './components/pages/ViralProductAnalyzerPage';
 import AdminSocialToolsPage from './components/pages/AdminSocialToolsPage';
+import VideoEditorPage from './components/pages/VideoEditorPage';
+import AnimationGeneratorPage from './components/pages/AnimationGeneratorPage';
+import PrivacyPolicyPage from './components/pages/PrivacyPolicyPage';
+import TermsOfUsePage from './components/pages/TermsOfUsePage';
+import SupportPage from './components/pages/SupportPage';
+import APIDocsPage from './components/pages/APIDocsPage';
 import AdminMusicGeneratorPage from './components/pages/AdminMusicGeneratorPage';
 import AdvertisingPlansPage from './components/pages/AdvertisingPlansPage';
 import AdvertisingSuccessPage from './components/pages/AdvertisingSuccessPage';
@@ -213,6 +219,16 @@ const AppRoutes: React.FC = () => {
             
             {/* Google OAuth Callback Route */}
             <Route path="/auth/google/callback" element={<GoogleOAuthCallbackPage />} />
+            
+            {/* Legal Pages */}
+            <Route path="/politica-privacidade" element={<PrivacyPolicyPage />} />
+            <Route path="/termos-uso" element={<TermsOfUsePage />} />
+            <Route path="/suporte" element={<SupportPage />} />
+            <Route path="/api-docs" element={<APIDocsPage />} />
+            
+            {/* New Tools */}
+            <Route path="/video-editor" element={<VideoEditorPage />} />
+            <Route path="/animation-generator" element={<AnimationGeneratorPage />} />
             
             <Route path="*" element={<Navigate to="/" />} />
         </Routes>

@@ -1520,10 +1520,10 @@ const Footer: React.FC = () => {
                 
                 {/* Links adicionais */}
                 <div className="flex flex-wrap justify-center gap-6 mt-6 text-xs text-gray-500">
-                    <a href="#" className="hover:text-accent transition-colors">Política de Privacidade</a>
-                    <a href="#" className="hover:text-accent transition-colors">Termos de Uso</a>
-                    <a href="#" className="hover:text-accent transition-colors">Suporte</a>
-                    <a href="#" className="hover:text-accent transition-colors">API</a>
+                    <a href="/politica-privacidade" className="hover:text-accent transition-colors">Política de Privacidade</a>
+                    <a href="/termos-uso" className="hover:text-accent transition-colors">Termos de Uso</a>
+                    <a href="/suporte" className="hover:text-accent transition-colors">Suporte</a>
+                    <a href="/api-docs" className="hover:text-accent transition-colors">API</a>
                 </div>
             </div>
         </footer>
