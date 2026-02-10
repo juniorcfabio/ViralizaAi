@@ -116,6 +116,8 @@ class AccessControlService {
 
   // 🔍 VERIFICAR ACESSO A FERRAMENTA
   hasToolAccess(userId: string, toolName: string, userType?: string): boolean {
+    console.log('🔍 Verificando acesso:', { userId, toolName, userType });
+    
     // Admin sempre tem acesso
     if (userType === 'admin') {
       console.log('👑 Admin tem acesso total a:', toolName);
@@ -123,13 +125,17 @@ class AccessControlService {
     }
 
     const accesses = this.getAllAccesses();
+    console.log('📋 Acessos disponíveis:', accesses);
+    
     const access = accesses.find(a => 
       a.toolName === toolName || 
       a.toolId === toolName.toLowerCase().replace(/\s+/g, '_')
     );
 
+    console.log('🔍 Acesso encontrado:', access);
+
     if (!access || !access.hasAccess) {
-      console.log('❌ Sem acesso a:', toolName);
+      console.log('❌ Sem acesso a:', toolName, 'para usuário:', userId);
       return false;
     }
 
