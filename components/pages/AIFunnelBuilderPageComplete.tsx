@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import StripeService from '../../services/stripeService';
+import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
+import AccessControlService from '../../services/accessControlService';
 
 interface FunnelStep {
   id: string;
@@ -26,6 +28,9 @@ const AIFunnelBuilderPageComplete: React.FC = () => {
   const [customFunnel, setCustomFunnel] = useState<FunnelStep[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedFunnel, setGeneratedFunnel] = useState<FunnelTemplate | null>(null);
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  const [hasFunnelAccess, setHasFunnelAccess] = useState(false);
   const [businessInfo, setBusinessInfo] = useState({
     name: '',
     niche: '',
@@ -121,6 +126,19 @@ const AIFunnelBuilderPageComplete: React.FC = () => {
     }
   ];
 
+  // 🔐 VERIFICAR ACESSO AO FUNIL BUILDER
+  useEffect(() => {
+    if (user) {
+      const hasAccess = AccessControlService.hasToolAccess(
+        user.id, 
+        'AI Funil Builder', 
+        user.type
+      );
+      setHasFunnelAccess(hasAccess);
+      console.log('🔐 Acesso ao Funil Builder:', hasAccess);
+    }
+  }, [user]);
+
   const generateAIFunnel = async () => {
     if (!businessInfo.name || !businessInfo.niche) {
       alert('Preencha pelo menos o nome do negócio e nicho');
@@ -178,31 +196,124 @@ const AIFunnelBuilderPageComplete: React.FC = () => {
     }, 3000);
   };
 
-  const purchaseFunnelBuilder = async () => {
+  // 💳 MOSTRAR OPÇÕES DE PAGAMENTO
+  const showPaymentOptionsModal = () => {
+    setShowPaymentOptions(true);
+  };
+
+  // 💳 PAGAMENTO VIA STRIPE
+  const purchaseWithStripe = async () => {
     try {
-      const stripeService = StripeService.getInstance();
-      
-      const paymentData = {
+      // Registrar pagamento no sistema de controle
+      const payment = AccessControlService.registerPayment({
+        userId: user?.id || 'guest',
+        type: 'tool',
+        itemName: 'AI Funil Builder',
         amount: 147.00,
-        currency: 'BRL',
-        description: 'AI Funnel Builder - Construtor de Funis Inteligente',
-        productId: 'ai-funnel-builder',
-        productType: 'tool' as const,
-        userId: user?.id || 'guest_' + Date.now(),
-        userEmail: user?.email || 'usuario@exemplo.com',
-        successUrl: `${window.location.origin}/dashboard/ai-funnel-builder?payment=success`,
-        cancelUrl: `${window.location.origin}/dashboard/ai-funnel-builder?payment=cancelled`,
-        metadata: {
-          toolName: 'AI Funnel Builder',
-          features: 'Funis ilimitados, IA avançada, templates premium'
-        }
+        paymentMethod: 'stripe',
+        status: 'pending'
+      });
+
+      console.log('💳 Pagamento Stripe registrado:', payment);
+
+      // Usar API funcional stripe-test
+      const paymentData = {
+        planName: 'AI Funil Builder - ViralizaAI',
+        amount: Math.round(147.00 * 100), // Converter para centavos
+        successUrl: `${window.location.origin}/dashboard/ai-funnel-builder?payment=success&tool=AI%20Funil%20Builder`,
+        cancelUrl: `${window.location.origin}/dashboard/ai-funnel-builder?payment=cancelled`
       };
+
+      console.log('📋 Dados do pagamento Stripe:', paymentData);
       
-      await stripeService.processToolPayment(paymentData);
+      const response = await fetch('/api/stripe-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.url) {
+        console.log('🔄 Redirecionando para Stripe:', result.url);
+        window.location.href = result.url;
+      } else {
+        throw new Error(result.error || 'Erro desconhecido');
+      }
     } catch (error) {
-      console.error('Erro ao processar pagamento:', error);
+      console.error('❌ Erro ao processar pagamento Stripe:', error);
       alert('Erro ao processar pagamento. Tente novamente.');
     }
+  };
+
+  // 🏦 PAGAMENTO VIA PIX
+  const purchaseWithPix = () => {
+    // Registrar pagamento PIX no sistema de controle
+    const payment = AccessControlService.registerPayment({
+      userId: user?.id || 'guest',
+      type: 'tool',
+      itemName: 'AI Funil Builder',
+      amount: 147.00,
+      paymentMethod: 'pix',
+      status: 'pending'
+    });
+
+    console.log('🏦 Pagamento PIX registrado:', payment);
+    
+    setShowPaymentOptions(false);
+    setShowPixModal(true);
+  };
+
+  // ✅ CONFIRMAR PAGAMENTO PIX
+  const handlePixPaymentSuccess = () => {
+    // Confirmar pagamento PIX e liberar acesso
+    const payments = AccessControlService.getAllPayments();
+    const pendingPayment = payments.find(p => 
+      p.itemName === 'AI Funil Builder' && 
+      p.paymentMethod === 'pix' && 
+      p.status === 'pending'
+    );
+    
+    if (pendingPayment) {
+      AccessControlService.confirmPayment(pendingPayment.id, `pix_${Date.now()}`);
+      console.log('✅ Pagamento PIX confirmado e acesso liberado!');
+      
+      // Atualizar estado de acesso
+      setHasFunnelAccess(true);
+    }
+    
+    setShowPixModal(false);
+    alert('✅ Pagamento PIX confirmado! AI Funil Builder ativado com sucesso.');
+    
+    // Recarregar página para atualizar interface
+    window.location.reload();
+  };
+
+  // 📊 ANALISAR PERFORMANCE (apenas com acesso)
+  const analyzePerformance = () => {
+    if (!hasFunnelAccess) {
+      alert('🔒 Acesso Negado!\n\nVocê precisa comprar o AI Funil Builder para analisar performance.');
+      return;
+    }
+
+    alert('📊 Analisador de Performance\n\n🔍 Analisando métricas do funil...\n📈 Dados em tempo real carregados!\n🎯 Sugestões de otimização geradas!');
+  };
+
+  // 🎨 PERSONALIZAR DESIGN (apenas com acesso)
+  const personalizeDesign = () => {
+    if (!hasFunnelAccess) {
+      alert('🔒 Acesso Negado!\n\nVocê precisa comprar o AI Funil Builder para personalizar designs.');
+      return;
+    }
+
+    alert('🎨 Personalizador de Design\n\n✨ Editor visual ativado...\n🎨 Templates premium liberados!\n💼 Ferramenta de design profissional!');
   };
 
   const getStepIcon = (type: string) => {
@@ -401,15 +512,29 @@ const AIFunnelBuilderPageComplete: React.FC = () => {
 
           <div className="flex gap-4">
             <button
-              onClick={purchaseFunnelBuilder}
+              onClick={showPaymentOptionsModal}
               className="bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold py-4 px-8 rounded-xl hover:from-emerald-600 hover:to-green-600 transition-all transform hover:scale-105"
             >
               💎 Implementar Funil (R$ 147,00)
             </button>
-            <button className="bg-blue-600 text-white font-bold py-4 px-8 rounded-xl hover:bg-blue-700 transition-all">
+            <button 
+              onClick={analyzePerformance}
+              className={`font-bold py-4 px-8 rounded-xl transition-all ${
+                hasFunnelAccess 
+                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                  : 'bg-gray-600 text-gray-300 cursor-not-allowed'
+              }`}
+            >
               📊 Analisar Performance
             </button>
-            <button className="bg-purple-600 text-white font-bold py-4 px-8 rounded-xl hover:bg-purple-700 transition-all">
+            <button 
+              onClick={personalizeDesign}
+              className={`font-bold py-4 px-8 rounded-xl transition-all ${
+                hasFunnelAccess 
+                  ? 'bg-purple-600 text-white hover:bg-purple-700' 
+                  : 'bg-gray-600 text-gray-300 cursor-not-allowed'
+              }`}
+            >
               🎨 Personalizar Design
             </button>
           </div>
@@ -435,6 +560,54 @@ const AIFunnelBuilderPageComplete: React.FC = () => {
           <div className="text-gray-300">Tempo de ROI</div>
         </div>
       </div>
+
+      {/* Modal de Opções de Pagamento */}
+      {showPaymentOptions && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-secondary p-8 rounded-xl border border-gray-700 max-w-md w-full mx-4">
+            <h3 className="text-2xl font-bold text-white mb-6 text-center">
+              💎 Escolha sua forma de pagamento
+            </h3>
+            <p className="text-gray-300 text-center mb-6">
+              AI Funil Builder - R$ 147,00
+            </p>
+            
+            <div className="space-y-4">
+              <button
+                onClick={purchaseWithStripe}
+                className="w-full bg-blue-600 text-white font-bold py-4 px-6 rounded-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-3"
+              >
+                💳 Pagar com Cartão (Stripe)
+              </button>
+              
+              <button
+                onClick={purchaseWithPix}
+                className="w-full bg-green-600 text-white font-bold py-4 px-6 rounded-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3"
+              >
+                🏦 Pagar com PIX
+              </button>
+            </div>
+            
+            <button
+              onClick={() => setShowPaymentOptions(false)}
+              className="w-full mt-4 bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-all"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal PIX */}
+      {showPixModal && (
+        <PixPaymentModalFixed
+          isOpen={showPixModal}
+          onClose={() => setShowPixModal(false)}
+          planName="AI Funil Builder"
+          amount={147.00}
+          onPaymentSuccess={handlePixPaymentSuccess}
+        />
+      )}
     </div>
   );
 };
