@@ -240,6 +240,12 @@ const VideoEditorPage: React.FC = () => {
   const exportVideo = async () => {
     if (!project || !canvasRef.current) return;
 
+    // Verificar se APIs estão disponíveis no browser
+    if (typeof window === 'undefined' || !HTMLCanvasElement.prototype.captureStream) {
+      alert('❌ Exportação de vídeo não suportada neste browser');
+      return;
+    }
+
     const canvas = canvasRef.current;
     const stream = canvas.captureStream(30); // 30 FPS
     const mediaRecorder = new MediaRecorder(stream, {

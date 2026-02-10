@@ -285,6 +285,12 @@ const AnimationGeneratorPage: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Verificar se APIs estão disponíveis no browser
+    if (typeof window === 'undefined' || !HTMLCanvasElement.prototype.captureStream) {
+      alert('❌ Exportação de animação não suportada neste browser');
+      return;
+    }
+
     const stream = canvas.captureStream(60);
     const mediaRecorder = new MediaRecorder(stream, {
       mimeType: 'video/webm;codecs=vp9'

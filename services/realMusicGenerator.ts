@@ -36,7 +36,10 @@ class RealMusicGenerator {
 
   private initAudioContext(): void {
     try {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      // Verificação SSR - só inicializar no browser
+      if (typeof window !== 'undefined') {
+        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
     } catch (error) {
       console.error('Erro ao inicializar AudioContext:', error);
     }

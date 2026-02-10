@@ -2225,30 +2225,6 @@ class RealVideoGeneratorAI {
     ctx.fillText(script.includes('ViralizaAi') ? 'ViralizaAi' : 'Seu Negócio', 640, 100);
   }
 
-  // Quebrar texto em linhas
-  private wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-    const words = text.split(' ');
-    const lines: string[] = [];
-    let currentLine = '';
-    
-    for (const word of words) {
-      const testLine = currentLine + (currentLine ? ' ' : '') + word;
-      const metrics = ctx.measureText(testLine);
-      
-      if (metrics.width > maxWidth && currentLine) {
-        lines.push(currentLine);
-        currentLine = word;
-      } else {
-        currentLine = testLine;
-      }
-    }
-    
-    if (currentLine) {
-      lines.push(currentLine);
-    }
-    
-    return lines;
-  }
 
   // Converter frames para vídeo usando MediaRecorder API
   private async framesToVideo(frames: string[], duration: number): Promise<Blob> {
