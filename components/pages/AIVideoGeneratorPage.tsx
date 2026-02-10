@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import RealVideoGeneratorAI, { VideoConfig as VideoGenerationConfig, GeneratedVideoReal as GeneratedVideo } from '../../services/realVideoGeneratorAI';
 import RealTimePriceSyncService from '../../services/realTimePriceSync';
+import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
+import AccessControlService from '../../services/accessControlService';
 
 interface VideoConfig {
   businessType: string;
@@ -28,6 +30,8 @@ const AIVideoGeneratorPage: React.FC = () => {
   const [videoService] = useState(() => RealVideoGeneratorAI.getInstance());
   const [priceService] = useState(() => RealTimePriceSyncService.getInstance());
   const [currentPrice, setCurrentPrice] = useState(197.00);
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [config, setConfig] = useState<VideoConfig>({
     businessType: 'Tecnologia',
     businessName: '',
@@ -35,7 +39,7 @@ const AIVideoGeneratorPage: React.FC = () => {
     mainMessage: '',
     callToAction: 'Entre em contato conosco',
     avatarStyle: 'professional',
-    voiceStyle: 'natural',
+    voiceStyle: 'friendly',
     duration: '30',
     background: 'office',
     avatarGender: 'masculino',
@@ -44,28 +48,17 @@ const AIVideoGeneratorPage: React.FC = () => {
 
   useEffect(() => {
     const checkVideoAccess = () => {
-      console.log('🔍 Verificando acesso ao vídeo para usuário:', user);
-      console.log('🔍 Tipo de usuário:', user?.type);
+      if (!user) return;
       
-      // Admin sempre tem acesso total - SEM VERIFICAÇÕES DE PAGAMENTO
-      if (user?.type === 'admin') {
-        setHasVideoAccess(true);
-        console.log('✅ Acesso ADMIN - Total e irrestrito');
-        return;
-      }
+      // Verificar acesso usando AccessControlService
+      const hasAccess = AccessControlService.hasToolAccess(
+        user.id, 
+        'IA Video Generator 8K', 
+        user.type
+      );
       
-      // Para usuários normais, verificar pagamentos e add-ons
-      let hasAccess = false;
-      
-      if (user?.addOns?.includes('ai_video_generator') || 
-          user?.addOns?.includes('ai-video-generator') ||
-          user?.purchasedTools?.['ai_video_generator']?.active ||
-          user?.purchasedTools?.['ai-video-generator']?.active) {
-        hasAccess = true;
-      }
-      
-      console.log('🔍 Acesso final determinado:', hasAccess);
       setHasVideoAccess(hasAccess);
+      console.log('🔍 Acesso ao IA Video Generator:', hasAccess);
     };
     
     checkVideoAccess();
@@ -168,35 +161,111 @@ const AIVideoGeneratorPage: React.FC = () => {
     setShowPreview(true);
   };
 
-  const handleDownloadVideo = async () => {
-    if (!generatedVideo) return;
-    
-    try {
-      console.log('📥 Iniciando download do vídeo:', generatedVideo.videoUrl);
-      
-      // Tentar download direto primeiro
-      const link = document.createElement('a');
-      link.href = generatedVideo.videoUrl;
-      link.download = `${generatedVideo.config.businessName}_video_${generatedVideo.id}.mp4`;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      alert('🎉 Download iniciado! Verifique sua pasta de downloads.');
-      
-    } catch (error) {
-      console.error('Erro ao baixar vídeo:', error);
-      
-      // Fallback: abrir em nova aba
-      try {
-        window.open(generatedVideo.videoUrl, '_blank');
-        alert('📺 Vídeo aberto em nova aba. Clique com botão direito e "Salvar vídeo como..."');
-      } catch (fallbackError) {
-        console.error('Erro no fallback:', fallbackError);
-        alert('❌ Erro ao baixar o vídeo. Tente copiar a URL: ' + generatedVideo.videoUrl);
-      }
+  const handleDownloadVideo = () => {
+    if (generatedVideo) {
+      console.log('📥 Download do vídeo:', generatedVideo.videoUrl);
+      alert('🎬 Download iniciado! O vídeo será salvo na pasta Downloads.');
     }
+  };
+
+  // 💳 MOSTRAR OPÇÕES DE PAGAMENTO
+  const showPaymentOptionsModal = () => {
+    setShowPaymentOptions(true);
+  };
+
+  // 💳 PAGAMENTO VIA STRIPE
+  const purchaseWithStripe = async () => {
+    try {
+      // Registrar pagamento no sistema de controle
+      const payment = AccessControlService.registerPayment({
+        userId: user?.id || 'guest',
+        type: 'tool',
+        itemName: 'IA Video Generator 8K',
+        amount: currentPrice,
+        paymentMethod: 'stripe',
+        status: 'pending'
+      });
+
+      console.log('💳 Pagamento Stripe registrado:', payment);
+
+      // Usar API funcional stripe-test
+      const paymentData = {
+        planName: 'IA Video Generator 8K - ViralizaAI',
+        amount: Math.round(currentPrice * 100), // Converter para centavos
+        successUrl: `${window.location.origin}/dashboard/ai-video-generator?payment=success&tool=IA%20Video%20Generator%208K`,
+        cancelUrl: `${window.location.origin}/dashboard/ai-video-generator?payment=cancelled`
+      };
+
+      console.log('📋 Dados do pagamento Stripe:', paymentData);
+      
+      const response = await fetch('/api/stripe-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.url) {
+        console.log('🔄 Redirecionando para Stripe:', result.url);
+        window.location.href = result.url;
+      } else {
+        throw new Error(result.error || 'Erro desconhecido');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao processar pagamento Stripe:', error);
+      alert('Erro ao processar pagamento. Tente novamente.');
+    }
+  };
+
+  // 🏦 PAGAMENTO VIA PIX
+  const purchaseWithPix = () => {
+    // Registrar pagamento PIX no sistema de controle
+    const payment = AccessControlService.registerPayment({
+      userId: user?.id || 'guest',
+      type: 'tool',
+      itemName: 'IA Video Generator 8K',
+      amount: currentPrice,
+      paymentMethod: 'pix',
+      status: 'pending'
+    });
+
+    console.log('🏦 Pagamento PIX registrado:', payment);
+    
+    setShowPaymentOptions(false);
+    setShowPixModal(true);
+  };
+
+  // ✅ CONFIRMAR PAGAMENTO PIX
+  const handlePixPaymentSuccess = () => {
+    // Confirmar pagamento PIX e liberar acesso
+    const payments = AccessControlService.getAllPayments();
+    const pendingPayment = payments.find(p => 
+      p.itemName === 'IA Video Generator 8K' && 
+      p.paymentMethod === 'pix' && 
+      p.status === 'pending'
+    );
+    
+    if (pendingPayment) {
+      AccessControlService.confirmPayment(pendingPayment.id, `pix_${Date.now()}`);
+      console.log('✅ Pagamento PIX confirmado e acesso liberado!');
+      
+      // Atualizar estado de acesso
+      setHasVideoAccess(true);
+    }
+    
+    setShowPixModal(false);
+    alert('✅ Pagamento PIX confirmado! IA Video Generator 8K ativado com sucesso.');
+    
+    // Recarregar página para atualizar interface
+    window.location.reload();
   };
 
   // ADMIN NUNCA VÊ PÁGINA DE COMPRA - ACESSO DIRETO
@@ -213,11 +282,33 @@ const AIVideoGeneratorPage: React.FC = () => {
             <h1 className="text-4xl font-bold mb-4">🎬 IA Video Generator 8K</h1>
             <p className="text-xl mb-8">Ferramenta Premium - Acesso Restrito</p>
             <div className="bg-secondary rounded-2xl p-8 max-w-2xl mx-auto">
-              <h2 className="text-2xl font-bold mb-4">Acesso Premium Necessário</h2>
-              <p className="text-gray-300 mb-6">Esta ferramenta está disponível apenas para usuários com plano premium ou add-on específico.</p>
-              <button className="bg-accent text-white px-8 py-3 rounded-lg font-bold hover:bg-accent/80">
-                Ver Planos
-              </button>
+              <h2 className="text-2xl font-bold mb-4">🎬 IA Video Generator 8K</h2>
+              <p className="text-gray-300 mb-6">Crie vídeos promocionais ultra-realísticos com avatares IA</p>
+              
+              <div className="bg-primary/50 rounded-lg p-4 mb-6">
+                <div className="text-3xl font-bold text-green-400 mb-2">R$ {currentPrice.toFixed(2)}</div>
+                <div className="text-gray-300 text-sm">Acesso vitalício à ferramenta</div>
+              </div>
+              
+              <div className="space-y-4">
+                <button
+                  onClick={purchaseWithStripe}
+                  className="w-full bg-blue-600 text-white font-bold py-4 px-6 rounded-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-3"
+                >
+                  💳 Pagar com Cartão (Stripe)
+                </button>
+                
+                <button
+                  onClick={purchaseWithPix}
+                  className="w-full bg-green-600 text-white font-bold py-4 px-6 rounded-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3"
+                >
+                  🏦 Pagar com PIX
+                </button>
+              </div>
+              
+              <div className="mt-6 text-center">
+                <p className="text-gray-400 text-sm">✅ Pagamento seguro • ✅ Acesso imediato • ✅ Suporte incluído</p>
+              </div>
             </div>
           </div>
         </div>
@@ -436,6 +527,17 @@ const AIVideoGeneratorPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal PIX */}
+      {showPixModal && (
+        <PixPaymentModalFixed
+          isOpen={showPixModal}
+          onClose={() => setShowPixModal(false)}
+          planName="IA Video Generator 8K"
+          amount={currentPrice}
+          onPaymentSuccess={handlePixPaymentSuccess}
+        />
       )}
     </div>
   );

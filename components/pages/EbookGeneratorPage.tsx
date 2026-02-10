@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import EbookGeneratorComponent from '../ui/EbookGenerator';
 import { GeneratedEbook } from '../../services/ebookGenerator';
 import { API_BASE_URL, getAuthHeaders } from '../../src/config/api';
+import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
+import AccessControlService from '../../services/accessControlService';
 
 const EbookGeneratorPage: React.FC = () => {
   const { user, hasAccess } = useAuth();
@@ -15,8 +17,14 @@ const EbookGeneratorPage: React.FC = () => {
   const [showGenerator, setShowGenerator] = useState(false);
   const [generatedEbooks, setGeneratedEbooks] = useState<GeneratedEbook[]>([]);
   const [purchasing, setPurchasing] = useState(false);
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
 
-  const hasEbookAccess = hasAccess('ebookGenerator');
+  const hasEbookAccess = AccessControlService.hasToolAccess(
+    user?.id || 'guest', 
+    'Gerador de Ebooks Premium', 
+    user?.type
+  );
 
   const businessTypes = [
     { value: 'loja_massas', label: '🍝 Loja de Massas ao Vivo', description: 'Massas artesanais, delivery, eventos' },
@@ -80,62 +88,111 @@ const EbookGeneratorPage: React.FC = () => {
     setShowGenerator(false);
   };
 
-  const handlePurchaseEbookGenerator = async () => {
+  // 💳 MOSTRAR OPÇÕES DE PAGAMENTO
+  const showPaymentOptionsModal = () => {
+    setShowPaymentOptions(true);
+  };
+
+  // 💳 PAGAMENTO VIA STRIPE
+  const purchaseWithStripe = async () => {
     if (!user) return;
     
     setPurchasing(true);
     try {
-      console.log('🛒 Iniciando compra do Gerador de Ebooks via Stripe...');
+      // Registrar pagamento no sistema de controle
+      const payment = AccessControlService.registerPayment({
+        userId: user.id,
+        type: 'tool',
+        itemName: 'Gerador de Ebooks Premium',
+        amount: 297.00,
+        paymentMethod: 'stripe',
+        status: 'pending'
+      });
+
+      console.log('💳 Pagamento Stripe registrado:', payment);
+
+      // Usar API funcional stripe-test
+      const paymentData = {
+        planName: 'Gerador de Ebooks Premium - ViralizaAI',
+        amount: Math.round(297.00 * 100), // Converter para centavos
+        successUrl: `${window.location.origin}/dashboard/ebook-generator?payment=success&tool=Gerador%20de%20Ebooks%20Premium`,
+        cancelUrl: `${window.location.origin}/dashboard/ebook-generator?payment=cancelled`
+      };
+
+      console.log('📋 Dados do pagamento Stripe:', paymentData);
       
-      const appBaseUrl = window.location.origin;
-      
-      // Usar API Stripe unificada mais robusta
-      const response = await fetch(`${appBaseUrl}/api/stripe-payment-unified`, {
+      const response = await fetch('/api/stripe-test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          amount: 297.00,
-          currency: 'brl',
-          description: 'Gerador de Ebooks Premium - ViralizaAI',
-          success_url: `${appBaseUrl}/#/dashboard/ebook-generator?payment=success&tool=ebook-generator`,
-          cancel_url: `${appBaseUrl}/#/dashboard/ebook-generator?payment=cancelled`,
-          customer_email: user.email,
-          product_type: 'tool',
-          metadata: {
-            userId: user.id,
-            toolId: 'ebook-generator',
-            productType: 'tool',
-            amount: '297.00'
-          }
-        })
+        body: JSON.stringify(paymentData)
       });
 
-      console.log('📡 Resposta da API:', response.status);
-
       if (!response.ok) {
-        const errorData = await response.text();
-        console.error('❌ Erro da API:', errorData);
-        throw new Error(`Erro ao criar sessão de pagamento: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`Erro na API: ${response.status} - ${errorText}`);
       }
 
-      const data = await response.json();
-      console.log('✅ Dados recebidos:', data);
+      const result = await response.json();
       
-      if (data.success && data.url) {
-        console.log('🔄 Redirecionando para Stripe Checkout...');
-        window.location.href = data.url;
+      if (result.success && result.url) {
+        console.log('🔄 Redirecionando para Stripe:', result.url);
+        window.location.href = result.url;
       } else {
-        throw new Error('URL de checkout não retornada pela API');
+        throw new Error(result.error || 'Erro desconhecido');
       }
-      
     } catch (error) {
-      console.error('❌ Erro na compra do Ebook Generator:', error);
-      alert(`Erro ao processar compra: ${error.message}\nTente novamente ou contate o suporte.`);
+      console.error('❌ Erro ao processar pagamento Stripe:', error);
+      alert('Erro ao processar pagamento. Tente novamente.');
     } finally {
       setPurchasing(false);
     }
+  };
+
+  // 🏦 PAGAMENTO VIA PIX
+  const purchaseWithPix = () => {
+    // Registrar pagamento PIX no sistema de controle
+    const payment = AccessControlService.registerPayment({
+      userId: user?.id || 'guest',
+      type: 'tool',
+      itemName: 'Gerador de Ebooks Premium',
+      amount: 297.00,
+      paymentMethod: 'pix',
+      status: 'pending'
+    });
+
+    console.log('🏦 Pagamento PIX registrado:', payment);
+    
+    setShowPaymentOptions(false);
+    setShowPixModal(true);
+  };
+
+  // ✅ CONFIRMAR PAGAMENTO PIX
+  const handlePixPaymentSuccess = () => {
+    // Confirmar pagamento PIX e liberar acesso
+    const payments = AccessControlService.getAllPayments();
+    const pendingPayment = payments.find(p => 
+      p.itemName === 'Gerador de Ebooks Premium' && 
+      p.paymentMethod === 'pix' && 
+      p.status === 'pending'
+    );
+    
+    if (pendingPayment) {
+      AccessControlService.confirmPayment(pendingPayment.id, `pix_${Date.now()}`);
+      console.log('✅ Pagamento PIX confirmado e acesso liberado!');
+    }
+    
+    setShowPixModal(false);
+    alert('✅ Pagamento PIX confirmado! Gerador de Ebooks Premium ativado com sucesso.');
+    
+    // Recarregar página para atualizar interface
+    window.location.reload();
+  };
+
+  // FUNÇÃO ANTIGA MANTIDA PARA COMPATIBILIDADE
+  const handlePurchaseEbookGenerator = async () => {
+    showPaymentOptionsModal();
   };
 
   return (
@@ -255,23 +312,34 @@ const EbookGeneratorPage: React.FC = () => {
                     <div className="h-px bg-gray-600 flex-1"></div>
                   </div>
 
-                  <button
-                    onClick={handlePurchaseEbookGenerator}
-                    disabled={purchasing}
-                    className="w-full bg-gradient-to-r from-accent to-blue-600 hover:from-blue-600 hover:to-accent text-white font-bold py-5 px-8 rounded-2xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 text-xl flex items-center justify-center gap-3"
-                  >
-                    {purchasing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                        Processando Pagamento...
-                      </>
-                    ) : (
-                      <>
-                        💳 Comprar Agora por R$ 297,00
-                        <span className="text-sm bg-red-500 px-2 py-1 rounded-full">-40%</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="space-y-4">
+                    <button
+                      onClick={purchaseWithStripe}
+                      disabled={purchasing}
+                      className="w-full bg-blue-600 text-white font-bold py-4 px-6 rounded-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-3"
+                    >
+                      {purchasing ? (
+                        <>
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                          Processando...
+                        </>
+                      ) : (
+                        <>
+                          💳 Pagar com Cartão - R$ 297,00
+                          <span className="text-sm bg-red-500 px-2 py-1 rounded-full">-40%</span>
+                        </>
+                      )}
+                    </button>
+                    
+                    <button
+                      onClick={purchaseWithPix}
+                      disabled={purchasing}
+                      className="w-full bg-green-600 text-white font-bold py-4 px-6 rounded-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3"
+                    >
+                      🏦 Pagar com PIX - R$ 297,00
+                      <span className="text-sm bg-red-500 px-2 py-1 rounded-full">-40%</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-center gap-6 text-sm text-gray-400 mt-6">
@@ -615,6 +683,17 @@ const EbookGeneratorPage: React.FC = () => {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Modal PIX */}
+        {showPixModal && (
+          <PixPaymentModalFixed
+            isOpen={showPixModal}
+            onClose={() => setShowPixModal(false)}
+            planName="Gerador de Ebooks Premium"
+            amount={297.00}
+            onPaymentSuccess={handlePixPaymentSuccess}
+          />
         )}
       </div>
     </div>
