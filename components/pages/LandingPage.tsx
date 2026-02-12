@@ -1234,9 +1234,10 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
             });
 
             const mapped: Plan[] = stored.map((p, index) => {
+                const def = defaultPlans[index];
                 const meta =
                     (p.id && metaById[p.id]) || metaById[`p${index + 1}`] || {};
-                const period = meta.period || defaultPlans[index]?.period || '';
+                const period = meta.period || def?.period || '';
                 const highlight =
                     typeof p.highlight === 'boolean'
                         ? p.highlight
@@ -1249,12 +1250,7 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
                             ? p.price.toFixed(2)
                             : p.price,
                     period,
-                    features: Array.isArray(p.features)
-                        ? p.features
-                        : String(p.features || '')
-                              .split(',')
-                              .map((f) => f.trim())
-                              .filter(Boolean),
+                    features: def?.features || p.features,
                     highlight
                 };
             });
