@@ -61,9 +61,9 @@ api/stripe-webhook.js
 api/webhook-pix.js
 api/webhook-stripe.js
 
-# Duplicatas e testes não necessários em produção
-api/stripe-test.js
+# Duplicatas não necessárias em produção
 api/stripe-checkout.js
+# NOTA: api/stripe-test.js é usado pelo workingCheckout.ts - NÃO IGNORAR
 
 # Manter apenas APIs core (8 funções, limite Hobby = 12):
 # api/webhooks/stripe.js  - webhook Stripe (novo)
