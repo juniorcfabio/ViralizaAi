@@ -8,6 +8,7 @@ import SecureAPIClient from '../../services/apiClient';
 import SecurityService from '../../services/securityService';
 import StripeService from '../../services/stripeService';
 import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
+import openaiService from '../../services/openaiService';
 
 // Ícones
 const ScheduleIcon = () => (
@@ -456,19 +457,30 @@ const SocialMediaToolsPage: React.FC = () => {
           break;
           
         case 'generateCopy':
-          result = await apiClient.callToolAPI(action, {
-            prompt: 'Dicas de marketing digital para pequenas empresas',
-            platform: 'Instagram',
-            csrfToken
-          });
+          try {
+            const copyContent = await openaiService.generateCopywriting(
+              user?.name || 'Meu Negócio',
+              'Instagram',
+              'Gerar engajamento e conversões',
+              'Empreendedores e pequenas empresas'
+            );
+            result = { success: true, data: { content: copyContent }, message: 'Copy gerada com IA real' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'translateContent':
-          result = await apiClient.callToolAPI(action, {
-            content: 'Transforme seu negócio com estratégias de marketing digital!',
-            targetLanguages: ['en', 'es', 'fr'],
-            csrfToken
-          });
+          try {
+            const translated = await openaiService.translateContent(
+              'Transforme seu negócio com estratégias de marketing digital! Descubra como crescer nas redes sociais com ferramentas de IA.',
+              'English, Spanish, French',
+              'Marketing digital para empreendedores'
+            );
+            result = { success: true, data: { content: translated }, message: 'Tradução gerada com IA real' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'editVideo':
@@ -506,11 +518,16 @@ const SocialMediaToolsPage: React.FC = () => {
           break;
           
         case 'generateHashtags':
-          result = await apiClient.callToolAPI(action, {
-            content: 'Marketing digital para pequenas empresas',
-            platform: 'Instagram',
-            csrfToken
-          });
+          try {
+            const hashtags = await openaiService.generateHashtags(
+              'marketing digital',
+              'Instagram',
+              'post educativo'
+            );
+            result = { success: true, data: { content: hashtags }, message: 'Hashtags geradas com IA real' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'createChatbot':
@@ -543,10 +560,12 @@ const SocialMediaToolsPage: React.FC = () => {
           break;
           
         case 'detectTrends':
-          result = await apiClient.callToolAPI(action, {
-            niche: 'marketing',
-            csrfToken
-          });
+          try {
+            const trends = await openaiService.analyzeTrends('marketing digital', 'Instagram');
+            result = { success: true, data: { content: trends }, message: 'Tendências analisadas com IA real' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'generateSalesLinks':
@@ -576,11 +595,14 @@ const SocialMediaToolsPage: React.FC = () => {
           break;
           
         case 'analyzeCompetitors':
-          result = await apiClient.callToolAPI(action, {
-            competitors: ['@concorrente1', '@concorrente2'],
-            platforms: ['Instagram', 'TikTok'],
-            csrfToken
-          });
+          try {
+            const analysis = await openaiService.generate('trends',
+              `Analise a estratégia de concorrentes no nicho de marketing digital nas plataformas Instagram e TikTok.\n\nForneça:\n1. Estratégias mais comuns dos top players\n2. Tipos de conteúdo que mais engajam\n3. Frequência ideal de postagem\n4. Oportunidades não exploradas\n5. Recomendações para se diferenciar`
+            );
+            result = { success: true, data: { content: analysis }, message: 'Análise gerada com IA real' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         default:
