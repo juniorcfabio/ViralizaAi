@@ -56,16 +56,24 @@ api/pix-payment.js
 # REMOVIDO: api/stripe-payment-unified.js - NECESSÁRIO PARA PAGAMENTOS
 # REMOVIDO: api/stripe-secure-payment.js - NECESSÁRIO PARA PAGAMENTOS
 
-# Manter apenas APIs core (menos de 12)
-# api/activate-plan.js
-# api/check-payment.js  
-# api/check-user-plan.js
-# api/create-checkout-session.js
-# api/create-pix-checkout.js
-# api/db.js
-# api/stripe-webhook.js
-# api/webhook-pix.js
-# api/webhook-stripe.js
+# Webhooks antigos (substituídos por api/webhooks/stripe.js e api/webhooks/pix.js)
+api/stripe-webhook.js
+api/webhook-pix.js
+api/webhook-stripe.js
+
+# Duplicatas e testes não necessários em produção
+api/stripe-test.js
+api/stripe-checkout.js
+
+# Manter apenas APIs core (8 funções, limite Hobby = 12):
+# api/webhooks/stripe.js  - webhook Stripe (novo)
+# api/webhooks/pix.js     - webhook PIX (novo)
+# api/check-payment.js    - verificar pagamento
+# api/check-user-plan.js  - verificar plano do usuário
+# api/stripe-payment-unified.js - pagamentos Stripe
+# api/stripe-secure-payment.js  - pagamentos seguros
+# api/db.js                - utilidade database
+# api/verify-pix-payment.js - verificar pagamento PIX
 
 # Arquivos de desenvolvimento
 *.md
