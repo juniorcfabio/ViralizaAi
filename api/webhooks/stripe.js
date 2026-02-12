@@ -6,8 +6,8 @@ export const config = { api: { bodyParser: false } };
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
 );
 
 // ==================== FERRAMENTAS POR PLANO ====================
@@ -301,15 +301,36 @@ export default async function handler(req, res) {
     // ==================== CHECKOUT COMPLETADO ====================
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
-      const { userId, planType, toolName } = session.metadata || {};
+      let { userId, planType, planName, toolName } = session.metadata || {};
       const amount = (session.amount_total || 0) / 100;
 
-      console.log('💳 Checkout completado:', { userId, planType, toolName, amount });
+      // Fallback: buscar userId pelo email do cliente
+      if (!userId && session.customer_email) {
+        const { data: userByEmail } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', session.customer_email)
+          .maybeSingle();
+        if (userByEmail) userId = userByEmail.id;
+      }
+
+      // Fallback: usar planName como planType se necessário
+      if (!planType && planName) planType = planName;
+
+      console.log('💳 Checkout completado:', { userId, planType, toolName, amount, email: session.customer_email });
 
       if (userId && planType) {
         await activateSubscription(userId, planType, session.payment_intent || session.id, amount, session.subscription, session.customer);
       } else if (userId && toolName) {
         await activateToolPurchase(userId, toolName, session.payment_intent || session.id, amount);
+      } else {
+        console.warn('⚠️ Checkout sem userId - salvando para revisão manual');
+        await supabase.from('incoming_webhooks').insert({
+          provider: 'stripe',
+          event_type: 'checkout.session.completed.no_user',
+          payload: { session_id: session.id, email: session.customer_email, metadata: session.metadata, amount },
+          status: 'needs_manual_review'
+        });
       }
     }
 

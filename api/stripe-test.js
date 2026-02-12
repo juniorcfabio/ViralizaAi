@@ -23,9 +23,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { planName, amount, successUrl, cancelUrl } = req.body;
+      const { planName, amount, successUrl, cancelUrl, userId, planType, customerEmail } = req.body;
       
-      console.log('📋 Dados recebidos:', { planName, amount, successUrl, cancelUrl });
+      console.log('📋 Dados recebidos:', { planName, amount, successUrl, cancelUrl, userId, planType });
 
       // Validação básica
       if (!planName || !amount || !successUrl || !cancelUrl) {
@@ -35,8 +35,12 @@ export default async function handler(req, res) {
         });
       }
 
-      // Chave Stripe real
-      const stripeSecretKey = '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';
+      // Chave Stripe via variável de ambiente (NUNCA hardcoded)
+      const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeSecretKey) {
+        console.error('❌ STRIPE_SECRET_KEY não configurada');
+        return res.status(500).json({ success: false, error: 'Stripe não configurado' });
+      }
       
       console.log('🔑 Usando chave Stripe real');
 
@@ -60,6 +64,25 @@ export default async function handler(req, res) {
 
       console.log('📡 Enviando para Stripe API...');
 
+      // Montar parâmetros com metadata para o webhook identificar o pagamento
+      const params = new URLSearchParams({
+        'mode': stripeData.mode,
+        'success_url': stripeData.success_url,
+        'cancel_url': stripeData.cancel_url,
+        'payment_method_types[0]': 'card',
+        'line_items[0][price_data][currency]': 'brl',
+        'line_items[0][price_data][product_data][name]': planName,
+        'line_items[0][price_data][unit_amount]': amount.toString(),
+        'line_items[0][quantity]': '1',
+        'metadata[planName]': planName || '',
+        'metadata[planType]': planType || planName || '',
+        'metadata[source]': 'landing_page'
+      });
+
+      // Adicionar userId e email se disponíveis
+      if (userId) params.append('metadata[userId]', userId);
+      if (customerEmail) params.append('customer_email', customerEmail);
+
       // Chamar Stripe API real
       const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {
         method: 'POST',
@@ -67,16 +90,7 @@ export default async function handler(req, res) {
           'Authorization': `Bearer ${stripeSecretKey}`,
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: new URLSearchParams({
-          'mode': stripeData.mode,
-          'success_url': stripeData.success_url,
-          'cancel_url': stripeData.cancel_url,
-          'payment_method_types[0]': 'card',
-          'line_items[0][price_data][currency]': 'brl',
-          'line_items[0][price_data][product_data][name]': planName,
-          'line_items[0][price_data][unit_amount]': amount.toString(),
-          'line_items[0][quantity]': '1'
-        })
+        body: params
       });
 
       console.log('📡 Stripe response status:', stripeResponse.status);

@@ -29,9 +29,21 @@ class WorkingCheckoutService {
         planId: subscriptionData.planId || 'basic'
       };
 
-      // Usar a API funcional stripe-test (temporário até resolver CORS)
+      // Usar a API funcional stripe-test
       const apiUrl = `${window.location.origin}/api/stripe-test`;
       console.log('🔗 Chamando API funcional:', apiUrl);
+
+      // Obter userId do localStorage se disponível
+      const storedUser = localStorage.getItem('viraliza_user');
+      let userId = '';
+      let customerEmail = '';
+      try {
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          userId = parsed.id || parsed.userId || '';
+          customerEmail = parsed.email || '';
+        }
+      } catch (_) {}
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -41,6 +53,9 @@ class WorkingCheckoutService {
         body: JSON.stringify({
           planName: checkoutData.planName,
           amount: checkoutData.amount,
+          planType: subscriptionData.metadata?.planName || checkoutData.planName,
+          userId,
+          customerEmail,
           successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/cancel`
         })

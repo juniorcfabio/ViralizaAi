@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
 );
 
 // ==================== FERRAMENTAS POR PLANO ====================
@@ -235,8 +235,8 @@ export default async function handler(req, res) {
     const planType = metadata.planType || metadata.plan_type || body.planType || body.plan_type;
     const toolName = metadata.toolName || metadata.tool_name || body.toolName || body.tool_name;
 
-    // Gerar eventId único para idempotência
-    const eventId = `pix_${txid || endToEndId || Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    // Gerar eventId determinístico para idempotência (sem randomness)
+    const eventId = `pix_${txid || endToEndId || `manual_${userId}_${Date.now()}`}`;
 
     console.log('🟢 PIX dados extraídos:', { txid, endToEndId, valor, userId, planType, toolName, eventId });
 
