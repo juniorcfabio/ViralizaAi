@@ -47,11 +47,11 @@ const AIVideoGeneratorPage: React.FC = () => {
   });
 
   useEffect(() => {
-    const checkVideoAccess = () => {
+    const checkVideoAccess = async () => {
       if (!user) return;
       
-      // Verificar acesso usando AccessControlService
-      const hasAccess = AccessControlService.hasToolAccess(
+      // Verificar acesso usando AccessControlService (async)
+      const hasAccess = await AccessControlService.hasToolAccess(
         user.id, 
         'IA Video Generator 8K', 
         user.type

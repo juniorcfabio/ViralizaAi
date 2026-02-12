@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import { useNavigate } from 'react-router-dom';
 import EbookGeneratorComponent from '../ui/EbookGenerator';
@@ -19,12 +19,20 @@ const EbookGeneratorPage: React.FC = () => {
   const [purchasing, setPurchasing] = useState(false);
   const [showPixModal, setShowPixModal] = useState(false);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  const [hasEbookAccess, setHasEbookAccess] = useState<boolean>(false);
 
-  const hasEbookAccess = AccessControlService.hasToolAccess(
-    user?.id || 'guest', 
-    'Gerador de Ebooks Premium', 
-    user?.type
-  );
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (user?.type === 'admin') { setHasEbookAccess(true); return; }
+      const access = await AccessControlService.hasToolAccess(
+        user?.id || 'guest',
+        'Gerador de Ebooks Premium',
+        user?.type
+      );
+      setHasEbookAccess(access);
+    };
+    checkAccess();
+  }, [user]);
 
   const businessTypes = [
     { value: 'loja_massas', label: '🍝 Loja de Massas ao Vivo', description: 'Massas artesanais, delivery, eventos' },

@@ -128,15 +128,18 @@ const AIFunnelBuilderPageComplete: React.FC = () => {
 
   // 🔐 VERIFICAR ACESSO AO FUNIL BUILDER
   useEffect(() => {
-    if (user) {
-      const hasAccess = AccessControlService.hasToolAccess(
-        user.id, 
-        'AI Funil Builder', 
-        user.type
-      );
-      setHasFunnelAccess(hasAccess);
-      console.log('🔐 Acesso ao Funil Builder:', hasAccess);
-    }
+    const checkAccess = async () => {
+      if (user) {
+        const hasAccess = await AccessControlService.hasToolAccess(
+          user.id, 
+          'AI Funil Builder', 
+          user.type
+        );
+        setHasFunnelAccess(hasAccess);
+        console.log('🔐 Acesso ao Funil Builder:', hasAccess);
+      }
+    };
+    checkAccess();
   }, [user]);
 
   const generateAIFunnel = async () => {

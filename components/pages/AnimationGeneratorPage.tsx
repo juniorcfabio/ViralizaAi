@@ -57,14 +57,17 @@ const AnimationGeneratorPage: React.FC = () => {
 
   // Verificar acesso
   useEffect(() => {
-    if (user) {
-      const access = AccessControlService.hasToolAccess(
-        user.id,
-        'Gerador de Animações',
-        user.type
-      );
-      setHasAccess(access);
-    }
+    const checkAccess = async () => {
+      if (user) {
+        const access = await AccessControlService.hasToolAccess(
+          user.id,
+          'Gerador de Animações',
+          user.type
+        );
+        setHasAccess(access);
+      }
+    };
+    checkAccess();
   }, [user]);
 
   // Inicializar elementos padrão
