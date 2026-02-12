@@ -1,5 +1,8 @@
 // INTERCEPTADOR ULTRA-ROBUSTO DE RETORNO DO STRIPE
 // Garante ativação imediata sem logout após pagamento
+// INTEGRAÇÃO COM SUPABASE/POSTGRESQL
+
+import autoSupabase from './autoSupabaseIntegration';
 
 interface StripeReturnData {
   session_id: string;
@@ -180,7 +183,19 @@ class StripeReturnHandler {
         };
 
         localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(currentUser));
-        console.log('✅ Usuário atual ativado:', currentUser);
+        // SYNC COM SUPABASE/POSTGRESQL
+        autoSupabase.saveUser(currentUser);
+        autoSupabase.saveToolAccess(currentUser.id || data.userId, data.toolId, 'individual');
+        autoSupabase.savePayment({
+          userId: currentUser.id || data.userId,
+          type: 'tool',
+          itemName: data.toolId,
+          amount: data.amount,
+          paymentMethod: 'stripe',
+          status: 'confirmed',
+          stripeSessionId: data.session_id
+        });
+        console.log('✅ Usuário ativado e sincronizado com Supabase:', currentUser);
       }
 
       // 2. ATIVAR EM TODOS OS USUÁRIOS PERSISTENTES

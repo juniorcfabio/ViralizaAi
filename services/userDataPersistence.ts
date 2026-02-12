@@ -91,6 +91,10 @@ class UserDataPersistenceService {
       
       // Salvar no localStorage com backup
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(existingData));
+      // SYNC COM SUPABASE
+      import('../src/lib/supabase').then(({ supabase }) => {
+        supabase.from('user_data').upsert({ user_id: existingData.userId, data: existingData, updated_at: new Date().toISOString() }).then(() => {});
+      });
       
       // Backup adicional no sessionStorage
       sessionStorage.setItem(`${this.STORAGE_KEY}_backup`, JSON.stringify(existingData));

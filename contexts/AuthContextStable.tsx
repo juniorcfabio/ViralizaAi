@@ -48,7 +48,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
       localStorage.setItem(AUTH_KEY, 'true');
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(userData));
-      console.log('✅ Usuário salvo com segurança');
+      // SYNC COM SUPABASE
+      import('../services/autoSupabaseIntegration').then(({ default: autoSupabase }) => {
+        autoSupabase.saveUser(userData);
+      });
+      console.log('✅ Usuário salvo com segurança + Supabase');
     } catch (error) {
       console.error('❌ Erro ao salvar usuário:', error);
     }

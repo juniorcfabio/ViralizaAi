@@ -1,7 +1,10 @@
 /**
  * Serviço de Pagamento Automático de Afiliados
  * Integração com Stripe/BTG para pagamentos automáticos após aprovação
+ * INTEGRAÇÃO COM SUPABASE/POSTGRESQL
  */
+
+import { supabase } from '../src/lib/supabase';
 
 export interface BankingData {
   bank: string;
@@ -58,6 +61,8 @@ class AffiliatePaymentService {
     };
 
     localStorage.setItem(this.COMMISSION_CONFIG_KEY, JSON.stringify(config));
+    // SYNC COM SUPABASE
+    supabase.from('system_settings').upsert({ key: 'commission_config', value: config, updated_at: new Date().toISOString() }).then(() => {});
     
     // Disparar evento para atualizar todas as referências
     window.dispatchEvent(new CustomEvent('commissionUpdated', { 
@@ -100,7 +105,9 @@ class AffiliatePaymentService {
     try {
       const key = `banking_data_${affiliateId}`;
       localStorage.setItem(key, JSON.stringify(bankingData));
-      console.log(`🏦 Dados bancários salvos para afiliado ${affiliateId}`);
+      // SYNC COM SUPABASE
+      supabase.from('affiliates').upsert({ id: affiliateId, banking_data: bankingData, updated_at: new Date().toISOString() }).then(() => {});
+      console.log(`🏦 Dados bancários salvos para afiliado ${affiliateId} (Supabase + localStorage)`);
     } catch (error) {
       console.error('❌ Erro ao salvar dados bancários:', error);
     }
@@ -146,6 +153,14 @@ class AffiliatePaymentService {
       const requests = this.getAllWithdrawalRequests();
       requests.push(request);
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(requests));
+      // SYNC COM SUPABASE
+      supabase.from('affiliate_withdrawals').insert({
+        id: request.id,
+        affiliate_id: request.affiliateId,
+        amount: request.amount,
+        status: request.status,
+        created_at: request.requestDate
+      }).then(() => {});
 
       console.log(`💸 Solicitação de saque criada: ${request.id} - R$ ${amount}`);
       return request;

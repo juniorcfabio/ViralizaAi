@@ -21,7 +21,7 @@ interface WithdrawalRequest {
 }
 
 const AdminWithdrawalsPageFixed: React.FC = () => {
-  const { users } = useAuth();
+  const { platformUsers: users } = useAuth();
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'processing' | 'paid' | 'rejected'>('all');
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null);
@@ -108,6 +108,10 @@ const AdminWithdrawalsPageFixed: React.FC = () => {
         });
 
         localStorage.setItem(`withdrawals_${withdrawal.userId}`, JSON.stringify(updatedUserWithdrawals));
+        // SYNC COM SUPABASE
+        import('../../src/lib/supabase').then(({ supabase }) => {
+          supabase.from('affiliate_withdrawals').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', withdrawal.id).then(() => {});
+        });
       }
 
       // Atualizar estado local

@@ -159,7 +159,12 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                                     };
                                     
                                     localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(newUser));
-                                    console.log('✅ Login Google realizado com sucesso');
+                                    // SYNC COM SUPABASE
+                                    import('../../services/autoSupabaseIntegration').then(({ default: autoSupabase }) => {
+                                      autoSupabase.saveUser(newUser);
+                                      autoSupabase.logActivity(newUser.id, 'google_login', { email: newUser.email });
+                                    });
+                                    console.log('✅ Login Google realizado e sincronizado com Supabase');
                                     
                                     onClose();
                                     navigate('/dashboard');
@@ -236,7 +241,13 @@ const LoginModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             
             console.log('✅ Login Supabase realizado com sucesso');
             onClose();
-            navigate('/dashboard');
+            // Redirecionar admin para /admin e cliente para /dashboard
+            const loggedUser = result as any;
+            if (loggedUser?.type === 'admin') {
+                navigate('/admin');
+            } else {
+                navigate('/dashboard');
+            }
             
         } catch (error: any) {
             console.error('❌ Erro no login Supabase:', error);
@@ -1298,11 +1309,7 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
                     }}
                     planName={selectedPlan.name}
                     amount={parseFloat(String(selectedPlan.price).replace(',', '.'))}
-                    onPaymentSuccess={() => {
-                        setShowPixModal(false);
-                        setSelectedPlan(null);
-                        alert('✅ Pagamento PIX realizado! Seu plano será ativado em breve.');
-                    }}
+                    onPaymentSuccess={undefined}
                 />
             )}
         </section>

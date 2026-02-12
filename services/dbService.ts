@@ -1,5 +1,106 @@
 
 import { User, AdPartner, SystemVersion, AdPricingConfig, Testimonial, TrustedCompany } from '../types';
+import { supabase } from '../src/lib/supabase';
+
+// ==========================================
+// SYNC COM SUPABASE/POSTGRESQL
+// ==========================================
+const syncUserToSupabase = async (user: User) => {
+  try {
+    await supabase.from('users').upsert({
+      id: user.id,
+      email: user.email,
+      created_at: user.joinedDate || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+    await supabase.from('user_profiles').upsert({
+      user_id: user.id,
+      name: user.name,
+      cpf: (user as any).cpf || '',
+      user_type: user.type || 'client',
+      status: user.status || 'active',
+      joined_date: user.joinedDate || new Date().toISOString(),
+      preferences: {
+        plan: user.plan,
+        socialAccounts: user.socialAccounts || [],
+        paymentMethods: user.paymentMethods || [],
+        billingHistory: user.billingHistory || []
+      },
+      updated_at: new Date().toISOString()
+    });
+    console.log('✅ Usuário sincronizado com Supabase:', user.email);
+  } catch (error) {
+    console.warn('⚠️ Falha ao sincronizar usuário com Supabase:', error);
+  }
+};
+
+const syncDeleteUserToSupabase = async (userId: string) => {
+  try {
+    await supabase.from('user_profiles').delete().eq('user_id', userId);
+    await supabase.from('users').delete().eq('id', userId);
+    console.log('✅ Usuário deletado do Supabase:', userId);
+  } catch (error) {
+    console.warn('⚠️ Falha ao deletar usuário do Supabase:', error);
+  }
+};
+
+const loadUsersFromSupabase = async (): Promise<User[]> => {
+  try {
+    const { data: profiles, error } = await supabase
+      .from('user_profiles')
+      .select('*');
+    if (error) throw error;
+    if (!profiles || profiles.length === 0) return [];
+    return profiles.map((p: any) => ({
+      id: p.user_id,
+      name: p.name,
+      email: '',
+      cpf: p.cpf,
+      type: p.user_type,
+      status: p.status,
+      plan: p.preferences?.plan,
+      joinedDate: p.joined_date,
+      socialAccounts: p.preferences?.socialAccounts || [],
+      paymentMethods: p.preferences?.paymentMethods || [],
+      billingHistory: p.preferences?.billingHistory || []
+    }));
+  } catch (error) {
+    console.warn('⚠️ Falha ao carregar usuários do Supabase:', error);
+    return [];
+  }
+};
+
+const syncPartnerToSupabase = async (partner: AdPartner) => {
+  try {
+    await supabase.from('ad_partners').upsert({
+      id: partner.id,
+      company_name: partner.companyName,
+      role: partner.role,
+      logo: partner.logo,
+      website_url: partner.websiteUrl,
+      status: partner.status,
+      plan_type: partner.planType,
+      payment_status: partner.paymentStatus,
+      joined_date: partner.joinedDate,
+      is_mock: partner.isMock || false,
+      updated_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.warn('⚠️ Falha ao sincronizar parceiro com Supabase:', error);
+  }
+};
+
+const syncSettingToSupabase = async (key: string, value: any) => {
+  try {
+    await supabase.from('system_settings').upsert({
+      key: key,
+      value: value,
+      updated_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.warn('⚠️ Falha ao sincronizar configuração com Supabase:', error);
+  }
+};
 
 const DB_NAME = 'ViralizaDB';
 const DB_VERSION = 4; 
@@ -424,10 +525,13 @@ export const addUserDB = (user: User): Promise<User> => {
                 resolve(user);
             };
             request.onsuccess = () => {
+                // SYNC COM SUPABASE/POSTGRESQL
+                syncUserToSupabase(user);
                 resolve(user);
             };
         } catch (e) {
              console.warn("DB Error, relying on backup", e);
+             syncUserToSupabase(user);
              resolve(user);
         }
     });
@@ -449,9 +553,12 @@ export const updateUserDB = (user: User): Promise<User> => {
 
             request.onerror = () => reject('Erro ao atualizar usuário.');
             request.onsuccess = () => {
+                // SYNC COM SUPABASE/POSTGRESQL
+                syncUserToSupabase(user);
                 resolve(user);
             };
         } catch (e) {
+            syncUserToSupabase(user);
             resolve(user);
         }
     });
@@ -471,6 +578,8 @@ export const deleteUsersDB = (userIds: string[]): Promise<void> => {
 
         userIds.forEach(id => {
             objectStore.delete(id);
+            // SYNC COM SUPABASE/POSTGRESQL
+            syncDeleteUserToSupabase(id);
         });
 
         transaction.onerror = () => reject('Erro ao deletar usuários.');
@@ -519,7 +628,10 @@ export const addPartnerDB = (partner: AdPartner): Promise<AdPartner> => {
         const transaction = dbInstance.transaction(PARTNERS_STORE_NAME, 'readwrite');
         const objectStore = transaction.objectStore(PARTNERS_STORE_NAME);
         const request = objectStore.put(partner);
-        request.onsuccess = () => resolve(partner);
+        request.onsuccess = () => {
+            syncPartnerToSupabase(partner);
+            resolve(partner);
+        };
         request.onerror = () => reject('Erro ao adicionar parceiro');
     });
 };
@@ -530,7 +642,10 @@ export const updatePartnerDB = (partner: AdPartner): Promise<AdPartner> => {
         const transaction = dbInstance.transaction(PARTNERS_STORE_NAME, 'readwrite');
         const objectStore = transaction.objectStore(PARTNERS_STORE_NAME);
         const request = objectStore.put(partner);
-        request.onsuccess = () => resolve(partner);
+        request.onsuccess = () => {
+            syncPartnerToSupabase(partner);
+            resolve(partner);
+        };
         request.onerror = () => reject('Erro ao atualizar parceiro');
     });
 };
@@ -607,6 +722,7 @@ export const getSystemVersion = (): SystemVersion => {
 
 export const updateSystemVersion = (version: SystemVersion) => {
     localStorage.setItem('viraliza_system_version', JSON.stringify(version));
+    syncSettingToSupabase('system_version', version);
 };
 
 export const getAdPricingConfig = (): AdPricingConfig => {
@@ -616,6 +732,7 @@ export const getAdPricingConfig = (): AdPricingConfig => {
 
 export const updateAdPricingConfig = (config: AdPricingConfig) => {
     localStorage.setItem(AD_PRICING_KEY, JSON.stringify(config));
+    syncSettingToSupabase('ad_pricing_config', config);
 }
 
 // --- Trusted Companies CRUD ---

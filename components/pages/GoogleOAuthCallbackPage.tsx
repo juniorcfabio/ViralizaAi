@@ -45,9 +45,9 @@ const GoogleOAuthCallbackPage: React.FC = () => {
 
         console.log('🔄 Trocando código por token...');
         
-        // Usar credenciais diretas (sem env vars que podem não estar carregando)
-        const clientId = '158170096258-5bb00bb3jqjqjcv4r1no1ac5v3dc2e6.apps.googleusercontent.com';
-        const clientSecret = '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';
+        // Usar credenciais das variáveis de ambiente
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '158170096258-5bb00bb3jqjqjcv4r1no1ac5v3dc2e6.apps.googleusercontent.com';
+        const clientSecret = import.meta.env.GOOGLE_CLIENT_SECRET || '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';
         const redirectUri = `${window.location.origin}/auth/google/callback`;
 
         const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -114,6 +114,11 @@ const GoogleOAuthCallbackPage: React.FC = () => {
         
         // Salvar usuário no localStorage
         localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(newUser));
+        // SYNC COM SUPABASE
+        import('../../services/autoSupabaseIntegration').then(({ default: autoSupabase }) => {
+          autoSupabase.saveUser(newUser);
+          autoSupabase.logActivity(newUser.id, 'google_oauth_callback', { email: newUser.email });
+        });
         localStorage.removeItem('google_oauth_state');
         localStorage.removeItem('google_oauth_redirect');
 

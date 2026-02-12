@@ -1,7 +1,9 @@
 /**
  * Real Data Service - Fornece dados reais para gráficos e métricas
- * Substitui dados simulados por informações reais de produção
+ * Integrado 100% com Supabase/PostgreSQL
  */
+
+import { supabase } from '../src/lib/supabase';
 
 export interface RealMetrics {
   users: {
@@ -45,20 +47,35 @@ class RealDataService {
   private lastUpdate: Date;
 
   private constructor() {
-    this.metrics = this.loadRealMetrics();
+    this.metrics = this.getDefaultMetrics();
     this.lastUpdate = new Date();
+    // Buscar dados reais do Supabase na inicialização
+    this.fetchFromSupabase().then(() => {
+      this.updateMetrics();
+      console.log('✅ RealDataService inicializado com dados do Supabase/PostgreSQL');
+    });
     this.startRealTimeUpdates();
   }
 
-  private loadRealMetrics(): RealMetrics {
-    // Carregar dados reais do localStorage ou APIs
-    const savedMetrics = localStorage.getItem('viraliza_real_metrics');
-    
-    if (savedMetrics) {
-      return JSON.parse(savedMetrics);
-    }
+  private getDefaultMetrics(): RealMetrics {
+    return {
+      users: { total: 0, active: 0, new: 0, growth: 0 },
+      revenue: { daily: 0, weekly: 0, monthly: 0, total: 0 },
+      affiliates: { total: 0, active: 0, commissions: 0 },
+      engagement: { views: 0, clicks: 0, conversions: 0, ctr: 0 }
+    };
+  }
 
-    // Dados base reais iniciais baseados em dados reais do sistema
+  public static getInstance(): RealDataService {
+    if (!RealDataService.instance) {
+      RealDataService.instance = new RealDataService();
+    }
+    return RealDataService.instance;
+  }
+
+  private async fetchRealMetricsFromAPI(): Promise<RealMetrics> {
+    // Buscar dados reais do Supabase/PostgreSQL
+    await this.fetchFromSupabase();
     return {
       users: { 
         total: this.countRegisteredUsers(), 
@@ -86,73 +103,6 @@ class RealDataService {
     };
   }
 
-  public static getInstance(): RealDataService {
-    if (!RealDataService.instance) {
-      RealDataService.instance = new RealDataService();
-    }
-    return RealDataService.instance;
-  }
-
-  private async initializeRealMetrics(): Promise<void> {
-    try {
-      // Buscar dados reais da API de produção
-      const realData = await this.fetchRealMetricsFromAPI();
-      this.metrics = realData;
-    } catch (error) {
-      console.error('Erro ao buscar métricas reais:', error);
-      // Manter dados zerados se não conseguir buscar dados reais
-      console.log('Usando dados zerados até conseguir conectar com API real');
-    }
-  }
-
-  private async fetchRealMetricsFromAPI(): Promise<RealMetrics> {
-    // Sistema local - retorna métricas baseadas em dados locais
-    try {
-      // Simular delay de API para realismo
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Retornar métricas calculadas localmente
-      return {
-        users: { 
-          total: this.countRegisteredUsers(), 
-          active: this.countActiveUsers(), 
-          new: this.countNewUsers(), 
-          growth: this.calculateUserGrowth() 
-        },
-        revenue: { 
-          daily: this.calculateDailyRevenue(), 
-          weekly: this.calculateWeeklyRevenue(), 
-          monthly: this.calculateMonthlyRevenue(), 
-          total: this.calculateTotalRevenue() 
-        },
-        affiliates: { 
-          total: this.countTotalAffiliates(), 
-          active: this.countActiveAffiliates(), 
-          commissions: this.calculateTotalCommissions() 
-        },
-        engagement: { 
-          views: this.countTotalViews(), 
-          clicks: this.countTotalClicks(), 
-          conversions: this.countTotalConversions(), 
-          ctr: this.calculateCTR() 
-        }
-      };
-    } catch (error) {
-      console.error('Erro ao calcular métricas locais:', error);
-      // Retornar métricas zeradas em caso de erro
-      return {
-        users: { total: 0, active: 0, new: 0, growth: 0 },
-        revenue: { daily: 0, weekly: 0, monthly: 0, total: 0 },
-        affiliates: { total: 0, active: 0, commissions: 0 },
-        engagement: { views: 0, clicks: 0, conversions: 0, ctr: 0 }
-      };
-    }
-  }
-
-  private getAuthToken(): string {
-    return localStorage.getItem('viraliza_ai_auth_token_v1') || '';
-  }
-
   private startRealTimeUpdates(): void {
     // Atualiza métricas a cada 5 minutos com dados reais
     setInterval(() => {
@@ -165,7 +115,7 @@ class RealDataService {
 
   private async updateRealTimeMetrics(): Promise<void> {
     try {
-      // Buscar dados reais atualizados da API
+      // Buscar dados reais atualizados do Supabase/PostgreSQL
       const realData = await this.fetchRealMetricsFromAPI();
       this.metrics = realData;
       this.lastUpdate = new Date();
@@ -311,7 +261,7 @@ class RealDataService {
       date.setDate(date.getDate() - i);
       
       // Variação realística baseada em padrões de mercado
-      const variation = 0.85 + (Math.random() * 0.3); // ±15% variação
+      const variation = 1.0; // Sem variação artificial
       const dayOfWeek = date.getDay();
       const weekendFactor = (dayOfWeek === 0 || dayOfWeek === 6) ? 0.7 : 1.0;
       
@@ -326,45 +276,45 @@ class RealDataService {
     return data;
   }
 
+  public async getTopPerformingContentFromDB(): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('generated_content')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('❌ Erro ao buscar conteúdo do Supabase:', error);
+      return [];
+    }
+  }
+
   public getTopPerformingContent(): any[] {
-    return [
-      {
-        title: "Como Ganhar R$ 10.000/mês com Marketing Digital",
-        views: 45672,
-        conversions: 1247,
-        revenue: 24750.00
-      },
-      {
-        title: "Estratégias de Afiliados que Realmente Funcionam",
-        views: 38291,
-        conversions: 892,
-        revenue: 17840.00
-      },
-      {
-        title: "IA para Criação de Conteúdo Viral",
-        views: 29847,
-        conversions: 634,
-        revenue: 12680.00
-      }
-    ];
+    return [];
+  }
+
+  public async getActiveUsersFromDB(): Promise<any[]> {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .gte('updated_at', thirtyDaysAgo.toISOString())
+        .order('updated_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('❌ Erro ao buscar usuários ativos do Supabase:', error);
+      return [];
+    }
   }
 
   public getActiveUsers(): any[] {
-    const users = [];
-    const countries = ['Brasil', 'Estados Unidos', 'Portugal', 'Espanha', 'México'];
-    
-    for (let i = 0; i < 50; i++) {
-      users.push({
-        id: `user_${i + 1}`,
-        name: `Usuário ${i + 1}`,
-        country: countries[Math.floor(Math.random() * countries.length)],
-        plan: Math.random() > 0.7 ? 'Premium' : 'Básico',
-        revenue: Math.floor(Math.random() * 500 + 50),
-        joinDate: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000)
-      });
-    }
-    
-    return users;
+    return [];
   }
 
   public getMarketAnalysis(): any {
@@ -384,126 +334,187 @@ class RealDataService {
     };
   }
 
-  // MÉTODOS PARA DADOS REAIS BASEADOS NO SISTEMA
+  // ==========================================
+  // MÉTODOS INTEGRADOS COM SUPABASE/POSTGRESQL
+  // ==========================================
   private countRegisteredUsers(): number {
-    const users = JSON.parse(localStorage.getItem('viraliza_users') || '[]');
-    return users.length;
+    return this.cachedCounts.totalUsers;
   }
 
   private countActiveUsers(): number {
-    const users = JSON.parse(localStorage.getItem('viraliza_users') || '[]');
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    return users.filter((user: any) => {
-      const lastLogin = new Date(user.lastLogin || user.createdAt);
-      return lastLogin > thirtyDaysAgo;
-    }).length;
+    return this.cachedCounts.activeUsers;
   }
 
   private countNewUsers(): number {
-    const users = JSON.parse(localStorage.getItem('viraliza_users') || '[]');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    return users.filter((user: any) => {
-      const createdAt = new Date(user.createdAt);
-      return createdAt >= today;
-    }).length;
+    return this.cachedCounts.newUsers;
   }
 
   private calculateUserGrowth(): number {
-    const users = JSON.parse(localStorage.getItem('viraliza_users') || '[]');
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const newUsers = users.filter((user: any) => {
-      const createdAt = new Date(user.createdAt);
-      return createdAt > thirtyDaysAgo;
-    }).length;
-    
-    const totalUsers = users.length;
-    return totalUsers > 0 ? (newUsers / totalUsers) * 100 : 0;
+    const total = this.cachedCounts.totalUsers;
+    const newUsers = this.cachedCounts.newUsers;
+    return total > 0 ? (newUsers / total) * 100 : 0;
   }
 
   private calculateDailyRevenue(): number {
-    const transactions = JSON.parse(localStorage.getItem('viraliza_transactions') || '[]');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    return transactions
-      .filter((t: any) => new Date(t.date) >= today)
-      .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+    return this.cachedCounts.dailyRevenue;
   }
 
   private calculateWeeklyRevenue(): number {
-    const transactions = JSON.parse(localStorage.getItem('viraliza_transactions') || '[]');
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    
-    return transactions
-      .filter((t: any) => new Date(t.date) >= weekAgo)
-      .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+    return this.cachedCounts.weeklyRevenue;
   }
 
   private calculateMonthlyRevenue(): number {
-    const transactions = JSON.parse(localStorage.getItem('viraliza_transactions') || '[]');
-    const monthAgo = new Date();
-    monthAgo.setDate(monthAgo.getDate() - 30);
-    
-    return transactions
-      .filter((t: any) => new Date(t.date) >= monthAgo)
-      .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+    return this.cachedCounts.monthlyRevenue;
   }
 
   private calculateTotalRevenue(): number {
-    const transactions = JSON.parse(localStorage.getItem('viraliza_transactions') || '[]');
-    return transactions.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+    return this.cachedCounts.totalRevenue;
   }
 
   private countTotalAffiliates(): number {
-    const users = JSON.parse(localStorage.getItem('viraliza_users') || '[]');
-    return users.filter((user: any) => user.affiliateInfo?.isActive).length;
+    return this.cachedCounts.totalAffiliates;
   }
 
   private countActiveAffiliates(): number {
-    const users = JSON.parse(localStorage.getItem('viraliza_users') || '[]');
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    return users.filter((user: any) => {
-      if (!user.affiliateInfo?.isActive) return false;
-      const lastActivity = new Date(user.affiliateInfo.lastActivity || user.createdAt);
-      return lastActivity > thirtyDaysAgo;
-    }).length;
+    return this.cachedCounts.activeAffiliates;
   }
 
   private calculateTotalCommissions(): number {
-    const withdrawals = JSON.parse(localStorage.getItem('viraliza_withdrawals') || '[]');
-    return withdrawals
-      .filter((w: any) => w.status === 'paid')
-      .reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
+    return this.cachedCounts.totalCommissions;
   }
 
   private countTotalViews(): number {
-    const analytics = JSON.parse(localStorage.getItem('viraliza_analytics') || '{}');
-    return analytics.totalViews || 0;
+    return this.cachedCounts.totalViews;
   }
 
   private countTotalClicks(): number {
-    const analytics = JSON.parse(localStorage.getItem('viraliza_analytics') || '{}');
-    return analytics.totalClicks || 0;
+    return this.cachedCounts.totalClicks;
   }
 
   private countTotalConversions(): number {
-    const transactions = JSON.parse(localStorage.getItem('viraliza_transactions') || '[]');
-    return transactions.length;
+    return this.cachedCounts.totalConversions;
   }
 
   private calculateCTR(): number {
-    const views = this.countTotalViews();
-    const clicks = this.countTotalClicks();
+    const views = this.cachedCounts.totalViews;
+    const clicks = this.cachedCounts.totalClicks;
     return views > 0 ? (clicks / views) * 100 : 0;
+  }
+
+  // Cache de contagens do Supabase
+  private cachedCounts = {
+    totalUsers: 0, activeUsers: 0, newUsers: 0,
+    dailyRevenue: 0, weeklyRevenue: 0, monthlyRevenue: 0, totalRevenue: 0,
+    totalAffiliates: 0, activeAffiliates: 0, totalCommissions: 0,
+    totalViews: 0, totalClicks: 0, totalConversions: 0
+  };
+
+  // Buscar dados reais do Supabase/PostgreSQL
+  public async fetchFromSupabase(): Promise<void> {
+    try {
+      // 1. Contagem de usuários da tabela users
+      const { count: totalUsers } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+      this.cachedCounts.totalUsers = totalUsers || 0;
+
+      // 2. Usuários ativos (últimos 30 dias) da tabela user_profiles
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const { count: activeUsers } = await supabase
+        .from('user_profiles')
+        .select('*', { count: 'exact', head: true })
+        .gte('updated_at', thirtyDaysAgo.toISOString());
+      this.cachedCounts.activeUsers = activeUsers || 0;
+
+      // 3. Novos usuários hoje
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const { count: newUsers } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', today.toISOString());
+      this.cachedCounts.newUsers = newUsers || 0;
+
+      // 4. Receita diária da tabela payments (confirmados)
+      const { data: dailyPayments } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('status', 'confirmed')
+        .gte('created_at', today.toISOString());
+      this.cachedCounts.dailyRevenue = (dailyPayments || []).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+
+      // 5. Receita semanal
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const { data: weeklyPayments } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('status', 'confirmed')
+        .gte('created_at', weekAgo.toISOString());
+      this.cachedCounts.weeklyRevenue = (weeklyPayments || []).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+
+      // 6. Receita mensal
+      const monthAgo = new Date();
+      monthAgo.setDate(monthAgo.getDate() - 30);
+      const { data: monthlyPayments } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('status', 'confirmed')
+        .gte('created_at', monthAgo.toISOString());
+      this.cachedCounts.monthlyRevenue = (monthlyPayments || []).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+
+      // 7. Receita total
+      const { data: allPayments } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('status', 'confirmed');
+      this.cachedCounts.totalRevenue = (allPayments || []).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+
+      // 8. Afiliados da tabela affiliates
+      const { count: totalAffiliates } = await supabase
+        .from('affiliates')
+        .select('*', { count: 'exact', head: true });
+      this.cachedCounts.totalAffiliates = totalAffiliates || 0;
+
+      // 9. Afiliados ativos
+      const { count: activeAffiliates } = await supabase
+        .from('affiliates')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+      this.cachedCounts.activeAffiliates = activeAffiliates || 0;
+
+      // 10. Comissões pagas da tabela affiliate_commissions
+      const { data: commissions } = await supabase
+        .from('affiliate_commissions')
+        .select('amount')
+        .eq('status', 'paid');
+      this.cachedCounts.totalCommissions = (commissions || []).reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0);
+
+      // 11. Views e clicks da tabela activity_logs
+      const { count: totalViews } = await supabase
+        .from('activity_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('action', 'page_view');
+      this.cachedCounts.totalViews = totalViews || 0;
+
+      const { count: totalClicks } = await supabase
+        .from('activity_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('action', 'click');
+      this.cachedCounts.totalClicks = totalClicks || 0;
+
+      // 12. Conversões = total de purchases confirmadas
+      const { count: totalConversions } = await supabase
+        .from('purchases')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'confirmed');
+      this.cachedCounts.totalConversions = totalConversions || 0;
+
+      console.log('✅ Dados carregados do Supabase/PostgreSQL:', this.cachedCounts);
+    } catch (error) {
+      console.error('❌ Erro ao buscar dados do Supabase:', error);
+    }
   }
 
   private updateMetrics(): void {
@@ -533,8 +544,7 @@ class RealDataService {
       }
     };
     
-    // Salvar métricas atualizadas
-    localStorage.setItem('viraliza_real_metrics', JSON.stringify(this.metrics));
+    // Dados vêm do Supabase/PostgreSQL - sem necessidade de localStorage
     this.lastUpdate = new Date();
   }
 }

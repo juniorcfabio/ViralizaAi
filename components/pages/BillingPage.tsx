@@ -468,10 +468,7 @@ const BillingPage: React.FC = () => {
                     onClose={() => setPixModalOpen(false)}
                     amount={typeof pixSelectedPlan.price === 'number' ? pixSelectedPlan.price : parseFloat(String(pixSelectedPlan.price))}
                     planName={`Assinatura ${pixSelectedPlan.name} - ViralizaAI`}
-                    onPaymentSuccess={() => {
-                        setPixModalOpen(false);
-                        alert('✅ Pagamento PIX realizado! Plano ativado.');
-                    }}
+                    onPaymentSuccess={undefined}
                 />
             )}
 
@@ -482,10 +479,7 @@ const BillingPage: React.FC = () => {
                     onClose={() => setPixGrowthEngineOpen(false)}
                     amount={pixGrowthEngineData.price}
                     planName={`Motor de Crescimento Viraliza - ${pixGrowthEngineData.label}`}
-                    onPaymentSuccess={() => {
-                        setPixGrowthEngineOpen(false);
-                        alert('✅ Pagamento PIX realizado! Ferramenta ativada.');
-                    }}
+                    onPaymentSuccess={undefined}
                 />
             )}
         </>

@@ -1,5 +1,8 @@
 // SISTEMA ULTRA-ROBUSTO DE ATIVAÇÃO PÓS-PAGAMENTO
 // Garante que pagamentos aprovados liberem ferramentas IMEDIATAMENTE
+// INTEGRAÇÃO COM SUPABASE/POSTGRESQL
+
+import autoSupabase from './autoSupabaseIntegration';
 
 interface PaymentActivation {
   userId: string;
@@ -77,7 +80,9 @@ class PaymentActivationService {
       };
 
       localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(currentUser));
-      console.log('✅ Usuário atual atualizado');
+      // SYNC COM SUPABASE
+      autoSupabase.saveUser(currentUser);
+      console.log('✅ Usuário atual atualizado e sincronizado com Supabase');
     }
 
     // 2. Ativar em todos os usuários persistentes
@@ -126,6 +131,19 @@ class PaymentActivationService {
 
     // Salvar chave específica
     localStorage.setItem(`activation_${sessionId}`, JSON.stringify(activation));
+
+    // SYNC COM SUPABASE/POSTGRESQL
+    autoSupabase.savePayment({
+      userId,
+      type: 'tool',
+      itemName: toolId,
+      amount,
+      paymentMethod: 'stripe',
+      status: 'confirmed',
+      stripeSessionId: sessionId
+    });
+    autoSupabase.saveToolAccess(userId, toolId, 'individual');
+    autoSupabase.logActivity(userId, 'payment_activation', { toolId, sessionId, amount });
   }
 
   // Broadcast para todas as abas

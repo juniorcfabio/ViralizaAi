@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import ServiceAreaSelector from '../ui/ServiceAreaSelector';
 import { addTestimonialDB } from '../../services/dbService';
 import { Testimonial } from '../../types';

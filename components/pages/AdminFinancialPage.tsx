@@ -14,7 +14,7 @@ import {
     Legend,
     ResponsiveContainer
 } from 'recharts';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import { Transaction, TransactionStatus, User, AdminPayoutConfig } from '../../types';
 
 // Icons
@@ -129,35 +129,23 @@ const planPrices: { [key: string]: number } = {
     Mensal: 59.9
 };
 const gateways: ('Stripe' | 'PayPal' | 'Mock')[] = ['Stripe', 'PayPal', 'Mock'];
-const transactionStatuses: TransactionStatus[] = ['Pago', 'Falhou', 'Reembolsado', 'Pendente'];
+const transactionStatuses: TransactionStatus[] = ['completed', 'failed', 'refunded', 'pending'];
 
-const generateMockTransactions = (users: User[]): Transaction[] => {
-    const transactions: Transaction[] = [];
-    users
-        .filter((u) => u.type === 'client')
-        .forEach((user) => {
-            const plan = user.plan || 'Mensal';
-            const amount = planPrices[plan];
-            if (!amount) return;
-
-            for (let i = 0; i < Math.floor(Math.random() * 5) + 1; i++) {
-                const date = new Date();
-                date.setMonth(date.getMonth() - i);
-                date.setDate(Math.floor(Math.random() * 28) + 1);
-
-                transactions.push({
-                    id: `tr_${user.id}_${i}`,
-                    userId: user.id,
-                    userName: user.name,
-                    plan: plan,
-                    amount: amount,
-                    date: date.toISOString(),
-                    status: transactionStatuses[Math.floor(Math.random() * transactionStatuses.length)],
-                    gateway: gateways[Math.floor(Math.random() * gateways.length)]
-                });
+const loadRealTransactions = (users: User[]): Transaction[] => {
+    // Carregar transações reais do localStorage (salvas pelo sistema de pagamentos)
+    try {
+        const stored = localStorage.getItem('viraliza_real_transactions');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed.sort((a: Transaction, b: Transaction) => new Date(b.date).getTime() - new Date(a.date).getTime());
             }
-        });
-    return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        }
+    } catch (e) {
+        console.warn('Erro ao carregar transações reais:', e);
+    }
+    // Se não houver transações reais, retornar array vazio (dados reais = sem simulação)
+    return [];
 };
 
 const FinancialStatCard: React.FC<{ title: string; value: string; icon: React.ElementType }> = ({
@@ -330,12 +318,12 @@ const AdminFinancialPage: React.FC = () => {
     }, []);
 
     const transactions = useMemo(
-        () => generateMockTransactions(platformUsers),
+        () => loadRealTransactions(platformUsers),
         [platformUsers]
     );
 
     const paidTransactions = useMemo(
-        () => transactions.filter((t) => t.status === 'Pago'),
+        () => transactions.filter((t) => t.status === 'completed'),
         [transactions]
     );
 
@@ -525,13 +513,13 @@ const AdminFinancialPage: React.FC = () => {
 
     const getStatusChip = (status: TransactionStatus) => {
         switch (status) {
-            case 'Pago':
+            case 'completed':
                 return 'bg-green-500 bg-opacity-20 text-green-300';
-            case 'Falhou':
+            case 'failed':
                 return 'bg-red-500 bg-opacity-20 text-red-300';
-            case 'Reembolsado':
+            case 'refunded':
                 return 'bg-purple-500 bg-opacity-20 text-purple-300';
-            case 'Pendente':
+            case 'pending':
                 return 'bg-yellow-500 bg-opacity-20 text-yellow-300';
         }
     };
@@ -539,6 +527,9 @@ const AdminFinancialPage: React.FC = () => {
     const handleSavePayout = (config: AdminPayoutConfig) => {
         setPayoutConfig(config);
         localStorage.setItem('viraliza_admin_payout', JSON.stringify(config));
+        import('../../src/lib/supabase').then(({ supabase }) => {
+            supabase.from('system_settings').upsert({ key: 'admin_payout_config', value: config, updated_at: new Date().toISOString() }).then(() => {});
+        });
         setIsPayoutModalOpen(false);
         setNotification('Dados bancários atualizados com sucesso!');
         setTimeout(() => setNotification(''), 3000);

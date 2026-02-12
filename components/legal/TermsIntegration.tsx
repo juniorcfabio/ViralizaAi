@@ -43,6 +43,10 @@ const TermsIntegration: React.FC<TermsIntegrationProps> = ({
     };
     
     localStorage.setItem('viralizaai_terms_acceptance', JSON.stringify(acceptanceData));
+    // SYNC COM SUPABASE
+    import('../../src/lib/supabase').then(({ supabase }) => {
+      supabase.from('activity_logs').insert({ action: 'terms_accepted', details: acceptanceData, created_at: new Date().toISOString() }).then(() => {});
+    });
     setAccepted(true);
     onAccept();
   };

@@ -469,7 +469,7 @@ const AnimationGeneratorPage: React.FC = () => {
             onClose={() => setShowPixModal(false)}
             planName="Gerador de Animações"
             amount={67.00}
-            onPaymentSuccess={handlePixPaymentSuccess}
+            onPaymentSuccess={undefined}
           />
         )}
       </div>

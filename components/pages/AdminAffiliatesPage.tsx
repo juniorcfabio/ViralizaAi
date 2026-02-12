@@ -86,6 +86,10 @@ const AdminAffiliatesPage: React.FC = () => {
     
     const handleSaveCommission = () => {
         localStorage.setItem('viraliza_affiliate_commission_rate', String(affiliateCommission));
+        // SYNC COM SUPABASE
+        import('../../src/lib/supabase').then(({ supabase }) => {
+            supabase.from('system_settings').upsert({ key: 'affiliate_commission_rate', value: { rate: affiliateCommission }, updated_at: new Date().toISOString() }).then(() => {});
+        });
         showNotification('Percentual de comissão de afiliados salvo com sucesso!');
     };
 

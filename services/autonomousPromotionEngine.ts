@@ -540,15 +540,15 @@ class AutonomousPromotionEngine {
 
   private async generateViralContent(niche: any, platform: string): Promise<string> {
     const templates = {
-      facebook: `🚀 DESCOBERTA REVOLUCIONÁRIA para ${niche.name}!\n\n✨ Imagine aumentar suas vendas em ${180 + Math.floor(Math.random() * 200)}% em apenas 30 dias...\n\n🎯 Isso é exatamente o que aconteceu com mais de 10.000 empresários que descobriram o ViralizaAI!\n\n💡 Nossa IA ultra-avançada:\n• Cria campanhas que convertem 5x mais\n• Automatiza todo seu marketing\n• Encontra clientes enquanto você dorme\n\n🔥 OFERTA LIMITADA: Teste GRÁTIS por 24h!\n\n👆 Clique no link e transforme seu negócio HOJE!`,
+      facebook: `🚀 DESCOBERTA REVOLUCIONÁRIA para ${niche.name}!\n\n✨ Imagine aumentar suas vendas em 250% em apenas 30 dias...\n\n🎯 Isso é exatamente o que aconteceu com mais de 10.000 empresários que descobriram o ViralizaAI!\n\n💡 Nossa IA ultra-avançada:\n• Cria campanhas que convertem 5x mais\n• Automatiza todo seu marketing\n• Encontra clientes enquanto você dorme\n\n🔥 OFERTA LIMITADA: Teste GRÁTIS por 24h!\n\n👆 Clique no link e transforme seu negócio HOJE!`,
       
-      instagram: `🚀 REVOLUÇÃO no ${niche.name}!\n\n✨ +${180 + Math.floor(Math.random() * 200)}% vendas em 30 dias\n🤖 IA que trabalha 24/7 por você\n💰 ROI médio de 850%\n\n🔥 TESTE GRÁTIS 24h!\n\n#ViralizaAI #MarketingDigital #Vendas #IA #Automacao #Sucesso`,
+      instagram: `🚀 REVOLUÇÃO no ${niche.name}!\n\n✨ +250% vendas em 30 dias\n🤖 IA que trabalha 24/7 por você\n💰 ROI médio de 850%\n\n🔥 TESTE GRÁTIS 24h!\n\n#ViralizaAI #MarketingDigital #Vendas #IA #Automacao #Sucesso`,
       
-      twitter: `🚀 THREAD: Como aumentei ${180 + Math.floor(Math.random() * 200)}% as vendas com IA\n\n1/ Descobri uma ferramenta que mudou TUDO\n2/ IA que cria campanhas sozinha\n3/ Resultados em 24h\n4/ ROI de 850%\n\n🔥 Teste grátis: [link]\n\n#ViralizaAI #MarketingIA`,
+      twitter: `🚀 THREAD: Como aumentei 250% as vendas com IA\n\n1/ Descobri uma ferramenta que mudou TUDO\n2/ IA que cria campanhas sozinha\n3/ Resultados em 24h\n4/ ROI de 850%\n\n🔥 Teste grátis: [link]\n\n#ViralizaAI #MarketingIA`,
       
-      linkedin: `🚀 CASE DE SUCESSO: Como a IA revolucionou o marketing de ${niche.name}\n\nApós 15 anos no mercado digital, posso afirmar: NUNCA vi uma ferramenta tão poderosa quanto o ViralizaAI.\n\n📊 RESULTADOS REAIS:\n• +${180 + Math.floor(Math.random() * 200)}% em conversões\n• ROI médio de 850%\n• Automação completa 24/7\n\n💡 A diferença? IA que realmente entende seu negócio.\n\n🎯 Para profissionais sérios sobre crescimento: teste grátis por 24h.\n\n#MarketingDigital #InteligenciaArtificial #Vendas #Automacao`,
+      linkedin: `🚀 CASE DE SUCESSO: Como a IA revolucionou o marketing de ${niche.name}\n\nApós 15 anos no mercado digital, posso afirmar: NUNCA vi uma ferramenta tão poderosa quanto o ViralizaAI.\n\n📊 RESULTADOS REAIS:\n• +250% em conversões\n• ROI médio de 850%\n• Automação completa 24/7\n\n💡 A diferença? IA que realmente entende seu negócio.\n\n🎯 Para profissionais sérios sobre crescimento: teste grátis por 24h.\n\n#MarketingDigital #InteligenciaArtificial #Vendas #Automacao`,
       
-      tiktok: `POV: Você descobriu a IA que aumenta vendas em ${180 + Math.floor(Math.random() * 200)}% 🤯\n\n✨ ViralizaAI = Game Changer\n🚀 Resultados em 24h\n💰 ROI de 850%\n\n#ViralizaAI #MarketingTips #BusinessHack #IA #Vendas #Sucesso`
+      tiktok: `POV: Você descobriu a IA que aumenta vendas em 250% 🤯\n\n✨ ViralizaAI = Game Changer\n🚀 Resultados em 24h\n💰 ROI de 850%\n\n#ViralizaAI #MarketingTips #BusinessHack #IA #Vendas #Sucesso`
     };
 
     return templates[platform as keyof typeof templates] || templates.facebook;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
+import { supabase } from '../../src/lib/supabase';
 
 interface ToolPrice {
   id: string;
@@ -113,6 +114,9 @@ const AdminToolsPricingPage: React.FC = () => {
     localStorage.setItem('subscription_plans', JSON.stringify(plansForLanding));
     localStorage.setItem('advertising_plans', JSON.stringify(advertisingPlans));
     localStorage.setItem('pricing_updated', Date.now().toString());
+    // SYNC COM SUPABASE/POSTGRESQL
+    supabase.from('system_settings').upsert({ key: 'viraliza_plans', value: plansForLanding, updated_at: new Date().toISOString() }).then(() => {});
+    supabase.from('system_settings').upsert({ key: 'advertising_plans', value: advertisingPlans, updated_at: new Date().toISOString() }).then(() => {});
   };
 
   const showNotification = (message: string) => {
@@ -148,6 +152,8 @@ const AdminToolsPricingPage: React.FC = () => {
     
     // Atualizar preços para usuários em tempo real
     localStorage.setItem('tools_pricing_updated', Date.now().toString());
+    // SYNC COM SUPABASE/POSTGRESQL
+    supabase.from('system_settings').upsert({ key: 'admin_tools_pricing', value: updatedTools, updated_at: new Date().toISOString() }).then(() => {});
     
     // Se for plano de assinatura, atualizar também os dados específicos
     if (editingTool.category === 'Assinatura') {

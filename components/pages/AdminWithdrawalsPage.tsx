@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 
 interface WithdrawalRequest {
   id: string;
@@ -78,6 +78,10 @@ const AdminWithdrawalsPage: React.FC = () => {
     });
 
     localStorage.setItem(`withdrawals_${withdrawal.userId}`, JSON.stringify(updatedUserWithdrawals));
+    // SYNC COM SUPABASE
+    import('../../src/lib/supabase').then(({ supabase }) => {
+      supabase.from('affiliate_withdrawals').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', withdrawal.id).then(() => {});
+    });
 
     // Atualizar estado local
     setWithdrawals(prev => prev.map(w => {

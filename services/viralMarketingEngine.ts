@@ -156,7 +156,7 @@ class ViralMarketingEngine {
   // 📝 CRIAR POST VIRAL OTIMIZADO
   private async createViralPost(niche: string, platform: keyof typeof this.FREE_PLATFORMS, language: string): Promise<ViralContent> {
     const templates = this.getViralTemplates(platform);
-    const template = templates[Math.floor(Math.random() * templates.length)];
+    const template = templates[Date.now() % templates.length];
     
     const content = template
       .replace('{niche}', niche)
@@ -228,7 +228,7 @@ class ViralMarketingEngine {
       `Como transformei R$ 0 em R$ 100.000 usando apenas ${niche}`
     ];
 
-    return hooks[Math.floor(Math.random() * hooks.length)];
+    return hooks[Date.now() % hooks.length];
   }
 
   // 💎 GERAR PROPOSTA DE VALOR
@@ -241,7 +241,7 @@ class ViralMarketingEngine {
       `Fórmula exclusiva com 95% de taxa de sucesso`
     ];
 
-    return values[Math.floor(Math.random() * values.length)];
+    return values[Date.now() % values.length];
   }
 
   // 📢 GERAR CALL TO ACTION PODEROSO
@@ -254,7 +254,7 @@ class ViralMarketingEngine {
       'COMPARTILHE com quem precisa ver isso!'
     ];
 
-    return ctas[Math.floor(Math.random() * ctas.length)];
+    return ctas[Date.now() % ctas.length];
   }
 
   // 📊 CALCULAR SCORE VIRAL

@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import { FeatureKey } from '../../types';
 import { hasToolAccess, TOOL_DESCRIPTIONS } from '../../data/plansConfig';
 
 interface ToolAccessControlProps {
   toolKey: FeatureKey;
+  toolName?: string;
   children: React.ReactNode;
   fallback?: React.ReactNode;
   showUpgradeMessage?: boolean;
@@ -12,29 +13,85 @@ interface ToolAccessControlProps {
 
 const ToolAccessControl: React.FC<ToolAccessControlProps> = ({
   toolKey,
+  toolName,
   children,
   fallback,
   showUpgradeMessage = true
 }) => {
   const { user } = useAuth();
+  const [accessGranted, setAccessGranted] = useState<boolean | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const checkAccess = async () => {
+      if (!user) {
+        if (mounted) { setAccessGranted(false); setChecking(false); }
+        return;
+      }
+
+      // Admin sempre tem acesso
+      if (user.type === 'admin') {
+        if (mounted) { setAccessGranted(true); setChecking(false); }
+        return;
+      }
+
+      // 1. VERIFICAR NO SUPABASE (fonte primária)
+      try {
+        const { supabase } = await import('../../services/autoSupabaseIntegration');
+        const nameToCheck = toolName || toolKey;
+
+        const { data, error } = await supabase
+          .from('user_access')
+          .select('id, valid_until, is_active')
+          .eq('user_id', user.id)
+          .eq('tool_name', nameToCheck)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (!error && data) {
+          // Verificar expiração
+          if (data.valid_until && new Date(data.valid_until) < new Date()) {
+            if (mounted) { setAccessGranted(false); setChecking(false); }
+            return;
+          }
+          if (mounted) { setAccessGranted(true); setChecking(false); }
+          return;
+        }
+      } catch {
+        // Supabase indisponível, fallback abaixo
+      }
+
+      // 2. FALLBACK: verificação local (plansConfig)
+      const localAccess = hasToolAccess(user.plan, toolKey, user.addOns, user.type, user.trialStartDate);
+      if (mounted) { setAccessGranted(localAccess); setChecking(false); }
+    };
+
+    checkAccess();
+
+    return () => { mounted = false; };
+  }, [user, toolKey, toolName]);
+
+  // Loading state
+  if (checking) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   if (!user) {
-    return fallback || null;
+    return fallback ? <>{fallback}</> : null;
   }
 
-  // Admin sempre tem acesso
-  if (user.type === 'admin') {
-    return <>{children}</>;
-  }
-
-  const hasAccess = hasToolAccess(user.plan, toolKey, user.addOns, user.type, user.trialStartDate);
-
-  if (hasAccess) {
+  if (accessGranted) {
     return <>{children}</>;
   }
 
   if (!showUpgradeMessage) {
-    return fallback || null;
+    return fallback ? <>{fallback}</> : null;
   }
 
   const toolInfo = TOOL_DESCRIPTIONS[toolKey];
@@ -51,7 +108,7 @@ const ToolAccessControl: React.FC<ToolAccessControlProps> = ({
           {toolInfo?.name || 'Ferramenta Premium'}
         </h3>
         <p className="text-gray-300 mb-4">
-          {toolInfo?.description || 'Esta ferramenta está disponível apenas em planos superiores.'}
+          {toolInfo?.description || 'Esta ferramenta requer pagamento confirmado para acesso.'}
         </p>
       </div>
       
@@ -63,10 +120,10 @@ const ToolAccessControl: React.FC<ToolAccessControlProps> = ({
       </div>
 
       <button
-        onClick={() => window.location.href = '/billing'}
+        onClick={() => window.location.href = '/dashboard/billing'}
         className="w-full bg-accent hover:bg-accent/80 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
       >
-        Fazer Upgrade do Plano
+        Ver Planos e Liberar Acesso
       </button>
       
       <p className="text-xs text-gray-400 mt-3">

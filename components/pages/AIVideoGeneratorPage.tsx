@@ -536,7 +536,7 @@ const AIVideoGeneratorPage: React.FC = () => {
           onClose={() => setShowPixModal(false)}
           planName="IA Video Generator 8K"
           amount={currentPrice}
-          onPaymentSuccess={handlePixPaymentSuccess}
+          onPaymentSuccess={undefined}
         />
       )}
     </div>

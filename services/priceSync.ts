@@ -130,6 +130,10 @@ class PriceSyncService {
   // Forçar atualização de preços
   forcePriceUpdate(): void {
     localStorage.setItem('pricing_updated', Date.now().toString());
+    // SYNC COM SUPABASE
+    import('../src/lib/supabase').then(({ supabase }) => {
+      supabase.from('system_settings').upsert({ key: 'pricing_updated', value: { timestamp: Date.now() }, updated_at: new Date().toISOString() }).then(() => {});
+    });
     this.notifyListeners();
   }
 

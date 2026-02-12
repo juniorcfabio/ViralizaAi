@@ -98,33 +98,6 @@ class GlobalPromotionEngine {
     this.updateRealTimeMetrics();
   }
 
-  // Atualizar métricas com dados reais
-  private updateRealTimeMetrics(): void {
-    const now = new Date();
-    const baseMultiplier = 1 + Math.sin(now.getTime() / 100000) * 0.3; // Variação natural
-    
-    // Dados reais baseados em campanhas ativas
-    this.realTimeMetrics = {
-      globalReach: {
-        countries: this.globalMarkets.length,
-        languages: 12,
-        activeUsers: Math.floor(847293 * baseMultiplier),
-        totalImpressions: Math.floor(12847392 * baseMultiplier)
-      },
-      sales: {
-        plansToday: Math.floor(127 * baseMultiplier),
-        toolsToday: Math.floor(89 * baseMultiplier),
-        revenueToday: Math.floor(18473.50 * baseMultiplier),
-        affiliatesToday: Math.floor(34 * baseMultiplier)
-      },
-      performance: {
-        conversionRate: 3.7 + Math.sin(now.getTime() / 50000) * 0.5,
-        averageOrderValue: 147.30 + Math.sin(now.getTime() / 80000) * 20,
-        customerAcquisitionCost: 23.50 + Math.sin(now.getTime() / 60000) * 5,
-        lifetimeValue: 892.40 + Math.sin(now.getTime() / 90000) * 100
-      }
-    };
-  }
 
   public static getInstance(): GlobalPromotionEngine {
     if (!GlobalPromotionEngine.instance) {
@@ -338,22 +311,13 @@ class GlobalPromotionEngine {
   }
 
   private generateInitialPerformance(campaign: PromotionCampaign): any {
-    const baseImpressions = Math.floor(Math.random() * 10000) + 1000;
-    const ctr = 0.02 + (Math.random() * 0.03); // 2-5% CTR
-    const conversionRate = 0.01 + (Math.random() * 0.02); // 1-3% conversion
-    
-    const clicks = Math.floor(baseImpressions * ctr);
-    const conversions = Math.floor(clicks * conversionRate);
-    const avgOrderValue = 100 + (Math.random() * 400); // $100-500
-    const revenue = conversions * avgOrderValue;
-    const affiliatesAcquired = Math.floor(conversions * 0.3); // 30% se tornam afiliados
-
+    // Sem dados simulados - performance real começa em zero
     return {
-      impressions: baseImpressions,
-      clicks,
-      conversions,
-      revenue: Math.round(revenue),
-      affiliatesAcquired
+      impressions: 0,
+      clicks: 0,
+      conversions: 0,
+      revenue: 0,
+      affiliatesAcquired: 0
     };
   }
 
@@ -409,22 +373,13 @@ class GlobalPromotionEngine {
       performanceMultiplier = 0.5; // Off hours
     }
 
-    const baseImpressions = Math.floor((Math.random() * 500 + 100) * performanceMultiplier);
-    const ctr = (0.02 + Math.random() * 0.03) * performanceMultiplier;
-    const conversionRate = (0.01 + Math.random() * 0.02) * performanceMultiplier;
-    
-    const clicks = Math.floor(baseImpressions * ctr);
-    const conversions = Math.floor(clicks * conversionRate);
-    const avgOrderValue = 100 + (Math.random() * 400);
-    const revenue = conversions * avgOrderValue;
-    const affiliatesAcquired = Math.floor(conversions * 0.3);
-
+    // Sem simulação de dados - retornar zeros (dados reais virão de integrações de ads)
     return {
-      impressions: baseImpressions,
-      clicks,
-      conversions,
-      revenue: Math.round(revenue),
-      affiliatesAcquired
+      impressions: 0,
+      clicks: 0,
+      conversions: 0,
+      revenue: 0,
+      affiliatesAcquired: 0
     };
   }
 

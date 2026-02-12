@@ -613,10 +613,7 @@ class MonitoringService {
   // 📊 MÉTRICAS DO SISTEMA
   // =======================
   private async getCpuUsage(): Promise<number> {
-    // Simulação realista de CPU
-    const baseUsage = 15 + Math.random() * 20; // 15-35% base
-    const spikes = Math.random() > 0.9 ? Math.random() * 40 : 0; // Picos ocasionais
-    return Math.min(100, baseUsage + spikes);
+    return 22; // Valor base estável
   }
 
   private async getMemoryUsage(): Promise<number> {
@@ -626,14 +623,13 @@ class MonitoringService {
   }
 
   private async getDiskUsage(): Promise<number> {
-    // Simulação de uso de disco
-    return 45 + Math.random() * 10; // 45-55%
+    return 48; // Valor base estável
   }
 
   private async getNetworkStats(): Promise<any> {
     return {
-      bytesIn: Math.floor(Math.random() * 1000000) + 500000,
-      bytesOut: Math.floor(Math.random() * 800000) + 300000
+      bytesIn: 750000,
+      bytesOut: 500000
     };
   }
 
@@ -641,8 +637,8 @@ class MonitoringService {
     const stats = await this.db.getStats();
     return {
       connections: stats.pool_stats?.total_connections || 5,
-      queries: Math.floor(Math.random() * 100) + 50,
-      slowQueries: Math.floor(Math.random() * 3)
+      queries: 0,
+      slowQueries: 0
     };
   }
 
@@ -651,8 +647,8 @@ class MonitoringService {
     
     for (const service of this.services) {
       services[service] = {
-        status: Math.random() > 0.95 ? 'degraded' : 'healthy',
-        responseTime: Math.floor(Math.random() * 200) + 50,
+        status: 'healthy',
+        responseTime: 120,
         lastCheck: new Date().toISOString()
       };
     }

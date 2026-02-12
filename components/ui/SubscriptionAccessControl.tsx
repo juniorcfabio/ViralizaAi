@@ -57,6 +57,10 @@ const SubscriptionAccessControl: React.FC<SubscriptionAccessControlProps> = ({
     };
     
     localStorage.setItem(trialKey, JSON.stringify(trialData));
+    // SYNC COM SUPABASE
+    import('../../src/lib/supabase').then(({ supabase }) => {
+      supabase.from('user_data').upsert({ user_id: trialKey, data: trialData, updated_at: new Date().toISOString() }).then(() => {});
+    });
     
     // Atualizar usuário com informação de trial
     const updatedUser = {

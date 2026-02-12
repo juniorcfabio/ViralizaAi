@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import PixPaymentService from '../../services/pixPaymentService';
+import { useAuth } from '../../contexts/AuthContextFixed';
 
 interface PixPaymentModalFixedProps {
   isOpen: boolean;
@@ -15,8 +17,10 @@ const PixPaymentModalFixed: React.FC<PixPaymentModalFixedProps> = ({
   amount,
   onPaymentSuccess
 }) => {
+  const { user } = useAuth();
   const [pixCode, setPixCode] = useState<string>('');
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Função para gerar PIX EMV Code válido (padrão bancário brasileiro)
   const generatePixEMVCode = (amount: number, description: string) => {
@@ -193,13 +197,44 @@ const PixPaymentModalFixed: React.FC<PixPaymentModalFixedProps> = ({
               Fechar
             </button>
             <button 
-              onClick={() => {
-                if (onPaymentSuccess) onPaymentSuccess();
-                onClose();
+              onClick={async () => {
+                if (!user) {
+                  alert('❌ Erro: Usuário não identificado');
+                  return;
+                }
+
+                setIsProcessing(true);
+                
+                try {
+                  // Registrar pagamento PIX para verificação
+                  const result = await PixPaymentService.registerPixPayment({
+                    pixKey: 'caccb1b4-6b25-4e5a-98a0-17121d31780e',
+                    amount,
+                    userId: user.id,
+                    planName
+                  });
+
+                  if (result.success) {
+                    alert(`✅ ${result.message}\n\n⏳ Seu pagamento será verificado automaticamente.\n\n📧 Você receberá uma notificação quando o acesso for liberado.`);
+                    onClose();
+                  } else {
+                    alert(`❌ Erro: ${result.error || 'Falha ao registrar pagamento'}`);
+                  }
+                } catch (error) {
+                  console.error('Erro ao registrar pagamento:', error);
+                  alert('❌ Erro interno. Tente novamente.');
+                } finally {
+                  setIsProcessing(false);
+                }
               }}
-              className="flex-1 py-3 rounded-lg font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors"
+              disabled={isProcessing}
+              className={`flex-1 py-3 rounded-lg font-semibold text-white transition-colors ${
+                isProcessing 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
-              ✅ Paguei
+              {isProcessing ? '⏳ Processando...' : '✅ Confirmar Pagamento'}
             </button>
           </div>
         </div>

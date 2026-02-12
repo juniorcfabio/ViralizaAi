@@ -126,6 +126,10 @@ const AdvertisingSuccessPage: React.FC = () => {
       const activePartners = JSON.parse(localStorage.getItem('active_partners') || '[]');
       activePartners.push(partnerData);
       localStorage.setItem('active_partners', JSON.stringify(activePartners));
+      // SYNC COM SUPABASE
+      import('../../src/lib/supabase').then(({ supabase }) => {
+        supabase.from('system_settings').upsert({ key: 'active_partners', value: activePartners, updated_at: new Date().toISOString() }).then(() => {});
+      });
 
       // Salvar histórico de anúncios
       const advertisingHistory = JSON.parse(localStorage.getItem('advertising_history') || '[]');

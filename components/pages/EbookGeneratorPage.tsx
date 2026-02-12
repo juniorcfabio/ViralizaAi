@@ -168,31 +168,11 @@ const EbookGeneratorPage: React.FC = () => {
     setShowPixModal(true);
   };
 
-  // ✅ CONFIRMAR PAGAMENTO PIX
-  const handlePixPaymentSuccess = () => {
-    // Confirmar pagamento PIX e liberar acesso
-    const payments = AccessControlService.getAllPayments();
-    const pendingPayment = payments.find(p => 
-      p.itemName === 'Gerador de Ebooks Premium' && 
-      p.paymentMethod === 'pix' && 
-      p.status === 'pending'
-    );
-    
-    if (pendingPayment) {
-      AccessControlService.confirmPayment(pendingPayment.id, `pix_${Date.now()}`);
-      console.log('✅ Pagamento PIX confirmado e acesso liberado!');
-    }
-    
-    setShowPixModal(false);
-    alert('✅ Pagamento PIX confirmado! Gerador de Ebooks Premium ativado com sucesso.');
-    
-    // Recarregar página para atualizar interface
-    window.location.reload();
-  };
+  // REMOVIDO: handlePixPaymentSuccess - NÃO PODE LIBERAR ACESSO SEM CONFIRMAÇÃO REAL
 
   // FUNÇÃO ANTIGA MANTIDA PARA COMPATIBILIDADE
   const handlePurchaseEbookGenerator = async () => {
-    showPaymentOptionsModal();
+    setShowPaymentOptions(true);
   };
 
   return (
@@ -692,7 +672,7 @@ const EbookGeneratorPage: React.FC = () => {
             onClose={() => setShowPixModal(false)}
             planName="Gerador de Ebooks Premium"
             amount={297.00}
-            onPaymentSuccess={handlePixPaymentSuccess}
+            onPaymentSuccess={undefined}
           />
         )}
       </div>

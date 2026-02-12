@@ -145,8 +145,13 @@ class GoogleOAuthReal {
 
       // Salvar dados do usuário
       localStorage.setItem('google_user_data', JSON.stringify(userData));
+      // SYNC COM SUPABASE
+      import('../src/lib/supabase').then(({ supabase }) => {
+        supabase.from('users').upsert({ id: userData.id || userData.email, email: userData.email, updated_at: new Date().toISOString() }).then(() => {});
+        supabase.from('user_profiles').upsert({ user_id: userData.id || userData.email, name: userData.name, updated_at: new Date().toISOString() }).then(() => {});
+      });
       
-      console.log('✅ Login Google realizado com sucesso:', userData.email);
+      console.log('✅ Login Google realizado e sincronizado com Supabase:', userData.email);
       
       // Resolver promise do login
       if (this.loginResolve) {
@@ -316,6 +321,10 @@ class GoogleOAuthReal {
         localStorage.setItem('google_refresh_token', tokenResponse.refresh_token);
       }
       localStorage.setItem('google_user_data', JSON.stringify(userData));
+      // SYNC COM SUPABASE
+      import('../src/lib/supabase').then(({ supabase }) => {
+        supabase.from('users').upsert({ id: userData.id || userData.email, email: userData.email, updated_at: new Date().toISOString() }).then(() => {});
+      });
       
       return userData;
       

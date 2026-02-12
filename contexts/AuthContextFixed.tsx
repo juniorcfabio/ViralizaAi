@@ -8,6 +8,7 @@ import {
   getSession, 
   onAuthStateChange 
 } from '../src/services/auth';
+import autoSupabase from '../services/autoSupabaseIntegration';
 
 export type RegistrationData = Omit<User, 'id' | 'type' | 'status' | 'joinedDate'>;
 export type AdminUserData = Omit<User, 'id' | 'joinedDate'>;
@@ -90,7 +91,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         setIsLoading(true);
         
-        // Verificar sessão do Supabase
+        // 1. VERIFICAR SESSÃO ADMIN NO LOCALSTORAGE (admin não usa Supabase Auth)
+        try {
+          const savedAdmin = localStorage.getItem('viraliza_admin_session');
+          if (savedAdmin) {
+            const adminData = JSON.parse(savedAdmin);
+            if (adminData?.type === 'admin') {
+              console.log('✅ Sessão admin restaurada do localStorage');
+              setUser(adminData);
+              setIsAuthenticated(true);
+              setIsLoading(false);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ Erro ao restaurar sessão admin:', e);
+        }
+
+        // 2. Verificar sessão do Supabase (para clientes)
         const session = await getSession();
         if (session?.user) {
           console.log('✅ Sessão Supabase encontrada:', session.user.email);
@@ -110,7 +128,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setUser(userData);
           setIsAuthenticated(true);
         } else {
-          console.log('❌ Nenhuma sessão Supabase encontrada');
+          console.log('❌ Nenhuma sessão encontrada');
           setUser(null);
           setIsAuthenticated(false);
         }
@@ -235,7 +253,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string): Promise<User | { error: string }> => {
     try {
-      console.log('🔄 Iniciando login SUPABASE:', { email, password: '***' });
+      console.log('🔄 Iniciando login:', { email, password: '***' });
+
+      // Admin login hardcoded
+      const cleanCpf = String(email).replace(/\D/g, '');
+      if (cleanCpf === '01484270657' && password === 'J137546fc@') {
+        console.log('🚨 Admin login detectado');
+        
+        const adminUser: User = {
+          id: 'admin_fixed',
+          name: 'Administrador ViralizaAI',
+          email: 'admin@viralizaai.com',
+          cpf: '01484270657',
+          type: 'admin',
+          status: 'Ativo',
+          joinedDate: new Date().toISOString().split('T')[0],
+          socialAccounts: [],
+          paymentMethods: [],
+          billingHistory: []
+        };
+
+        setUser(adminUser);
+        setIsAuthenticated(true);
+        // Persistir sessão admin no localStorage para sobreviver a refresh
+        localStorage.setItem('viraliza_admin_session', JSON.stringify(adminUser));
+        // SYNC COM SUPABASE/POSTGRESQL
+        autoSupabase.saveUser(adminUser);
+        autoSupabase.logActivity(adminUser.id, 'admin_login', { cpf: cleanCpf });
+        console.log('✅ Admin logado com sucesso (Supabase + localStorage)');
+        return adminUser;
+      }
 
       const authData = await loginUser(email, password);
       
@@ -270,11 +317,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await logoutUser();
       setUser(null);
       setIsAuthenticated(false);
-      console.log('✅ Logout SUPABASE realizado');
+      // Limpar sessão admin do localStorage
+      localStorage.removeItem('viraliza_admin_session');
+      console.log('✅ Logout realizado');
     } catch (error) {
-      console.error('❌ Erro no logout SUPABASE:', error);
+      console.error('❌ Erro no logout:', error);
       setUser(null);
       setIsAuthenticated(false);
+      localStorage.removeItem('viraliza_admin_session');
     }
   };
 

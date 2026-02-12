@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
+import autoSupabase from '../../services/autoSupabaseIntegration';
 
 const PaymentSuccessPage: React.FC = () => {
   const { user, login } = useAuth();
@@ -79,8 +80,12 @@ const PaymentSuccessPage: React.FC = () => {
           localStorage.setItem('viraliza_ai_auth_token_v1', userData.authToken);
           localStorage.setItem('user_session_active', 'true');
           localStorage.setItem(`user_${userId}_tools`, JSON.stringify(userData.addOns));
+          // SYNC COM SUPABASE/POSTGRESQL
+          autoSupabase.saveUser(userData);
+          autoSupabase.savePayment({ userId: userId || '', type: 'tool', itemName: tool || '', amount: 0, paymentMethod: 'stripe', status: 'confirmed', stripeSessionId: sessionId || '' });
+          autoSupabase.logActivity(userId || '', 'payment_success', { tool, sessionId });
           
-          console.log('💾 Dados salvos no localStorage');
+          console.log('💾 Dados salvos no localStorage + Supabase');
           console.log('✅ Ferramenta ativada com sucesso:', userData);
           
           // Aguardar um pouco e marcar como completo

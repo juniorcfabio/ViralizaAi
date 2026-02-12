@@ -796,7 +796,7 @@ class RealVideoGeneratorAI {
         
         const selectedGender = config.avatarGender || 'masculino';
         const photos = avatarPhotos[selectedGender as keyof typeof avatarPhotos];
-        const selectedPhoto = photos[Math.floor(Math.random() * photos.length)];
+        const selectedPhoto = photos[0];
         
         console.log(`📸 Foto selecionada para ${selectedGender}: ${selectedPhoto}`);
         
@@ -2285,7 +2285,7 @@ class RealVideoGeneratorAI {
       `${config.businessName} chegou para fazer a diferença! ${config.mainMessage} Nossa missão é entregar excelência em cada projeto. ${config.callToAction || 'Vamos conversar sobre suas necessidades!'}`
     ];
 
-    return templates[Math.floor(Math.random() * templates.length)];
+    return templates[0];
   }
 
   // Download do vídeo
@@ -2327,6 +2327,10 @@ class RealVideoGeneratorAI {
     );
     
     localStorage.setItem('generated_videos', JSON.stringify(recentVideos));
+    // SYNC COM SUPABASE
+    import('../src/lib/supabase').then(({ supabase }) => {
+      supabase.from('generated_content').upsert({ type: 'videos_list', content: recentVideos, updated_at: new Date().toISOString() }).then(() => {});
+    });
   }
 
   // 🎬 GERAR VÍDEO REAL USANDO CANVAS (FUNCIONAL)
@@ -2355,8 +2359,12 @@ class RealVideoGeneratorAI {
     const videos = this.getGeneratedVideos();
     videos.push(video);
     localStorage.setItem('generated_videos', JSON.stringify(videos));
+    // SYNC COM SUPABASE
+    import('../src/lib/supabase').then(({ supabase }) => {
+      supabase.from('generated_content').insert({ type: 'video', content: video, created_at: new Date().toISOString() }).then(() => {});
+    });
     
-    console.log('✅ Vídeo Canvas gerado com sucesso!');
+    console.log('✅ Vídeo Canvas gerado e sincronizado com Supabase!');
     return video;
   }
 

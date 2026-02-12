@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import StripeService from '../../services/stripeService';
+import { supabase } from '../../src/lib/supabase';
 
 interface AffiliateStats {
   totalEarnings: number;
@@ -66,6 +67,8 @@ const AffiliatePageFixed: React.FC = () => {
       };
       setAffiliateStats(initialStats);
       localStorage.setItem(`affiliate_stats_${user?.id}`, JSON.stringify(initialStats));
+      // SYNC COM SUPABASE
+      if (user?.id) supabase.from('affiliates').upsert({ id: user.id, stats: initialStats, updated_at: new Date().toISOString() }).then(() => {});
     }
 
     // Carregar dados bancários
@@ -114,6 +117,8 @@ const AffiliatePageFixed: React.FC = () => {
       };
       setAffiliateStats(initialStats);
       localStorage.setItem(`affiliate_stats_${user.id}`, JSON.stringify(initialStats));
+      // SYNC COM SUPABASE
+      supabase.from('affiliates').upsert({ id: user.id, stats: initialStats, status: 'active', updated_at: new Date().toISOString() }).then(() => {});
       
     } catch (error) {
       console.error('Erro ao ativar afiliado:', error);
@@ -167,6 +172,8 @@ const AffiliatePageFixed: React.FC = () => {
       const updatedWithdrawals = [...withdrawalRequests, withdrawal];
       setWithdrawalRequests(updatedWithdrawals);
       localStorage.setItem(`withdrawals_${user.id}`, JSON.stringify(updatedWithdrawals));
+      // SYNC COM SUPABASE
+      supabase.from('affiliate_withdrawals').insert({ id: withdrawal.id, affiliate_id: user.id, amount: withdrawal.amount, status: 'pending', created_at: new Date().toISOString() }).then(() => {});
 
       // Atualizar stats
       const updatedStats = {
@@ -175,6 +182,8 @@ const AffiliatePageFixed: React.FC = () => {
       };
       setAffiliateStats(updatedStats);
       localStorage.setItem(`affiliate_stats_${user.id}`, JSON.stringify(updatedStats));
+      // SYNC COM SUPABASE
+      supabase.from('affiliates').upsert({ id: user.id, stats: updatedStats, updated_at: new Date().toISOString() }).then(() => {});
 
       // Notificar admin (simulado)
       console.log('Notificação enviada para admin sobre solicitação de saque');

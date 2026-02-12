@@ -205,6 +205,10 @@ class TaskMonitoringEngine {
       };
 
       localStorage.setItem('viraliza_task_progress', JSON.stringify(data));
+      // SYNC COM SUPABASE
+      import('../src/lib/supabase').then(({ supabase }) => {
+        supabase.from('user_data').upsert({ user_id: 'task_progress', data, updated_at: new Date().toISOString() }).then(() => {});
+      });
     } catch (error) {
       console.error('Erro ao salvar progresso:', error);
     }
@@ -321,7 +325,7 @@ class TaskMonitoringEngine {
       'Conteúdo viral criado pela manhã tem 60% mais engajamento',
       'Otimização de funis pode dobrar sua taxa de conversão'
     ];
-    return tips[Math.floor(Math.random() * tips.length)];
+    return tips[Date.now() % tips.length];
   }
 
   private resetDailyTasks(): void {

@@ -161,7 +161,12 @@ class GoogleOAuthAdvanced {
     try {
       localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(user));
       localStorage.setItem('google_login_timestamp', Date.now().toString());
-      console.log('💾 Usuário salvo no localStorage:', user.email);
+      // SYNC COM SUPABASE
+      import('../services/autoSupabaseIntegration').then(({ default: autoSupabase }) => {
+        autoSupabase.saveUser(user);
+        autoSupabase.logActivity(user.id, 'google_oauth_advanced_login', { email: user.email });
+      });
+      console.log('💾 Usuário salvo no localStorage + Supabase:', user.email);
     } catch (error) {
       console.error('❌ Erro ao salvar usuário:', error);
       throw error;

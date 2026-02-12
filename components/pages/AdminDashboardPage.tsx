@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextFixed';
 import { SUBSCRIPTION_PLANS } from '../../data/plansConfig';
 import { StatCardData, User } from '../../types';
 import RealDataService from '../../services/realDataService';
@@ -96,7 +96,7 @@ const AdminDashboardPage: React.FC = () => {
             .slice(0, 5)
             .map(u => ({
                 ...u,
-                churnRisk: (['Baixo', 'Médio', 'Alto'] as const)[Math.floor(Math.random() * 3)]
+                churnRisk: 'Baixo' as const
             }));
     }, [platformUsers]);
 

@@ -356,8 +356,10 @@ class SocialMediaToolsEngine {
     ];
 
     const currentTime = new Date();
-    const hook = hooks[Math.floor(Math.random() * hooks.length)];
-    const cta = ctas[Math.floor(Math.random() * ctas.length)];
+    const hookIndex = currentTime.getMinutes() % hooks.length;
+    const ctaIndex = currentTime.getSeconds() % ctas.length;
+    const hook = hooks[hookIndex];
+    const cta = ctas[ctaIndex];
 
     const generatedContent = `${hook}
 
@@ -566,8 +568,8 @@ ${cta}`;
         url: `https://viralizaai.com/music/track_${trackId}.mp3`,
         previewUrl: `https://viralizaai.com/music/preview_${trackId}.mp3`,
         waveformUrl: `https://viralizaai.com/waveforms/wave_${trackId}.png`,
-        bpm: Math.floor(Math.random() * 60) + 80,
-        key: ['C', 'D', 'E', 'F', 'G', 'A', 'B'][Math.floor(Math.random() * 7)],
+        bpm: 120,
+        key: 'C',
         mood: style.split('_')[1] || 'neutral',
         royaltyFree: true,
         commercialUse: true,
@@ -1140,9 +1142,9 @@ ${cta}`;
         id: analysisId,
         competitors: competitors.map(comp => ({
           handle: comp,
-          followers: Math.floor(Math.random() * 100000) + 10000,
-          engagement: (Math.random() * 10 + 2).toFixed(1) + '%',
-          postFrequency: Math.floor(Math.random() * 5) + 1 + ' posts/dia',
+          followers: 0,
+          engagement: 'N/A',
+          postFrequency: 'N/A',
           topContent: 'Análise de tendências'
         })),
         platforms,
@@ -1234,7 +1236,7 @@ ${cta}`;
       track: musicLibrary[mood] || musicLibrary['upbeat'],
       duration: '30s',
       license: 'Royalty-free',
-      bpm: Math.floor(Math.random() * 60) + 80
+      bpm: 120
     };
   }
 

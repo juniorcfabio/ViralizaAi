@@ -1,6 +1,9 @@
 // =======================
 // 🎯 GERENCIADOR DE ASSINATURAS - LÓGICA SAAS
+// INTEGRAÇÃO COM SUPABASE/POSTGRESQL
 // =======================
+
+import autoSupabase from './autoSupabaseIntegration';
 
 export interface Subscription {
   id: string;
@@ -181,6 +184,8 @@ export class SubscriptionManager {
           users[userIndex].planStatus = 'active';
           users[userIndex].planExpiresAt = expiresAt.toISOString();
           localStorage.setItem('viralizaai_users', JSON.stringify(users));
+          // SYNC COM SUPABASE
+          autoSupabase.saveUser(users[userIndex]);
         }
       }
       
@@ -200,6 +205,8 @@ export class SubscriptionManager {
         if (userIndex !== -1) {
           users[userIndex].planStatus = 'expired';
           localStorage.setItem('viralizaai_users', JSON.stringify(users));
+          // SYNC COM SUPABASE
+          autoSupabase.saveUser(users[userIndex]);
         }
       }
       
@@ -223,6 +230,15 @@ export class SubscriptionManager {
         }
         
         localStorage.setItem('viralizaai_subscriptions', JSON.stringify(subscriptions));
+        // SYNC COM SUPABASE
+        autoSupabase.savePayment({
+          userId: subscription.userId,
+          type: 'plan',
+          itemName: subscription.planName,
+          amount: subscription.amount,
+          paymentMethod: subscription.paymentMethod === 'pix' ? 'pix' : 'stripe',
+          status: subscription.status === 'active' ? 'confirmed' : 'pending'
+        });
       }
     } catch (error) {
       console.error('❌ Erro ao salvar assinatura:', error);
@@ -288,6 +304,8 @@ export class SubscriptionManager {
             // Marcar como expirado
             user.planStatus = 'expired';
             localStorage.setItem('viralizaai_users', JSON.stringify(users));
+            // SYNC COM SUPABASE
+            autoSupabase.saveUser(user);
             return false;
           }
         }

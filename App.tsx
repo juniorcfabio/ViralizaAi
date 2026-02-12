@@ -10,7 +10,9 @@ import AutonomousPromotionPage from './components/pages/AutonomousPromotionPage'
 import { AuthProvider, useAuth } from './contexts/AuthContextFixed';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import autoIntegration from './config/autoIntegrationConfig';
 import AdminFinancialPageReal from './components/pages/AdminFinancialPageReal';
+import AdminFinancialPage from './components/pages/AdminFinancialPage';
 import SocialAccountsPage from './components/pages/SocialAccountsPage';
 import AnalyticsPage from './components/pages/AnalyticsPage';
 import BillingPage from './components/pages/BillingPage';
@@ -70,6 +72,7 @@ import AdvertisingPlansPage from './components/pages/AdvertisingPlansPage';
 import AdvertisingSuccessPage from './components/pages/AdvertisingSuccessPage';
 import TargetingAreasPage from './components/pages/TargetingAreasPage';
 import PricingPage from './components/pages/PricingPage';
+import SupabaseMonitorPage from './components/pages/SupabaseMonitorPage';
 
 const UpdateModal: React.FC = () => {
     const [hasUpdate, setHasUpdate] = useState(false);
@@ -171,7 +174,7 @@ const AppRoutes: React.FC = () => {
             >
                 <Route index element={<AdminDashboardPageReal />} />
                 <Route path="ultra-imperio" element={<AdminDashboardUltra />} />
-                <Route path="financial" element={<AdminFinancialPageReal />} />
+                <Route path="financial" element={<AdminFinancialPage />} />
                 <Route path="autonomous-promotion" element={<AutonomousPromotionPage />} />
                 <Route path="payments" element={<AdminPaymentsPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
@@ -203,6 +206,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="smart-pricing" element={<AdminToolsPricingPage />} />
                 <Route path="ai-support" element={<AdminTaskMonitoringPage />} />
                 <Route path="command-center" element={<AdminCommandCenterPage />} />
+                <Route path="supabase-monitor" element={<SupabaseMonitorPage />} />
                 <Route path="architecture" element={<ArchitectureDiagram />} />
                 <Route path="investors" element={<InvestorPlan />} />
             </Route>

@@ -185,28 +185,23 @@ export class ViralAnalysisEngine {
 
   // Métodos auxiliares
   private calculateEmotionalImpact(data: any): any {
-    const score = Math.floor(Math.random() * 40) + 60;
-    return { score, dominantEmotion: 'curiosity' };
+    return { score: 75, dominantEmotion: 'curiosity' };
   }
 
   private calculateShareability(data: any): any {
-    const score = Math.floor(Math.random() * 30) + 70;
-    return { score, factors: ['visual appeal', 'relatability'] };
+    return { score: 80, factors: ['visual appeal', 'relatability'] };
   }
 
   private calculateTrendAlignment(data: any): any {
-    const score = Math.floor(Math.random() * 35) + 65;
-    return { score, alignedTrends: ['AI tech', 'digital marketing'] };
+    return { score: 78, alignedTrends: ['AI tech', 'digital marketing'] };
   }
 
   private calculateAudienceResonance(data: any): any {
-    const score = Math.floor(Math.random() * 25) + 75;
-    return { score, targetMatch: 'Muito Alta' };
+    return { score: 85, targetMatch: 'Muito Alta' };
   }
 
   private calculatePlatformOptimization(data: any): any {
-    const score = Math.floor(Math.random() * 20) + 80;
-    return { score, bestPlatforms: ['TikTok', 'Instagram'] };
+    return { score: 88, bestPlatforms: ['TikTok', 'Instagram'] };
   }
 
   private performCompetitorAnalysis(data: any): any {
@@ -214,8 +209,7 @@ export class ViralAnalysisEngine {
   }
 
   private analyzeMarketTiming(data: any): any {
-    const score = Math.floor(Math.random() * 15) + 85;
-    return { score, optimalTiming: 'Excelente' };
+    return { score: 90, optimalTiming: 'Excelente' };
   }
 
   private getMarketPotential(score: number): string {
@@ -269,43 +263,35 @@ export class ViralAnalysisEngine {
   }
 
   private analyzeTextVirality(text: string): any {
-    const score = Math.floor(Math.random() * 30) + 70;
-    return { score, factors: ['emotional words', 'call to action'] };
+    return { score: 82, factors: ['emotional words', 'call to action'] };
   }
 
   private analyzeVisualImpact(media: any): any {
-    const score = Math.floor(Math.random() * 25) + 75;
-    return { score, elements: ['color contrast', 'composition'] };
+    return { score: 84, elements: ['color contrast', 'composition'] };
   }
 
   private detectEmotionalTriggers(content: any): any {
-    const score = Math.floor(Math.random() * 20) + 80;
-    return { score, triggers: ['curiosity', 'urgency'] };
+    return { score: 88, triggers: ['curiosity', 'urgency'] };
   }
 
   private analyzePostTiming(time: any): any {
-    const score = Math.floor(Math.random() * 15) + 85;
-    return { score, optimalTime: '19:00-21:00' };
+    return { score: 90, optimalTime: '19:00-21:00' };
   }
 
   private analyzeAudienceAlignment(audience: any): any {
-    const score = Math.floor(Math.random() * 25) + 75;
-    return { score, alignment: 'Muito Alta' };
+    return { score: 85, alignment: 'Muito Alta' };
   }
 
   private analyzePlatformOptimization(platforms: any): any {
-    const score = Math.floor(Math.random() * 20) + 80;
-    return { score, optimizedFor: ['TikTok', 'Instagram'] };
+    return { score: 88, optimizedFor: ['TikTok', 'Instagram'] };
   }
 
   private analyzeTrendRelevance(content: any): any {
-    const score = Math.floor(Math.random() * 30) + 70;
-    return { score, relevantTrends: ['AI', 'Marketing'] };
+    return { score: 80, relevantTrends: ['AI', 'Marketing'] };
   }
 
   private predictEngagement(content: any): any {
-    const score = Math.floor(Math.random() * 25) + 75;
-    return { score, expectedRate: '8.5%' };
+    return { score: 85, expectedRate: '8.5%' };
   }
 
   private getViralPotential(score: number): string {

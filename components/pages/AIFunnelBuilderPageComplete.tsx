@@ -154,14 +154,14 @@ const AIFunnelBuilderPageComplete: React.FC = () => {
         name: `Funil IA para ${businessInfo.name}`,
         category: businessInfo.niche,
         description: `Funil ultra-otimizado gerado por IA para ${businessInfo.niche}`,
-        expectedConversion: 18.7 + Math.random() * 10,
+        expectedConversion: 22.4,
         steps: [
           {
             id: 'ai-landing',
             name: 'Landing Page IA',
             type: 'landing',
             content: `Landing page otimizada para ${businessInfo.targetAudience} interessados em ${businessInfo.mainProduct}`,
-            conversionRate: 42.3 + Math.random() * 15,
+            conversionRate: 48.5,
             isActive: true
           },
           {
@@ -169,7 +169,7 @@ const AIFunnelBuilderPageComplete: React.FC = () => {
             name: 'Página de Vendas IA',
             type: 'sales',
             content: `Copy persuasivo focado em ${businessInfo.uniqueValue} com preço de R$ ${businessInfo.pricePoint}`,
-            conversionRate: 16.8 + Math.random() * 8,
+            conversionRate: 20.3,
             isActive: true
           },
           {
@@ -177,7 +177,7 @@ const AIFunnelBuilderPageComplete: React.FC = () => {
             name: 'Sequência de Email IA',
             type: 'email',
             content: `7 emails de nutrição personalizados para ${businessInfo.niche}`,
-            conversionRate: 24.5 + Math.random() * 12,
+            conversionRate: 29.8,
             isActive: true
           },
           {
@@ -185,7 +185,7 @@ const AIFunnelBuilderPageComplete: React.FC = () => {
             name: 'Upsell Inteligente',
             type: 'upsell',
             content: `Oferta complementar baseada no comportamento do cliente`,
-            conversionRate: 31.2 + Math.random() * 18,
+            conversionRate: 38.5,
             isActive: true
           }
         ]
@@ -605,7 +605,7 @@ const AIFunnelBuilderPageComplete: React.FC = () => {
           onClose={() => setShowPixModal(false)}
           planName="AI Funil Builder"
           amount={147.00}
-          onPaymentSuccess={handlePixPaymentSuccess}
+          onPaymentSuccess={undefined}
         />
       )}
     </div>

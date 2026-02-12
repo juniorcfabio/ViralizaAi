@@ -336,23 +336,7 @@ const VideoEditorPage: React.FC = () => {
     setShowPixModal(true);
   };
 
-  const handlePixPaymentSuccess = () => {
-    const payments = AccessControlService.getAllPayments();
-    const pendingPayment = payments.find(p => 
-      p.itemName === 'Editor de Vídeo Pro' && 
-      p.paymentMethod === 'pix' && 
-      p.status === 'pending'
-    );
-    
-    if (pendingPayment) {
-      AccessControlService.confirmPayment(pendingPayment.id, `pix_${Date.now()}`);
-      setHasAccess(true);
-    }
-    
-    setShowPixModal(false);
-    alert('✅ Pagamento confirmado! Editor de Vídeo ativado.');
-    window.location.reload();
-  };
+  // REMOVIDO: handlePixPaymentSuccess - NÃO PODE LIBERAR ACESSO SEM CONFIRMAÇÃO REAL
 
   // Se não tem acesso, mostrar tela de compra
   if (user?.type !== 'admin' && !hasAccess) {
@@ -397,7 +381,7 @@ const VideoEditorPage: React.FC = () => {
             onClose={() => setShowPixModal(false)}
             planName="Editor de Vídeo Pro"
             amount={97.00}
-            onPaymentSuccess={handlePixPaymentSuccess}
+            onPaymentSuccess={undefined}
           />
         )}
       </div>

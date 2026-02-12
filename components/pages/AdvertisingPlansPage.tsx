@@ -113,7 +113,11 @@ const AdvertisingPlansPage: React.FC = () => {
 
       // Salvar dados do plano selecionado
       localStorage.setItem('selected_advertising_plan', JSON.stringify(plan));
-      console.log('💾 Plano salvo no localStorage');
+      // SYNC COM SUPABASE
+      import('../../src/lib/supabase').then(({ supabase }) => {
+        supabase.from('activity_logs').insert({ action: 'advertising_plan_selected', details: plan, created_at: new Date().toISOString() }).then(() => {});
+      });
+      console.log('💾 Plano salvo no localStorage + Supabase');
 
       // Usar a API funcional stripe-test
       console.log('🚀 Chamando API funcional...');

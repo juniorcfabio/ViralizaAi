@@ -164,58 +164,6 @@ const AnalyticsPage: React.FC = () => {
       setPostReachData(DEFAULT_POST_REACH_DATA);
       setCampaignPerformanceData(DEFAULT_CAMPAIGN_PERFORMANCE_DATA);
     }
-
-    const interval = setInterval(() => {
-      setEngagementData((prev) => {
-        if (prev.length === 0) return DEFAULT_ENGAGEMENT_DATA;
-        const lastRate = prev[prev.length - 1].rate;
-        const newRate = Math.min(8.0, lastRate + Math.random() * 0.2);
-        const newPoint = {
-          name: `Mês ${prev.length + 1}`,
-          rate: parseFloat(newRate.toFixed(2))
-        };
-        return [...prev, newPoint].slice(-6);
-      });
-
-      setReachData((prev) =>
-        (prev.length ? prev : DEFAULT_REACH_DATA)
-          .map((item) => ({
-            ...item,
-            reach: item.reach + Math.floor(Math.random() * (item.name === 'TikTok' ? 150 : 50))
-          }))
-          .sort((a, b) => b.reach - a.reach)
-      );
-
-      setSalesFunnelData((prev) => {
-        const base = prev.length ? prev : DEFAULT_SALES_FUNNEL_DATA;
-        const views = base[0].value + Math.floor(Math.random() * 2000);
-        const clicks = base[1].value + Math.floor(Math.random() * 60);
-        const sales = base[2].value + (Math.random() > 0.8 ? Math.floor(Math.random() * 5) : 0);
-        return [
-          { name: 'Visualizações', value: views },
-          { name: 'Cliques no Link', value: clicks },
-          { name: 'Vendas', value: sales }
-        ];
-      });
-
-      setPostReachData((prev) =>
-        (prev.length ? prev : DEFAULT_POST_REACH_DATA)
-          .map((post) => ({
-            ...post,
-            reach: post.reach + Math.floor(Math.random() * 25)
-          }))
-          .sort((a, b) => b.reach - a.reach)
-      );
-
-      setCampaignPerformanceData((prev) =>
-        (prev.length ? prev : DEFAULT_CAMPAIGN_PERFORMANCE_DATA).map((campaign) => ({
-          ...campaign,
-          engagement: campaign.engagement + Math.floor(Math.random() * 10)
-        }))
-      );
-    }, 5000);
-
-    return () => clearInterval(interval);
   }, [user, hasAccess]);
 
   useEffect(() => {
@@ -229,6 +177,10 @@ const AnalyticsPage: React.FC = () => {
         campaignPerformanceData
       };
       localStorage.setItem(dataKey, JSON.stringify(dataToStore));
+      // SYNC COM SUPABASE
+      import('../../src/lib/supabase').then(({ supabase }) => {
+        supabase.from('user_data').upsert({ user_id: dataKey, data: dataToStore, updated_at: new Date().toISOString() }).then(() => {});
+      });
     }
   }, [
     engagementData,

@@ -747,12 +747,7 @@ const SocialMediaToolsPage: React.FC = () => {
           }}
           planName={selectedPlan.name}
           amount={selectedPlan.price}
-          onPaymentSuccess={() => {
-            setShowPixModal(false);
-            setSelectedPlan(null);
-            // Recarregar página após sucesso
-            window.location.reload();
-          }}
+          onPaymentSuccess={undefined}
         />
       )}
     </div>

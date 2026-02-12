@@ -326,13 +326,13 @@ const TargetingAreasPage: React.FC = () => {
                     <div className="bg-primary/30 p-4 rounded-lg">
                       <div className="text-sm text-gray-400 mb-1">Potencial de Melhoria</div>
                       <div className="text-2xl font-bold text-green-400">
-                        +{(Math.random() * 40 + 10).toFixed(0)}%
+                        +25%
                       </div>
                     </div>
                     <div className="bg-primary/30 p-4 rounded-lg">
                       <div className="text-sm text-gray-400 mb-1">ROI Estimado</div>
                       <div className="text-2xl font-bold text-yellow-400">
-                        {(Math.random() * 300 + 150).toFixed(0)}%
+                        220%
                       </div>
                     </div>
                   </div>

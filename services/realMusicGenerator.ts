@@ -261,6 +261,10 @@ class RealMusicGenerator {
     const musics = this.getGeneratedMusics();
     musics.push(music);
     localStorage.setItem('generated_musics', JSON.stringify(musics));
+    // SYNC COM SUPABASE
+    import('../src/lib/supabase').then(({ supabase }) => {
+      supabase.from('generated_content').insert({ type: 'music', content: music, created_at: new Date().toISOString() }).then(() => {});
+    });
   }
 
   // 📋 OBTER MÚSICAS GERADAS
@@ -279,6 +283,10 @@ class RealMusicGenerator {
     );
     
     localStorage.setItem('generated_musics', JSON.stringify(recentMusics));
+    // SYNC COM SUPABASE
+    import('../src/lib/supabase').then(({ supabase }) => {
+      supabase.from('generated_content').upsert({ type: 'musics_list', content: recentMusics, updated_at: new Date().toISOString() }).then(() => {});
+    });
   }
 }
 

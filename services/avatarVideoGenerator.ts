@@ -73,7 +73,7 @@ class AvatarVideoGenerator {
     };
 
     const styleTemplates = templates[config.avatarStyle as keyof typeof templates] || templates.professional;
-    const randomTemplate = styleTemplates[Math.floor(Math.random() * styleTemplates.length)];
+    const randomTemplate = styleTemplates[0];
     
     return randomTemplate;
   }
@@ -295,7 +295,7 @@ class AvatarVideoGenerator {
         'https://www.w3schools.com/html/mov_bbb.mp4'
       ];
       
-      const selectedUrl = fallbackUrls[Math.floor(Math.random() * fallbackUrls.length)];
+      const selectedUrl = fallbackUrls[0];
       
       try {
         const response = await fetch(selectedUrl);

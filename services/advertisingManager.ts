@@ -76,7 +76,11 @@ class AdvertisingManager {
 
       if (hasExpiredAds) {
         localStorage.setItem('active_partners', JSON.stringify(updatedPartners));
-        console.log('🔄 Anúncios expirados removidos da página inicial');
+        // SYNC COM SUPABASE
+        import('../src/lib/supabase').then(({ supabase }) => {
+          supabase.from('system_settings').upsert({ key: 'active_partners', value: updatedPartners, updated_at: new Date().toISOString() }).then(() => {});
+        });
+        console.log('🔄 Anúncios expirados removidos e sincronizados');
       }
     } catch (error) {
       console.error('Erro ao verificar anúncios expirados:', error);
@@ -129,6 +133,10 @@ class AdvertisingManager {
       };
 
       localStorage.setItem('active_partners', JSON.stringify(partners));
+      // SYNC COM SUPABASE
+      import('../src/lib/supabase').then(({ supabase }) => {
+        supabase.from('system_settings').upsert({ key: 'active_partners', value: partners, updated_at: new Date().toISOString() }).then(() => {});
+      });
 
       // Registrar renovação no histórico
       this.addToHistory({
@@ -151,6 +159,10 @@ class AdvertisingManager {
       const history = JSON.parse(localStorage.getItem('advertising_history') || '[]');
       history.push(record);
       localStorage.setItem('advertising_history', JSON.stringify(history));
+      // SYNC COM SUPABASE
+      import('../src/lib/supabase').then(({ supabase }) => {
+        supabase.from('activity_logs').insert({ action: 'advertising_event', details: record, created_at: new Date().toISOString() }).then(() => {});
+      });
     } catch (error) {
       console.error('Erro ao adicionar ao histórico:', error);
     }

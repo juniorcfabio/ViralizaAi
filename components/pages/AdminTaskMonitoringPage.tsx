@@ -119,40 +119,9 @@ const AdminTaskMonitoringPage: React.FC = () => {
   const updateMetrics = () => {
     if (!isMonitoringActive) return;
 
-    // Atualizar tarefas com variações realísticas
-    setTasks(prevTasks => 
-      prevTasks.map(task => ({
-        ...task,
-        progress: Math.min(100, task.progress + (Math.random() * 2 - 0.5)),
-        performance: Math.max(80, Math.min(100, task.performance + (Math.random() * 4 - 2))),
-        lastUpdate: new Date().toISOString()
-      }))
-    );
-
-    // Atualizar status do sistema
-    setSystemStatus(prev => prev ? {
-      ...prev,
-      cpu: Math.max(10, Math.min(90, prev.cpu + (Math.random() * 10 - 5))),
-      memory: Math.max(50, Math.min(95, prev.memory + (Math.random() * 6 - 3))),
-      network: Math.max(70, Math.min(100, prev.network + (Math.random() * 8 - 4)))
-    } : null);
-
-    // Atualizar métricas reais
+    // Atualizar métricas reais do serviço de dados
     const dataService = RealDataService.getInstance();
     setRealMetrics(dataService.getRealMetrics());
-
-    // Adicionar log ocasional
-    if (Math.random() < 0.1) {
-      const logMessages = [
-        '✅ Todas as tarefas funcionando perfeitamente',
-        '🔄 Otimização automática aplicada',
-        '📈 Performance melhorada automaticamente',
-        '🛡️ Sistema de segurança ativo',
-        '🌍 Expansão global em andamento',
-        '💡 IA adaptando estratégias automaticamente'
-      ];
-      addLog(logMessages[Math.floor(Math.random() * logMessages.length)]);
-    }
   };
 
   const addLog = (message: string) => {

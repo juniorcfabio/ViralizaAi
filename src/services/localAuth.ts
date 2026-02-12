@@ -14,6 +14,10 @@ class LocalAuthService {
   // Salvar usuários no localStorage
   private saveUsers(users: LocalUser[]): void {
     localStorage.setItem(this.storageKey, JSON.stringify(users));
+    // SYNC COM SUPABASE
+    import('../lib/supabase').then(({ supabase }) => {
+      supabase.from('system_settings').upsert({ key: 'local_users', value: users, updated_at: new Date().toISOString() }).then(() => {});
+    });
   }
 
   // Carregar usuários do localStorage

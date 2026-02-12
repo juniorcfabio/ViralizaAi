@@ -101,7 +101,7 @@ class HumanizedAutomationService {
       max = max * 1.5;
     }
 
-    return Math.floor(Math.random() * (max - min)) + min;
+    return Math.floor((max + min) / 2);
   }
 
   private async sleep(ms: number): Promise<void> {
@@ -139,9 +139,9 @@ class HumanizedAutomationService {
 
   private async simulateTyping(): Promise<void> {
     // Simular tempo de digitação humana (40-80 WPM)
-    const wordsPerMinute = 40 + Math.random() * 40;
-    const charactersPerSecond = (wordsPerMinute * 5) / 60; // 5 chars por palavra média
-    const typingDelay = Math.random() * 200 + 100; // 100-300ms entre caracteres
+    const wordsPerMinute = 60;
+    const charactersPerSecond = (wordsPerMinute * 5) / 60;
+    const typingDelay = 200;
     
     await this.sleep(typingDelay);
   }
@@ -542,9 +542,7 @@ class HumanizedAutomationService {
   private async calculatePatternEffectiveness(pattern: HumanBehaviorPattern): Promise<number> {
     // Simular análise de efetividade baseada em métricas reais
     const baseScore = 75;
-    const randomVariation = (Math.random() - 0.5) * 20; // ±10
-    
-    return Math.max(0, Math.min(100, baseScore + randomVariation));
+    return baseScore;
   }
 
   private async adjustPattern(pattern: HumanBehaviorPattern): Promise<void> {

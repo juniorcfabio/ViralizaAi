@@ -479,6 +479,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const leads = JSON.parse(localStorage.getItem('funnel_leads') || '[]');
         leads.push(data);
         localStorage.setItem('funnel_leads', JSON.stringify(leads));
+        // SYNC COM SUPABASE
+        import('../src/lib/supabase').then(({ supabase }) => {
+          supabase.from('activity_logs').insert({ action: 'funnel_lead', details: data, created_at: new Date().toISOString() }).then(() => {});
+        });
         
         // Redirecionar para thank you page
         alert('Obrigado! Você receberá o acesso em seu e-mail em instantes.');
@@ -640,6 +644,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const funnels = JSON.parse(localStorage.getItem('generated_funnels') || '[]');
     funnels.push(funnel);
     localStorage.setItem('generated_funnels', JSON.stringify(funnels));
+    // SYNC COM SUPABASE
+    import('../src/lib/supabase').then(({ supabase }) => {
+      supabase.from('generated_content').insert({ type: 'funnel', content: funnel, created_at: new Date().toISOString() }).then(() => {});
+    });
   }
 
   getFunnels(): GeneratedFunnel[] {
@@ -664,6 +672,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (index !== -1) {
       funnels[index].deployUrl = deployUrl;
       localStorage.setItem('generated_funnels', JSON.stringify(funnels));
+      // SYNC COM SUPABASE
+      import('../src/lib/supabase').then(({ supabase }) => {
+        supabase.from('generated_content').upsert({ id: funnelId, type: 'funnel', content: funnels[index], updated_at: new Date().toISOString() }).then(() => {});
+      });
     }
 
     console.log('🚀 Funil deployado:', deployUrl);

@@ -532,7 +532,7 @@ class SocialAutomationService {
 
     const platformTemplates = templates[platform] || templates.instagram;
     const typeTemplates = platformTemplates[contentType] || platformTemplates.post;
-    const template = typeTemplates[Math.floor(Math.random() * typeTemplates.length)];
+    const template = typeTemplates[0];
 
     const content = template.replace('{prompt}', prompt);
 
@@ -548,8 +548,8 @@ class SocialAutomationService {
     const hashtags = hashtagSets[category] || hashtagSets.marketing;
 
     // Calcular métricas estimadas
-    const baseReach = Math.floor(Math.random() * 5000) + 1000;
-    const viralScore = Math.floor(Math.random() * 40) + 60; // 60-100
+    const baseReach = 0;
+    const viralScore = 0;
 
     return {
       text: content,
@@ -571,10 +571,9 @@ class SocialAutomationService {
   // =======================
   private async postToPlatform(platform: string, data: any): Promise<any> {
     // Simulação realista de postagem
-    const delay = Math.random() * 2000 + 1000; // 1-3 segundos
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-    const postId = `${platform}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const postId = `${platform}_${Date.now()}`;
     
     return {
       id: postId,
@@ -609,16 +608,16 @@ class SocialAutomationService {
     const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
     
     const baseMetrics = {
-      posts: Math.floor(Math.random() * days * 2) + days,
-      impressions: Math.floor(Math.random() * 50000) + 10000,
-      reach: Math.floor(Math.random() * 30000) + 5000,
-      engagement: Math.floor(Math.random() * 2000) + 500,
-      clicks: Math.floor(Math.random() * 1000) + 100,
-      shares: Math.floor(Math.random() * 200) + 50
+      posts: 0,
+      impressions: 0,
+      reach: 0,
+      engagement: 0,
+      clicks: 0,
+      shares: 0
     };
 
-    const engagementRate = ((baseMetrics.engagement / baseMetrics.reach) * 100).toFixed(2);
-    const ctr = ((baseMetrics.clicks / baseMetrics.impressions) * 100).toFixed(2);
+    const engagementRate = baseMetrics.reach > 0 ? ((baseMetrics.engagement / baseMetrics.reach) * 100).toFixed(2) : '0.00';
+    const ctr = baseMetrics.impressions > 0 ? ((baseMetrics.clicks / baseMetrics.impressions) * 100).toFixed(2) : '0.00';
 
     return {
       period,
@@ -627,7 +626,7 @@ class SocialAutomationService {
       rates: {
         engagement: `${engagementRate}%`,
         clickThrough: `${ctr}%`,
-        growth: `+${Math.floor(Math.random() * 20) + 5}%`
+        growth: '0%'
       },
       topPosts: [
         {
@@ -636,7 +635,7 @@ class SocialAutomationService {
           platform: 'instagram',
           impressions: 15420,
           engagement: 892,
-          date: new Date(Date.now() - Math.random() * days * 24 * 60 * 60 * 1000).toISOString()
+          date: new Date().toISOString()
         },
         {
           id: 'post_2',
@@ -644,7 +643,7 @@ class SocialAutomationService {
           platform: 'linkedin',
           impressions: 8750,
           engagement: 445,
-          date: new Date(Date.now() - Math.random() * days * 24 * 60 * 60 * 1000).toISOString()
+          date: new Date().toISOString()
         }
       ],
       bestTimes: ['09:00', '12:00', '18:00', '21:00'],

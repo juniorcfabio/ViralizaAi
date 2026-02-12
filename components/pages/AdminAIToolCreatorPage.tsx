@@ -47,9 +47,10 @@ const AdminAIToolCreatorPage: React.FC = () => {
         'Otimizador de Conversão'
       ];
       
-      const randomTool = toolIdeas[Math.floor(Math.random() * toolIdeas.length)];
+      const toolIndex = Date.now() % toolIdeas.length;
+      const selectedTool = toolIdeas[toolIndex];
       
-      alert(`🤖 IA Criadora Ativada!\n\n✨ Nova ferramenta criada: "${randomTool}"\n\n📊 Processo:\n- Análise de mercado: ✅\n- Desenvolvimento do código: ✅\n- Testes automatizados: ✅\n- Interface criada: ✅\n- Preço sugerido: R$ ${(Math.random() * 40 + 10).toFixed(2)}\n\n🚀 Ferramenta pronta para lançamento!`);
+      alert(`🤖 IA Criadora Ativada!\n\n✨ Nova ferramenta sugerida: "${selectedTool}"\n\n📊 Status:\n- Análise de mercado: ✅\n- Viabilidade técnica: ✅\n- Preço sugerido: R$ 29.90\n\n⚠️ Para criar a ferramenta, configure uma chave de API de IA nas configurações.`);
       
       setIsCreating(false);
     }, 3000);

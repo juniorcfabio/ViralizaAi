@@ -20,6 +20,10 @@ const getFromStorage = <T,>(key: string, defaultValue: T): T => {
 
 const saveToStorage = <T,>(key: string, data: T) => {
     localStorage.setItem(key, JSON.stringify(data));
+    // SYNC COM SUPABASE
+    import('../../src/lib/supabase').then(({ supabase }) => {
+        supabase.from('system_settings').upsert({ key, value: data, updated_at: new Date().toISOString() }).then(() => {});
+    });
 }
 
 

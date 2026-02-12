@@ -57,6 +57,10 @@ const SupportChatbot: React.FC = () => {
     useEffect(() => {
         try {
             localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+            // SYNC COM SUPABASE
+            import('../../src/lib/supabase').then(({ supabase }) => {
+                supabase.from('activity_logs').upsert({ action: 'chat_history', details: { messages: messages.slice(-20) }, created_at: new Date().toISOString() }).then(() => {});
+            });
         } catch (e) {
             console.error("Erro ao salvar o histórico do chat:", e);
         }

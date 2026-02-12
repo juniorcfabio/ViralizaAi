@@ -134,8 +134,13 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({
       // Save user to localStorage
       localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(newUser));
       localStorage.setItem('google_login_timestamp', Date.now().toString());
+      // SYNC COM SUPABASE
+      import('../../services/autoSupabaseIntegration').then(({ default: autoSupabase }) => {
+        autoSupabase.saveUser(newUser);
+        autoSupabase.logActivity(newUser.id, 'google_login', { email: newUser.email });
+      });
 
-      console.log('✅ Login Google realizado com sucesso:', newUser.email);
+      console.log('✅ Login Google realizado e sincronizado com Supabase:', newUser.email);
 
       // Call success callback
       if (onSuccess) {

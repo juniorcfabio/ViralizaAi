@@ -383,6 +383,10 @@ class PlanAccessControl {
     const usageKey = `usage_${feature}_${userId}`;
     const current = this.getCurrentUsage(feature, 'mensal', userId);
     localStorage.setItem(usageKey, (current + 1).toString());
+    // SYNC COM SUPABASE
+    import('../src/lib/supabase').then(({ supabase }) => {
+      supabase.from('user_data').upsert({ user_id: userId, data: { [usageKey]: current + 1 }, updated_at: new Date().toISOString() }).then(() => {});
+    });
   }
 
   public resetDailyUsage(userId: string): void {

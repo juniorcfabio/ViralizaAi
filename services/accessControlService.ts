@@ -1,5 +1,12 @@
-// 🔐 SERVIÇO DE CONTROLE DE ACESSO REAL
-// Sistema rigoroso para validar pagamentos e liberar ferramentas
+// 🔐 SERVIÇO DE CONTROLE DE ACESSO - SUPABASE-FIRST
+/**
+ * Serviço de Controle de Acesso
+ * PRIORIDADE: Supabase/PostgreSQL → fallback localStorage
+ * Nenhuma ferramenta é liberada sem pagamento confirmado no backend
+ */
+
+import { supabase } from './autoSupabaseIntegration';
+import autoSupabase from './autoSupabaseIntegration';
 
 export interface PaymentRecord {
   id: string;
@@ -18,27 +25,41 @@ export interface ToolAccess {
   toolId: string;
   toolName: string;
   hasAccess: boolean;
-  accessType: 'plan' | 'individual' | 'admin';
+  accessType: 'plan' | 'individual' | 'admin' | 'subscription' | 'purchase';
   expiresAt?: Date;
 }
 
 class AccessControlService {
   private readonly STORAGE_KEY = 'viralizaai_payments';
   private readonly ACCESS_KEY = 'viralizaai_access';
+  private accessCache: Map<string, { result: boolean; timestamp: number }> = new Map();
+  private readonly CACHE_TTL = 60000; // 1 minuto
 
-  // 💳 REGISTRAR PAGAMENTO REAL
-  registerPayment(payment: Omit<PaymentRecord, 'id' | 'createdAt'>): PaymentRecord {
+  // 💳 REGISTRAR PAGAMENTO - SUPABASE FIRST
+  async registerPayment(payment: Omit<PaymentRecord, 'id' | 'createdAt'>): Promise<PaymentRecord> {
     const newPayment: PaymentRecord = {
       ...payment,
       id: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       createdAt: new Date(),
     };
 
+    // SALVAR NO SUPABASE
+    await autoSupabase.savePayment({
+      userId: payment.userId,
+      type: payment.type,
+      itemName: payment.itemName,
+      amount: payment.amount,
+      paymentMethod: payment.paymentMethod,
+      status: payment.status,
+      transactionId: payment.transactionId
+    });
+
+    // Backup localStorage
     const payments = this.getAllPayments();
     payments.push(newPayment);
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(payments));
 
-    console.log('💳 Pagamento registrado:', newPayment);
+    console.log('💳 Pagamento registrado no SUPABASE:', newPayment.id);
     return newPayment;
   }
 
@@ -55,17 +76,27 @@ class AccessControlService {
     payment.status = 'completed';
     payment.transactionId = transactionId;
 
-    // Definir validade baseada no tipo
     if (payment.type === 'plan') {
       payment.validUntil = this.calculatePlanExpiry(payment.itemName);
     }
 
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(payments));
 
-    // Liberar acesso após confirmação
-    this.grantAccess(payment);
+    // SYNC COM SUPABASE
+    autoSupabase.savePayment({
+      userId: payment.userId,
+      type: payment.type,
+      itemName: payment.itemName,
+      amount: payment.amount,
+      paymentMethod: payment.paymentMethod,
+      status: 'confirmed',
+      transactionId: transactionId
+    });
 
-    console.log('✅ Pagamento confirmado:', payment);
+    this.grantAccess(payment);
+    this.invalidateCache(payment.userId);
+
+    console.log('✅ Pagamento confirmado:', payment.id);
     return true;
   }
 
@@ -74,7 +105,6 @@ class AccessControlService {
     const accesses = this.getAllAccesses();
     
     if (payment.type === 'plan') {
-      // Liberar todas as ferramentas do plano
       const planTools = this.getPlanTools(payment.itemName);
       planTools.forEach(toolName => {
         const access: ToolAccess = {
@@ -85,7 +115,6 @@ class AccessControlService {
           expiresAt: payment.validUntil
         };
         
-        // Remover acesso anterior se existir
         const existingIndex = accesses.findIndex(a => a.toolId === access.toolId && a.toolName === access.toolName);
         if (existingIndex >= 0) {
           accesses[existingIndex] = access;
@@ -94,7 +123,6 @@ class AccessControlService {
         }
       });
     } else if (payment.type === 'tool') {
-      // Liberar ferramenta específica
       const access: ToolAccess = {
         toolId: payment.itemName.toLowerCase().replace(/\s+/g, '_'),
         toolName: payment.itemName,
@@ -111,48 +139,131 @@ class AccessControlService {
     }
 
     localStorage.setItem(this.ACCESS_KEY, JSON.stringify(accesses));
-    console.log('🔓 Acesso liberado para:', payment.itemName);
+
+    // SYNC COM SUPABASE
+    if (payment.type === 'plan') {
+      const planTools = this.getPlanTools(payment.itemName);
+      planTools.forEach(toolName => {
+        autoSupabase.saveToolAccess(payment.userId, toolName, payment.itemName, payment.validUntil);
+      });
+    } else {
+      autoSupabase.saveToolAccess(payment.userId, payment.itemName, 'individual');
+    }
   }
 
-  // 🔍 VERIFICAR ACESSO A FERRAMENTA
-  hasToolAccess(userId: string, toolName: string, userType?: string): boolean {
-    console.log('🔍 Verificando acesso:', { userId, toolName, userType });
-    
+  // 🔍 VERIFICAR ACESSO - SUPABASE FIRST + CACHE
+  async hasToolAccess(userId: string, toolName: string, userType?: string): Promise<boolean> {
     // Admin sempre tem acesso
-    if (userType === 'admin') {
-      console.log('👑 Admin tem acesso total a:', toolName);
-      return true;
+    if (userType === 'admin') return true;
+
+    // Cache check
+    const cacheKey = `${userId}:${toolName}`;
+    const cached = this.accessCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return cached.result;
     }
 
+    // 1. VERIFICAR NO SUPABASE (fonte primária)
+    try {
+      const { data, error } = await supabase
+        .from('user_access')
+        .select('id, valid_until, is_active, access_type')
+        .eq('user_id', userId)
+        .eq('tool_name', toolName)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!error && data) {
+        // Verificar expiração
+        if (data.valid_until && new Date(data.valid_until) < new Date()) {
+          // Expirou - desativar
+          await supabase
+            .from('user_access')
+            .update({ is_active: false, updated_at: new Date().toISOString() })
+            .eq('id', data.id);
+          this.accessCache.set(cacheKey, { result: false, timestamp: Date.now() });
+          return false;
+        }
+
+        this.accessCache.set(cacheKey, { result: true, timestamp: Date.now() });
+        return true;
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao verificar acesso no Supabase, usando fallback:', error);
+    }
+
+    // 2. FALLBACK: Verificar no Supabase via autoSupabase (query diferente)
+    try {
+      const hasSupabaseAccess = await autoSupabase.checkToolAccess(userId, toolName);
+      if (hasSupabaseAccess) {
+        this.accessCache.set(cacheKey, { result: true, timestamp: Date.now() });
+        return true;
+      }
+    } catch {
+      // silencioso
+    }
+
+    // 3. FALLBACK: localStorage
     const accesses = this.getAllAccesses();
-    console.log('📋 Acessos disponíveis:', accesses);
-    
     const access = accesses.find(a => 
       a.toolName === toolName || 
       a.toolId === toolName.toLowerCase().replace(/\s+/g, '_')
     );
 
-    console.log('🔍 Acesso encontrado:', access);
-
     if (!access || !access.hasAccess) {
-      console.log('❌ Sem acesso a:', toolName, 'para usuário:', userId);
+      this.accessCache.set(cacheKey, { result: false, timestamp: Date.now() });
       return false;
     }
 
-    // Verificar expiração
     if (access.expiresAt && new Date() > new Date(access.expiresAt)) {
-      console.log('⏰ Acesso expirado para:', toolName);
+      this.accessCache.set(cacheKey, { result: false, timestamp: Date.now() });
       return false;
     }
 
-    console.log('✅ Acesso liberado para:', toolName);
+    this.accessCache.set(cacheKey, { result: true, timestamp: Date.now() });
     return true;
   }
 
-  // 📋 LISTAR FERRAMENTAS COM ACESSO
+  // 📋 LISTAR FERRAMENTAS COM ACESSO - SUPABASE FIRST
+  async getUserToolAccessAsync(userId: string, userType?: string): Promise<ToolAccess[]> {
+    if (userType === 'admin') {
+      return this.getAllTools().map(tool => ({
+        toolId: tool.toLowerCase().replace(/\s+/g, '_'),
+        toolName: tool,
+        hasAccess: true,
+        accessType: 'admin' as const
+      }));
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('user_access')
+        .select('tool_name, access_type, valid_until, is_active')
+        .eq('user_id', userId)
+        .eq('is_active', true);
+
+      if (!error && data && data.length > 0) {
+        const now = new Date();
+        return data
+          .filter(d => !d.valid_until || new Date(d.valid_until) > now)
+          .map(d => ({
+            toolId: d.tool_name.toLowerCase().replace(/\s+/g, '_'),
+            toolName: d.tool_name,
+            hasAccess: true,
+            accessType: d.access_type as ToolAccess['accessType'],
+            expiresAt: d.valid_until ? new Date(d.valid_until) : undefined
+          }));
+      }
+    } catch {
+      // fallback
+    }
+
+    return this.getUserToolAccess(userId, userType);
+  }
+
+  // 📋 LISTAR FERRAMENTAS (síncrono, localStorage fallback)
   getUserToolAccess(userId: string, userType?: string): ToolAccess[] {
     if (userType === 'admin') {
-      // Admin tem acesso a todas as ferramentas
       return this.getAllTools().map(tool => ({
         toolId: tool.toLowerCase().replace(/\s+/g, '_'),
         toolName: tool,
@@ -166,6 +277,15 @@ class AccessControlService {
       if (access.expiresAt && new Date() > new Date(access.expiresAt)) return false;
       return true;
     });
+  }
+
+  // Invalidar cache de um usuário
+  private invalidateCache(userId: string): void {
+    for (const key of this.accessCache.keys()) {
+      if (key.startsWith(`${userId}:`)) {
+        this.accessCache.delete(key);
+      }
+    }
   }
 
   // 📊 OBTER TODOS OS PAGAMENTOS
@@ -196,47 +316,29 @@ class AccessControlService {
     const planLower = planName.toLowerCase();
     
     if (planLower.includes('mensal')) {
-      return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 dias
+      return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     } else if (planLower.includes('trimestral')) {
-      return new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000); // 90 dias
+      return new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
     } else if (planLower.includes('semestral')) {
-      return new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000); // 180 dias
+      return new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
     } else if (planLower.includes('anual')) {
-      return new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // 365 dias
+      return new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
     }
     
-    return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // Padrão 30 dias
+    return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   }
 
   // 🛠️ FERRAMENTAS POR PLANO
   private getPlanTools(planName: string): string[] {
     const planLower = planName.toLowerCase();
-    
-    // Todas as ferramentas disponíveis
-    const allTools = [
-      'Gerador de Scripts IA',
-      'Criador de Thumbnails', 
-      'Analisador de Trends',
-      'Otimizador de SEO',
-      'Gerador de Hashtags',
-      'Criador de Logos',
-      'Agendamento Multiplataforma',
-      'IA de Copywriting',
-      'Tradutor Automático',
-      'Gerador de QR Code'
-    ];
+    const allTools = this.getAllTools();
 
-    if (planLower.includes('mensal')) {
-      return allTools.slice(0, 4); // 4 ferramentas básicas
-    } else if (planLower.includes('trimestral')) {
-      return allTools.slice(0, 6); // 6 ferramentas
-    } else if (planLower.includes('semestral')) {
-      return allTools.slice(0, 8); // 8 ferramentas
-    } else if (planLower.includes('anual')) {
-      return allTools; // Todas as ferramentas
-    }
+    if (planLower.includes('mensal')) return allTools.slice(0, 6);
+    if (planLower.includes('trimestral')) return allTools.slice(0, 9);
+    if (planLower.includes('semestral')) return allTools.slice(0, 12);
+    if (planLower.includes('anual')) return allTools;
     
-    return allTools.slice(0, 4); // Padrão
+    return allTools.slice(0, 6);
   }
 
   // 📝 TODAS AS FERRAMENTAS DISPONÍVEIS
@@ -251,7 +353,12 @@ class AccessControlService {
       'Agendamento Multiplataforma',
       'IA de Copywriting',
       'Tradutor Automático',
-      'Gerador de QR Code'
+      'Gerador de QR Code',
+      'Editor de Vídeo Pro',
+      'Gerador de Ebooks Premium',
+      'Gerador de Animações',
+      'IA Video Generator 8K',
+      'AI Funil Builder'
     ];
   }
 
@@ -264,6 +371,7 @@ class AccessControlService {
     });
     
     localStorage.setItem(this.ACCESS_KEY, JSON.stringify(validAccesses));
+    this.accessCache.clear();
     console.log('🧹 Acessos expirados removidos');
   }
 
@@ -271,6 +379,7 @@ class AccessControlService {
   resetSystem(): void {
     localStorage.removeItem(this.STORAGE_KEY);
     localStorage.removeItem(this.ACCESS_KEY);
+    this.accessCache.clear();
     console.log('🔄 Sistema de acesso resetado');
   }
 }

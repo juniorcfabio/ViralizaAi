@@ -129,6 +129,9 @@ const saveDailyUsage = (userId: string, usage: any) => {
   try {
     const key = `growthEngine_usage_${userId}`;
     localStorage.setItem(key, JSON.stringify(usage));
+    import('../../src/lib/supabase').then(({ supabase }) => {
+      supabase.from('user_data').upsert({ user_id: userId, data: { growthEngine: usage }, updated_at: new Date().toISOString() }).then(() => {});
+    });
   } catch {
   }
 };

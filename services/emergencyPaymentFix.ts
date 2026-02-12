@@ -1,5 +1,8 @@
 // CORREÇÃO EMERGENCIAL PARA PROBLEMA DE LOGOUT APÓS PAGAMENTO
 // Sistema ultra-robusto que intercepta e corrige automaticamente
+// INTEGRAÇÃO COM SUPABASE/POSTGRESQL
+
+import autoSupabase from './autoSupabaseIntegration';
 
 class EmergencyPaymentFix {
   private static instance: EmergencyPaymentFix;
@@ -208,8 +211,20 @@ class EmergencyPaymentFix {
         // Salvar usuário atualizado
         localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(currentUser));
         localStorage.setItem('viraliza_ai_backup_user', JSON.stringify(currentUser));
+        // SYNC COM SUPABASE/POSTGRESQL
+        autoSupabase.saveUser(currentUser);
+        autoSupabase.saveToolAccess(currentUser.id || data.userId, data.toolId, 'individual');
+        autoSupabase.savePayment({
+          userId: currentUser.id || data.userId,
+          type: 'tool',
+          itemName: data.toolId,
+          amount: 0,
+          paymentMethod: 'stripe',
+          status: 'confirmed',
+          stripeSessionId: data.sessionId
+        });
         
-        console.log('✅ Usuário atual ativado:', currentUser);
+        console.log('✅ Usuário ativado e sincronizado com Supabase:', currentUser);
       }
 
       // 2. ATIVAR EM USUÁRIOS PERSISTENTES

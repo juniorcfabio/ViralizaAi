@@ -46,38 +46,18 @@ const GlobalPromotionPage: React.FC = () => {
     // SISTEMA SEMPRE ATIVO - Inicializar logs reais imediatamente
     const initializeRealTimeLogs = () => {
       const realTimeLogs = [
-        '🌍 SISTEMA GLOBAL ULTRA-AVANÇADO ATIVO 24/7',
-        '🚀 IA promovendo ViralizaAi em tempo real no mundo inteiro',
-        '🎯 114+ campanhas ativas em todos os continentes',
-        '💰 Vendendo planos e ferramentas automaticamente',
-        '👥 Captando usuários e afiliados globalmente',
-        '🔄 Otimização automática a cada 10 segundos',
-        '📊 Processando 847K+ usuários ativos',
-        '💎 Receita hoje: $18,473.50 e crescendo',
-        '🌟 127 planos vendidos hoje automaticamente',
-        '⚡ 34 novos afiliados captados hoje',
-        '🎨 89 ferramentas vendidas automaticamente',
-        '🔥 Taxa de conversão: 3.7% em tempo real'
+        '🌍 Sistema de promoção global inicializado',
+        `� Última verificação: ${new Date().toLocaleTimeString()}`,
+        '⚙️ Configurações de campanha carregadas'
       ];
       
       setLogs(realTimeLogs);
       
-      // Adicionar novos logs a cada 15 segundos
+      // Logs estáticos - sem simulação de eventos falsos
       const logInterval = setInterval(() => {
-        const newLogs = [
-          `💰 Nova venda: Plano Anual - $497.00 (${new Date().toLocaleTimeString()})`,
-          `🌍 Campanha otimizada: ${['USA', 'Brazil', 'Germany', 'China', 'Japan'][Math.floor(Math.random() * 5)]} +15% conversão`,
-          `👥 Novo afiliado captado: ${['Europa', 'Ásia', 'América do Norte', 'América do Sul'][Math.floor(Math.random() * 4)]}`,
-          `🚀 Ferramenta vendida: AI Video Generator - $97.00`,
-          `📈 Impressões globais: +${Math.floor(Math.random() * 5000 + 1000)} em tempo real`,
-          `⚡ Sistema otimizado: Performance +${Math.floor(Math.random() * 10 + 5)}%`,
-          `🎯 Lead qualificado convertido em ${['França', 'Itália', 'Espanha', 'Reino Unido'][Math.floor(Math.random() * 4)]}`,
-          `💎 Upsell realizado: Cliente upgrade para Plano Premium`
-        ];
-        
-        const randomLog = newLogs[Math.floor(Math.random() * newLogs.length)];
-        setLogs(prev => [randomLog, ...prev.slice(0, 49)]);
-      }, 15000);
+        // Apenas atualizar timestamp do último check
+        setLogs(prev => [`📡 Sistema de promoção ativo - ${new Date().toLocaleTimeString()}`, ...prev.slice(0, 49)]);
+      }, 60000);
       
       return logInterval;
     };

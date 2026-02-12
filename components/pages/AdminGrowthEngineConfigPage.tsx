@@ -99,6 +99,11 @@ const AdminGrowthEngineConfigPage: React.FC = () => {
   const handleSave = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
     localStorage.setItem(PRICING_STORAGE_KEY, JSON.stringify(pricing));
+    // SYNC COM SUPABASE
+    import('../../src/lib/supabase').then(({ supabase }) => {
+      supabase.from('system_settings').upsert({ key: 'growth_engine_config', value: config, updated_at: new Date().toISOString() }).then(() => {});
+      supabase.from('system_settings').upsert({ key: 'growth_engine_pricing', value: pricing, updated_at: new Date().toISOString() }).then(() => {});
+    });
     showNotification('Configurações do Motor de Crescimento salvas com sucesso!');
   };
 
