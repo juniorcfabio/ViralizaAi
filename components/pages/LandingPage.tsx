@@ -1181,10 +1181,36 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
     };
 
     const defaultPlans: Plan[] = [
-        { id: 'p1', name: t('plan.mensal'), price: '59.90', period: t('plan.period.month'), features: ['Crescimento Orgânico', 'Gestão de Conteúdo', 'Análises Básicas', t('plan.feature.conversion_tags')] },
-        { id: 'p2', name: t('plan.trimestral'), price: '159.90', period: t('plan.period.quarter'), features: ['Tudo do Mensal', 'Análises Avançadas', 'IA Otimizada', t('plan.feature.retention_audio')] },
-        { id: 'p3', name: t('plan.semestral'), price: '259.90', period: t('plan.period.semester'), features: ['Tudo do Trimestral', 'Relatórios Estratégicos', 'Acesso Beta', t('plan.feature.competitor_spy')], highlight: true },
-        { id: 'p4', name: t('plan.anual'), price: '399.90', period: t('plan.period.year'), features: ['Tudo do Semestral', 'Gerente Dedicado', 'API de Integração', '2 Meses Grátis', t('plan.feature.future_trends')] },
+        { id: 'p1', name: t('plan.mensal'), price: '59.90', period: t('plan.period.month'), features: [
+            '6 Ferramentas de IA',
+            'Gerador de Scripts IA',
+            'Criador de Thumbnails',
+            'Analisador de Trends',
+            'Otimizador de SEO',
+            'Gerador de Hashtags',
+            'Criador de Logos'
+        ] },
+        { id: 'p2', name: t('plan.trimestral'), price: '159.90', period: t('plan.period.quarter'), features: [
+            'Tudo do Mensal +',
+            'Agendamento Multiplataforma',
+            'IA de Copywriting',
+            'Tradutor Automático',
+            '9 Ferramentas no total'
+        ] },
+        { id: 'p3', name: t('plan.semestral'), price: '259.90', period: t('plan.period.semester'), features: [
+            'Tudo do Trimestral +',
+            'Gerador de QR Code',
+            'Editor de Vídeo Pro',
+            'Gerador de Ebooks Premium',
+            '12 Ferramentas no total'
+        ], highlight: true },
+        { id: 'p4', name: t('plan.anual'), price: '399.90', period: t('plan.period.year'), features: [
+            'Tudo do Semestral +',
+            'Gerador de Animações',
+            'IA Video Generator 8K',
+            'AI Funil Builder',
+            'Todas as 15 Ferramentas'
+        ] },
     ];
 
     const [plans, setPlans] = useState<Plan[]>(defaultPlans);
