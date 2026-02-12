@@ -12,7 +12,7 @@ const requiredEnvVars = {
   // 🗄️ BANCO DE DADOS (SUPABASE)
   'SUPABASE_URL': 'https://seu-projeto.supabase.co',
   'SUPABASE_ANON_KEY': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-  'SUPABASE_SERVICE_KEY': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+  'SUPABASE_SERVICE_ROLE_KEY': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   'DATABASE_URL': 'postgresql://postgres:[password]@db.projeto.supabase.co:5432/postgres',
   
   // 🤖 OPENAI
@@ -92,7 +92,7 @@ async function setupVercelEnvironment() {
   console.log('3. ✏️ Atualize as variáveis com valores reais:');
   console.log('   - SUPABASE_URL (do seu projeto Supabase)');
   console.log('   - SUPABASE_ANON_KEY (do seu projeto Supabase)');
-  console.log('   - SUPABASE_SERVICE_KEY (do seu projeto Supabase)');
+  console.log('   - SUPABASE_SERVICE_ROLE_KEY (do seu projeto Supabase)');
   console.log('   - DATABASE_URL (connection string do Supabase)');
   console.log('   - OPENAI_API_KEY (da sua conta OpenAI)');
   console.log('   - EMAIL_USER e EMAIL_PASS (se usar Gmail)');
