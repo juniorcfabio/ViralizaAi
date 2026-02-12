@@ -20,7 +20,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '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';
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeSecretKey) {
+      console.error('❌ STRIPE_SECRET_KEY não configurada');
+      return res.status(500).json({ error: 'Stripe não configurado' });
+    }
     
     console.log('🛠️ Criando pagamento de ferramenta...');
     console.log('🔑 Stripe key disponível:', !!stripeSecretKey);

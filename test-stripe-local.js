@@ -5,10 +5,11 @@ import https from 'https';
 const createCheckoutSession = async (data) => {
   console.log('🚀 SIMULANDO API create-checkout-session LOCAL');
   
-  // Chave Stripe construída corretamente (mesma lógica da API)
-  const keyPart1 = 'sk_live_51RbXyNH6btTxgDogj9E5AEyOcXBuqjbs66xCMukRCT9bUOg3aeDG5hLdAMfttTNxDl2qEhcYrZnq6R2TWcEzqVrw';
-  const keyPart2 = '00CPfRY1l8';
-  const stripeSecretKey = keyPart1 + keyPart2;
+  // Chave Stripe via variável de ambiente
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+  if (!stripeSecretKey) {
+    throw new Error('STRIPE_SECRET_KEY não configurada. Defina a variável de ambiente.');
+  }
   
   console.log('🔑 Chave Stripe construída:');
   console.log('   - Length:', stripeSecretKey.length);
