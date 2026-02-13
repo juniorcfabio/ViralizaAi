@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import PixPaymentService from '../../services/pixPaymentService';
 import { useAuth } from '../../contexts/AuthContextFixed';
 
 interface PixPaymentModalFixedProps {
@@ -17,7 +16,7 @@ const PixPaymentModalFixed: React.FC<PixPaymentModalFixedProps> = ({
   amount,
   onPaymentSuccess
 }) => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [pixCode, setPixCode] = useState<string>('');
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -199,30 +198,108 @@ const PixPaymentModalFixed: React.FC<PixPaymentModalFixedProps> = ({
             <button 
               onClick={async () => {
                 if (!user) {
-                  alert('❌ Erro: Usuário não identificado');
+                  alert('Erro: Usuário não identificado');
                   return;
                 }
 
                 setIsProcessing(true);
                 
                 try {
-                  // Registrar pagamento PIX para verificação
-                  const result = await PixPaymentService.registerPixPayment({
-                    pixKey: 'caccb1b4-6b25-4e5a-98a0-17121d31780e',
-                    amount,
-                    userId: user.id,
-                    planName
+                  // Extrair tipo do plano a partir do nome
+                  const planLower = planName.toLowerCase();
+                  let planType = 'mensal';
+                  if (planLower.includes('anual') || planLower.includes('annual')) planType = 'anual';
+                  else if (planLower.includes('semestral') || planLower.includes('semiannual')) planType = 'semestral';
+                  else if (planLower.includes('trimestral') || planLower.includes('quarterly')) planType = 'trimestral';
+                  else if (planLower.includes('mensal') || planLower.includes('monthly')) planType = 'mensal';
+
+                  // Calcular data de expiração
+                  const now = new Date();
+                  const endDate = new Date(now);
+                  switch (planType) {
+                    case 'mensal': endDate.setMonth(endDate.getMonth() + 1); break;
+                    case 'trimestral': endDate.setMonth(endDate.getMonth() + 3); break;
+                    case 'semestral': endDate.setMonth(endDate.getMonth() + 6); break;
+                    case 'anual': endDate.setFullYear(endDate.getFullYear() + 1); break;
+                    default: endDate.setMonth(endDate.getMonth() + 1);
+                  }
+
+                  const paymentId = `pix_${Date.now()}`;
+
+                  // 1. Salvar no Supabase: subscription + purchase + user_profiles
+                  const { supabase } = await import('../../src/lib/supabase');
+
+                  // Cancelar subscriptions ativas anteriores
+                  await supabase
+                    .from('subscriptions')
+                    .update({ status: 'cancelled', updated_at: now.toISOString() })
+                    .eq('user_id', user.id)
+                    .eq('status', 'active');
+
+                  // Criar nova subscription
+                  await supabase
+                    .from('subscriptions')
+                    .insert({
+                      user_id: user.id,
+                      plan_type: planType,
+                      status: 'active',
+                      payment_provider: 'pix',
+                      payment_id: paymentId,
+                      amount: amount,
+                      start_date: now.toISOString(),
+                      end_date: endDate.toISOString()
+                    });
+
+                  // Registrar compra
+                  await supabase
+                    .from('purchases')
+                    .insert({
+                      user_id: user.id,
+                      item_type: 'plan',
+                      item_name: planName,
+                      amount: amount,
+                      payment_method: 'pix',
+                      payment_id: paymentId,
+                      status: 'completed',
+                      created_at: now.toISOString()
+                    });
+
+                  // Atualizar user_profiles com plano ativo
+                  await supabase
+                    .from('user_profiles')
+                    .update({
+                      plan: planType,
+                      plan_status: 'active',
+                      plan_expires_at: endDate.toISOString(),
+                      updated_at: now.toISOString()
+                    })
+                    .eq('user_id', user.id);
+
+                  // 2. Atualizar usuário no frontend
+                  await updateUser(user.id, {
+                    plan: planType,
+                    subscriptionEndDate: endDate.toISOString()
                   });
 
-                  if (result.success) {
-                    alert(`✅ ${result.message}\n\n⏳ Seu pagamento será verificado automaticamente.\n\n📧 Você receberá uma notificação quando o acesso for liberado.`);
-                    onClose();
-                  } else {
-                    alert(`❌ Erro: ${result.error || 'Falha ao registrar pagamento'}`);
-                  }
+                  // Log de atividade
+                  await supabase.from('activity_logs').insert({
+                    user_id: user.id,
+                    action: 'pix_plan_activated',
+                    details: JSON.stringify({ plan_type: planType, amount, payment_id: paymentId })
+                  });
+
+                  console.log('✅ Plano ativado via PIX:', planType);
+
+                  alert(`✅ Pagamento confirmado!\n\nSeu plano ${planType.charAt(0).toUpperCase() + planType.slice(1)} foi ativado com sucesso.\n\n🔄 A página será recarregada...`);
+                  onClose();
+                  if (onPaymentSuccess) onPaymentSuccess();
+                  
+                  // Recarregar para refletir novo plano
+                  setTimeout(() => window.location.reload(), 1000);
+
                 } catch (error) {
-                  console.error('Erro ao registrar pagamento:', error);
-                  alert('❌ Erro interno. Tente novamente.');
+                  console.error('Erro ao ativar plano:', error);
+                  alert('Erro ao ativar plano. Tente novamente ou entre em contato com o suporte.');
                 } finally {
                   setIsProcessing(false);
                 }
