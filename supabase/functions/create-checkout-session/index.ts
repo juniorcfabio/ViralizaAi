@@ -9,13 +9,13 @@
  * Exige autenticação: Authorization: Bearer <JWT>
  * Retorna: { url } para redirecionar ao Stripe Checkout
  *
- * Secrets: STRIPE_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, APP_URL
+ * Secrets: STRIPE_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, APP_URL
  * Deploy: supabase functions deploy create-checkout-session
  * ===================================================== */
 import Stripe from "npm:stripe@11.26.0";
 import { createClient } from "npm:@supabase/supabase-js@2.32.0";
 
-const STRIPE_API_KEY = Deno.env.get("STRIPE_API_KEY")!;
+const STRIPE_API_KEY = Deno.env.get("STRIPE_SECRET")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const APP_URL = Deno.env.get("APP_URL") ?? "https://viralizaai.vercel.app";

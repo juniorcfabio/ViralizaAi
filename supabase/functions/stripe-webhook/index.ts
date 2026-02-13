@@ -3,7 +3,7 @@
  * Recebe webhooks do Stripe, valida assinatura e atualiza subscriptions.
  * 
  * Secrets necessários:
- *  - STRIPE_API_KEY (sk_live_... ou sk_test_...)
+ *  - STRIPE_SECRET (sk_live_... ou sk_test_...)
  *  - STRIPE_WEBHOOK_SIGNING_SECRET (whsec_...)
  *  - SUPABASE_URL (automático)
  *  - SUPABASE_SERVICE_ROLE_KEY (automático)
@@ -13,7 +13,7 @@
 import Stripe from "npm:stripe@11.26.0";
 import { createClient } from "npm:@supabase/supabase-js@2.32.0";
 
-const STRIPE_API_KEY = Deno.env.get("STRIPE_API_KEY")!;
+const STRIPE_API_KEY = Deno.env.get("STRIPE_SECRET")!;
 const STRIPE_WEBHOOK_SIGNING_SECRET = Deno.env.get("STRIPE_WEBHOOK_SIGNING_SECRET")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
