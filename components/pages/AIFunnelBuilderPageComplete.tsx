@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import StripeService from '../../services/stripeService';
-import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
+import PixPaymentSecure from '../ui/PixPaymentSecure';
 import AccessControlService from '../../services/accessControlService';
 
 interface FunnelStep {
@@ -601,14 +601,14 @@ const AIFunnelBuilderPageComplete: React.FC = () => {
         </div>
       )}
 
-      {/* Modal PIX */}
+      {/* Modal PIX Seguro */}
       {showPixModal && (
-        <PixPaymentModalFixed
+        <PixPaymentSecure
           isOpen={showPixModal}
           onClose={() => setShowPixModal(false)}
           planName="AI Funil Builder"
+          planSlug="ai-funnel-builder"
           amount={147.00}
-          onPaymentSuccess={undefined}
         />
       )}
     </div>

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import EbookGeneratorComponent from '../ui/EbookGenerator';
 import { GeneratedEbook } from '../../services/ebookGenerator';
 import { API_BASE_URL, getAuthHeaders } from '../../src/config/api';
-import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
+import PixPaymentSecure from '../ui/PixPaymentSecure';
 import AccessControlService from '../../services/accessControlService';
 
 const EbookGeneratorPage: React.FC = () => {
@@ -673,14 +673,14 @@ const EbookGeneratorPage: React.FC = () => {
           </div>
         )}
 
-        {/* Modal PIX */}
+        {/* Modal PIX Seguro */}
         {showPixModal && (
-          <PixPaymentModalFixed
+          <PixPaymentSecure
             isOpen={showPixModal}
             onClose={() => setShowPixModal(false)}
             planName="Gerador de Ebooks Premium"
+            planSlug="ebook-generator"
             amount={297.00}
-            onPaymentSuccess={undefined}
           />
         )}
       </div>

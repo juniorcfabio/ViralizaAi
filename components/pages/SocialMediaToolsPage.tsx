@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContextFixed';
 import SecureAPIClient from '../../services/apiClient';
 import SecurityService from '../../services/securityService';
 import StripeService from '../../services/stripeService';
-import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
+import PixPaymentSecure from '../ui/PixPaymentSecure';
 import openaiService from '../../services/openaiService';
 
 // Ícones
@@ -794,17 +794,17 @@ const SocialMediaToolsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal PIX */}
+      {/* Modal PIX Seguro */}
       {showPixModal && selectedPlan && (
-        <PixPaymentModalFixed
+        <PixPaymentSecure
           isOpen={showPixModal}
           onClose={() => {
             setShowPixModal(false);
             setSelectedPlan(null);
           }}
           planName={selectedPlan.name}
+          planSlug={selectedPlan.type || selectedPlan.name.toLowerCase()}
           amount={selectedPlan.price}
-          onPaymentSuccess={undefined}
         />
       )}
     </div>

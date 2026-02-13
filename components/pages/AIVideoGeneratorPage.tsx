@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import RealVideoGeneratorAI, { VideoConfig as VideoGenerationConfig, GeneratedVideoReal as GeneratedVideo } from '../../services/realVideoGeneratorAI';
 import RealTimePriceSyncService from '../../services/realTimePriceSync';
-import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
+import PixPaymentSecure from '../ui/PixPaymentSecure';
 import AccessControlService from '../../services/accessControlService';
 
 interface VideoConfig {
@@ -529,14 +529,14 @@ const AIVideoGeneratorPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal PIX */}
+      {/* Modal PIX Seguro */}
       {showPixModal && (
-        <PixPaymentModalFixed
+        <PixPaymentSecure
           isOpen={showPixModal}
           onClose={() => setShowPixModal(false)}
           planName="IA Video Generator 8K"
+          planSlug="ai-video-generator"
           amount={currentPrice}
-          onPaymentSuccess={undefined}
         />
       )}
     </div>

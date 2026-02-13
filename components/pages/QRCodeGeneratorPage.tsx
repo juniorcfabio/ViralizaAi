@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import AccessControlService from '../../services/accessControlService';
-import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
+import PixPaymentSecure from '../ui/PixPaymentSecure';
 import openaiService from '../../services/openaiService';
 
 const QRCodeGeneratorPage: React.FC = () => {
@@ -164,12 +164,12 @@ Seja prático e específico para o mercado brasileiro.`
         </div>
 
         {showPixModal && (
-          <PixPaymentModalFixed
+          <PixPaymentSecure
             isOpen={showPixModal}
             onClose={() => setShowPixModal(false)}
             planName="Gerador de QR Code"
+            planSlug="qr-code-generator"
             amount={47.00}
-            onPaymentSuccess={undefined}
           />
         )}
       </div>

@@ -4,7 +4,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import AccessControlService from '../../services/accessControlService';
-import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
+import PixPaymentSecure from '../ui/PixPaymentSecure';
 import openaiService from '../../services/openaiService';
 
 interface VideoProject {
@@ -382,12 +382,12 @@ const VideoEditorPage: React.FC = () => {
         </div>
 
         {showPixModal && (
-          <PixPaymentModalFixed
+          <PixPaymentSecure
             isOpen={showPixModal}
             onClose={() => setShowPixModal(false)}
             planName="Editor de Vídeo Pro"
+            planSlug="video-editor"
             amount={97.00}
-            onPaymentSuccess={undefined}
           />
         )}
       </div>
