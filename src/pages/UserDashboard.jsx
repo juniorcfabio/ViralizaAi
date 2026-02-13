@@ -14,14 +14,31 @@ const UserDashboard = () => {
   const [selectedTool, setSelectedTool] = useState(null);
   const [userAccess, setUserAccess] = useState([]);
 
+  // 📊 MAPEAMENTO DE PLANOS → FERRAMENTAS
+  const PLAN_TIERS = { mensal: 1, trimestral: 2, semestral: 3, anual: 4 };
+
+  const getUserPlanTier = () => {
+    const planName = (authUser?.plan || '').toLowerCase();
+    return PLAN_TIERS[planName] || 0;
+  };
+
+  const getUserPlanName = () => {
+    const planName = (authUser?.plan || '').toLowerCase();
+    if (planName.includes('anual')) return 'Anual';
+    if (planName.includes('semestral')) return 'Semestral';
+    if (planName.includes('trimestral')) return 'Trimestral';
+    if (planName.includes('mensal')) return 'Mensal';
+    return 'Nenhum';
+  };
+
   // 📊 DADOS REAIS DO USUÁRIO
   const realUserStats = {
-    name: 'João Silva',
-    email: 'joao@email.com',
-    plano: 'Pro',
-    plano_ativo: true,
-    affiliate_code: 'JS123456',
-    tools_purchased: 8,
+    name: authUser?.name || authUser?.email?.split('@')[0] || 'Usuário',
+    email: authUser?.email || '',
+    plano: getUserPlanName(),
+    plano_ativo: getUserPlanTier() > 0 || authUser?.type === 'admin',
+    affiliate_code: authUser?.affiliateCode || 'REF' + (authUser?.id || '').substring(0, 6).toUpperCase(),
+    tools_purchased: userAccess.length,
     credits_remaining: 450,
     usage_this_month: 67
   };
@@ -45,38 +62,40 @@ const UserDashboard = () => {
 
   // 🛠️ FUNÇÕES PARA USAR E COMPRAR FERRAMENTAS
   const handleUseTool = async (tool) => {
-    // Verificar se usuário tem acesso real à ferramenta
-    const hasAccess = await AccessControlService.hasToolAccess(
-      authUser?.id || 'guest', 
-      tool.name, 
-      authUser?.type
-    );
+    // Admin tem acesso total
+    if (authUser?.type === 'admin') { /* permitido */ }
+    else {
+      // Verificar se ferramenta está inclusa no plano do usuário
+      const currentTier = getUserPlanTier();
+      const toolTier = ALL_TOOLS.find(t => t.id === tool.id)?.planTier || 99;
+      const includedInPlan = currentTier >= toolTier;
 
-    if (!hasAccess) {
-      alert(`🔒 Acesso Negado!\n\nVocê precisa assinar um plano ou comprar esta ferramenta para usar: ${tool.name}`);
-      return;
+      // Verificar se ferramenta foi comprada avulsa
+      const purchasedStandalone = userAccess.some(a => a.toolName === tool.name);
+
+      if (!includedInPlan && !purchasedStandalone) {
+        alert(`🔒 Acesso Negado!\n\nEsta ferramenta requer o Plano ${PLAN_NAMES_BY_TIER[toolTier] || 'Superior'} ou compra avulsa.\n\nFerramenta: ${tool.name}\nPreço avulso: ${tool.price}`);
+        return;
+      }
     }
 
     // Ferramentas funcionais ativadas
     switch(tool.id) {
-      case 1: // Gerador de Scripts IA
-        openScriptGenerator();
-        break;
-      case 2: // Criador de Thumbnails
-        openThumbnailCreator();
-        break;
-      case 3: // Analisador de Trends
-        openTrendsAnalyzer();
-        break;
-      case 4: // Otimizador de SEO
-        openSEOOptimizer();
-        break;
-      case 5: // Gerador de Hashtags
-        openHashtagGenerator();
-        break;
-      case 6: // Criador de Logos
-        openLogoCreator();
-        break;
+      case 1: openScriptGenerator(); break;
+      case 2: openThumbnailCreator(); break;
+      case 3: openTrendsAnalyzer(); break;
+      case 4: openSEOOptimizer(); break;
+      case 5: openHashtagGenerator(); break;
+      case 6: openLogoCreator(); break;
+      case 7: window.location.href = '/dashboard/social-media-tools'; break;
+      case 8: window.location.href = '/dashboard/social-media-tools'; break;
+      case 9: window.location.href = '/dashboard/social-media-tools'; break;
+      case 10: window.location.href = '/dashboard/qr-generator'; break;
+      case 11: window.location.href = '/video-editor'; break;
+      case 12: window.location.href = '/dashboard/ebook-generator'; break;
+      case 13: window.location.href = '/animation-generator'; break;
+      case 14: window.location.href = '/dashboard/ai-video-generator'; break;
+      case 15: window.location.href = '/dashboard/ai-funnel-builder'; break;
       default:
         alert(`🚀 Abrindo ${tool.name}...\n\n✅ Ferramenta ativada e funcionando!`);
     }
@@ -605,73 +624,42 @@ const UserDashboard = () => {
     setShowPixModal(true);
   };
 
-  // 🛠️ FERRAMENTAS DISPONÍVEIS - CONTROLE DE ACESSO REAL
-  const getAvailableTools = () => {
-    const baseTools = [
-      {
-        id: 1,
-        name: 'Gerador de Scripts IA',
-        description: 'Crie scripts virais para seus vídeos usando inteligência artificial',
-        price: 'R$ 29,90',
-        category: 'IA',
-        icon: '🤖',
-        popular: true
-      },
-      {
-        id: 2,
-        name: 'Criador de Thumbnails',
-        description: 'Gere thumbnails atrativas automaticamente para seus vídeos',
-        price: 'R$ 19,90',
-        category: 'Design',
-        icon: '🎨',
-        popular: false
-      },
-      {
-        id: 3,
-        name: 'Analisador de Trends',
-        description: 'Descubra as tendências mais quentes do momento',
-        price: 'R$ 39,90',
-        category: 'Analytics',
-        icon: '📈',
-        popular: true
-      },
-      {
-        id: 4,
-        name: 'Otimizador de SEO',
-        description: 'Otimize seu conteúdo para os mecanismos de busca',
-        price: 'R$ 24,90',
-        category: 'SEO',
-        icon: '🔍',
-        popular: false
-      },
-      {
-        id: 5,
-        name: 'Gerador de Hashtags',
-        description: 'Encontre as hashtags perfeitas para seu conteúdo',
-        price: 'R$ 14,90',
-        category: 'Social',
-        icon: '#️⃣',
-        popular: true
-      },
-      {
-        id: 6,
-        name: 'Criador de Logos',
-        description: 'Crie logos profissionais em minutos',
-        price: 'R$ 49,90',
-        category: 'Design',
-        icon: '🎯',
-        popular: false
-      }
-    ];
+  // 🛠️ TODAS AS 15 FERRAMENTAS COM MAPEAMENTO DE PLANO
+  const ALL_TOOLS = [
+    { id: 1,  name: 'Gerador de Scripts IA',        description: 'Crie scripts virais para seus vídeos usando inteligência artificial',  price: 'R$ 29,90', category: 'IA',        icon: '🤖', popular: true,  planTier: 1 },
+    { id: 2,  name: 'Criador de Thumbnails',         description: 'Gere thumbnails com DALL-E 3 para seus vídeos',                       price: 'R$ 19,90', category: 'Design',    icon: '🎨', popular: false, planTier: 1 },
+    { id: 3,  name: 'Analisador de Trends',          description: 'Descubra as tendências mais quentes do momento com IA',               price: 'R$ 39,90', category: 'Analytics', icon: '📈', popular: true,  planTier: 1 },
+    { id: 4,  name: 'Otimizador de SEO',             description: 'Otimize seu conteúdo para os mecanismos de busca',                    price: 'R$ 24,90', category: 'SEO',       icon: '🔍', popular: false, planTier: 1 },
+    { id: 5,  name: 'Gerador de Hashtags',           description: 'Encontre as hashtags perfeitas para seu conteúdo',                    price: 'R$ 14,90', category: 'Social',    icon: '#️⃣', popular: true,  planTier: 1 },
+    { id: 6,  name: 'Criador de Logos',              description: 'Crie logos profissionais com DALL-E 3',                               price: 'R$ 49,90', category: 'Design',    icon: '🎯', popular: false, planTier: 1 },
+    { id: 7,  name: 'Agendamento Multiplataforma',   description: 'Agende posts em todas as redes sociais simultaneamente',              price: 'R$ 39,90', category: 'Social',    icon: '📅', popular: true,  planTier: 2 },
+    { id: 8,  name: 'IA de Copywriting',             description: 'Copys persuasivas geradas por IA para suas campanhas',                price: 'R$ 34,90', category: 'IA',        icon: '✍️', popular: false, planTier: 2 },
+    { id: 9,  name: 'Tradutor Automático',           description: 'Traduza conteúdo para múltiplos idiomas automaticamente',             price: 'R$ 29,90', category: 'IA',        icon: '🌍', popular: false, planTier: 2 },
+    { id: 10, name: 'Gerador de QR Code',            description: 'QR Codes personalizados + estratégias de marketing com IA',           price: 'R$ 19,90', category: 'Marketing', icon: '📱', popular: false, planTier: 3 },
+    { id: 11, name: 'Editor de Vídeo Pro',           description: 'Editor de vídeo completo com roteiros gerados por IA',                price: 'R$ 97,00', category: 'Vídeo',     icon: '🎬', popular: true,  planTier: 3 },
+    { id: 12, name: 'Gerador de Ebooks Premium',     description: 'Ebooks profissionais com capítulos gerados por IA',                   price: 'R$ 49,90', category: 'Conteúdo',  icon: '📚', popular: true,  planTier: 3 },
+    { id: 13, name: 'Gerador de Animações',          description: 'Animações profissionais com briefings gerados por IA',                price: 'R$ 67,00', category: 'Design',    icon: '🎭', popular: false, planTier: 4 },
+    { id: 14, name: 'IA Video Generator 8K',         description: 'Geração de vídeos em alta qualidade com IA avançada',                 price: 'R$ 79,90', category: 'Vídeo',     icon: '🎥', popular: true,  planTier: 4 },
+    { id: 15, name: 'AI Funil Builder',              description: 'Funis de vendas completos gerados por IA',                            price: 'R$ 89,90', category: 'Marketing', icon: '🔄', popular: true,  planTier: 4 }
+  ];
 
-    // Verificar acesso real para cada ferramenta
-    return baseTools.map(tool => ({
-      ...tool,
-      owned: userAccess.some(a => a.toolName === tool.name) || authUser?.type === 'admin'
-    }));
-  };
+  const PLAN_NAMES_BY_TIER = { 1: 'Mensal', 2: 'Trimestral', 3: 'Semestral', 4: 'Anual' };
 
-  const availableTools = getAvailableTools();
+  // Separar ferramentas do plano vs avulsas
+  const userTier = authUser?.type === 'admin' ? 4 : getUserPlanTier();
+
+  const planTools = ALL_TOOLS.filter(t => t.planTier <= userTier).map(tool => ({
+    ...tool,
+    owned: true,
+    includedInPlan: true
+  }));
+
+  const avulsaTools = ALL_TOOLS.filter(t => t.planTier > userTier).map(tool => ({
+    ...tool,
+    owned: userAccess.some(a => a.toolName === tool.name),
+    includedInPlan: false,
+    requiredPlan: PLAN_NAMES_BY_TIER[tool.planTier]
+  }));
 
   // 📊 COMPONENTE DE ESTATÍSTICA
   const StatCard = ({ title, value, subtitle, color = 'blue', icon }) => (
@@ -687,104 +675,194 @@ const UserDashboard = () => {
     </div>
   );
 
-  // 🛠️ ABA FERRAMENTAS
+  // 🛠️ ABA FERRAMENTAS - FILTRADA POR PLANO
   const ToolsTab = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">🛠️ Suas Ferramentas</h2>
-        <div className="flex space-x-2">
-          <select className="border rounded-lg px-3 py-2">
-            <option>Todas as categorias</option>
-            <option>IA</option>
-            <option>Design</option>
-            <option>Analytics</option>
-            <option>SEO</option>
-            <option>Social</option>
-          </select>
-        </div>
-      </div>
 
       {/* ESTATÍSTICAS DO USUÁRIO */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard 
-          title="Ferramentas Adquiridas" 
-          value={user?.tools_purchased} 
-          subtitle="de 6 disponíveis"
+          title="Ferramentas do Plano" 
+          value={planTools.length} 
+          subtitle={`de 15 total`}
           color="#4F46E5"
           icon="🛠️"
         />
         <StatCard 
-          title="Créditos Restantes" 
-          value={user?.credits_remaining} 
-          subtitle="Renova em 15 dias"
+          title="Ferramentas Avulsas" 
+          value={avulsaTools.filter(t => t.owned).length} 
+          subtitle="compradas separadamente"
           color="#10B981"
+          icon="🛒"
+        />
+        <StatCard 
+          title="Total Disponível" 
+          value={planTools.length + avulsaTools.filter(t => t.owned).length}
+          subtitle="ferramentas ativas"
+          color="#F59E0B"
           icon="⚡"
         />
         <StatCard 
-          title="Uso Este Mês" 
-          value={`${user?.usage_this_month}%`}
-          subtitle="do limite do plano"
-          color="#F59E0B"
-          icon="📊"
-        />
-        <StatCard 
           title="Plano Atual" 
-          value={user?.plano}
-          subtitle={user?.plano_ativo ? 'Ativo' : 'Inativo'}
+          value={user?.plano || 'Nenhum'}
+          subtitle={user?.plano_ativo ? '✅ Ativo' : '❌ Inativo'}
           color="#8B5CF6"
           icon="👑"
         />
       </div>
 
-      {/* GRID DE FERRAMENTAS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {availableTools.map((tool) => (
-          <div key={tool.id} className="bg-white rounded-lg shadow-md p-6 relative">
-            {tool.popular && (
-              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                🔥 Popular
-              </div>
-            )}
-            
-            <div className="flex items-center mb-4">
-              <div className="text-3xl mr-3">{tool.icon}</div>
-              <div>
-                <h3 className="font-semibold text-lg">{tool.name}</h3>
-                <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">{tool.category}</span>
-              </div>
+      {/* BANNER PARA QUEM NÃO TEM PLANO */}
+      {userTier === 0 && (
+        <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl p-6 text-white">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h3 className="text-xl font-bold">Você ainda não tem um plano ativo</h3>
+              <p className="text-white/80 mt-1">Assine agora para ter acesso às ferramentas de IA e turbinar seu marketing digital!</p>
             </div>
-            
-            <p className="text-gray-600 text-sm mb-4">{tool.description}</p>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-2xl font-bold text-green-600">{tool.price}</span>
-              {tool.owned ? (
-                <button 
-                  onClick={() => handleUseTool(tool)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                >
-                  ✨ Usar Agora
-                </button>
-              ) : (
-                <div className="flex gap-2">
+            <a href="/pricing" className="bg-white text-purple-700 font-bold px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors whitespace-nowrap">
+              Ver Planos
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* ===== FERRAMENTAS DO PLANO ===== */}
+      {planTools.length > 0 && (
+        <>
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">🛠️ Ferramentas do Plano {getUserPlanName()}</h2>
+            <span className="bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded-full">
+              {planTools.length} ferramenta{planTools.length !== 1 ? 's' : ''} inclusa{planTools.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {planTools.map((tool) => (
+              <div key={tool.id} className="bg-white rounded-lg shadow-md p-6 relative border-2 border-green-200">
+                <div className="absolute -top-3 left-4 bg-green-500 text-white text-xs px-3 py-1 rounded-full font-semibold">
+                  ✅ Incluso no Plano
+                </div>
+                {tool.popular && (
+                  <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                    🔥 Popular
+                  </div>
+                )}
+                
+                <div className="flex items-center mb-4 mt-2">
+                  <div className="text-3xl mr-3">{tool.icon}</div>
+                  <div>
+                    <h3 className="font-semibold text-lg">{tool.name}</h3>
+                    <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">{tool.category}</span>
+                  </div>
+                </div>
+                
+                <p className="text-gray-600 text-sm mb-4">{tool.description}</p>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-green-600 font-semibold">Incluso no plano</span>
                   <button 
-                    onClick={() => handlePurchaseTool(tool)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                    onClick={() => handleUseTool(tool)}
+                    className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 font-semibold transition-colors"
                   >
-                    💳 Cartão
-                  </button>
-                  <button 
-                    onClick={() => handlePixPurchase(tool)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-                  >
-                    🏦 PIX
+                    ✨ Usar Agora
                   </button>
                 </div>
-              )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ===== FERRAMENTAS AVULSAS - PROPAGANDA/COMPRA ===== */}
+      {avulsaTools.length > 0 && (
+        <>
+          <div className="mt-8 mb-2">
+            <div className="bg-gradient-to-r from-orange-500 to-pink-600 rounded-xl p-6 text-white">
+              <h2 className="text-2xl font-bold mb-1">🚀 Turbine Seu Marketing com Ferramentas Avulsas!</h2>
+              <p className="text-white/90">
+                Adicione ferramentas premium ao seu plano. Pague apenas pelo que usar — acesso imediato após confirmação do pagamento!
+              </p>
             </div>
           </div>
-        ))}
-      </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {avulsaTools.map((tool) => (
+              <div key={tool.id} className={`rounded-lg shadow-md p-6 relative border-2 ${tool.owned ? 'bg-white border-blue-200' : 'bg-gradient-to-br from-gray-50 to-orange-50 border-orange-200'}`}>
+                {!tool.owned && (
+                  <div className="absolute -top-3 left-4 bg-orange-500 text-white text-xs px-3 py-1 rounded-full font-semibold">
+                    🛒 Ferramenta Avulsa
+                  </div>
+                )}
+                {tool.owned && (
+                  <div className="absolute -top-3 left-4 bg-blue-500 text-white text-xs px-3 py-1 rounded-full font-semibold">
+                    ✅ Comprada
+                  </div>
+                )}
+                {tool.popular && (
+                  <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                    🔥 Popular
+                  </div>
+                )}
+                
+                <div className="flex items-center mb-4 mt-2">
+                  <div className="text-3xl mr-3">{tool.icon}</div>
+                  <div>
+                    <h3 className="font-semibold text-lg">{tool.name}</h3>
+                    <div className="flex gap-2 mt-1">
+                      <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">{tool.category}</span>
+                      {!tool.owned && (
+                        <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">Plano {tool.requiredPlan}+</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-gray-600 text-sm mb-4">{tool.description}</p>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-2xl font-bold text-orange-600">{tool.price}</span>
+                  {tool.owned ? (
+                    <button 
+                      onClick={() => handleUseTool(tool)}
+                      className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 font-semibold transition-colors"
+                    >
+                      ✨ Usar Agora
+                    </button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handlePurchaseTool(tool)}
+                        className="bg-orange-600 text-white px-3 py-2 rounded-lg hover:bg-orange-700 font-semibold text-sm transition-colors"
+                      >
+                        💳 Cartão
+                      </button>
+                      <button 
+                        onClick={() => handlePixPurchase(tool)}
+                        className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 font-semibold text-sm transition-colors"
+                      >
+                        🏦 PIX
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* BANNER DE UPGRADE */}
+          {userTier > 0 && userTier < 4 && (
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-xl p-6 text-white text-center mt-4">
+              <h3 className="text-xl font-bold mb-2">Quer TODAS as ferramentas com desconto?</h3>
+              <p className="text-white/80 mb-4">
+                Faça upgrade para o Plano {PLAN_NAMES_BY_TIER[userTier + 1] || 'Anual'} e ganhe mais ferramentas inclusas no plano!
+              </p>
+              <a href="/pricing" className="inline-block bg-white text-purple-700 font-bold px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors">
+                Fazer Upgrade
+              </a>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 
