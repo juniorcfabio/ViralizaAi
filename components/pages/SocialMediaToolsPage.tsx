@@ -448,12 +448,14 @@ const SocialMediaToolsPage: React.FC = () => {
       
       switch (action) {
         case 'scheduleContent':
-          result = await apiClient.callToolAPI(action, {
-            text: 'Conteúdo de exemplo para agendamento',
-            scheduledTime: new Date(Date.now() + 3600000).toISOString(),
-            platforms: ['Instagram', 'TikTok', 'Facebook'],
-            csrfToken
-          });
+          try {
+            const scheduleContent = await openaiService.generate('copywriting',
+              `Crie 3 posts otimizados para agendamento simultâneo em Instagram, TikTok e Facebook.\n\nPara cada plataforma, inclua:\n- Legenda otimizada (com emojis, hashtags, CTA)\n- Melhor horário para publicar\n- Formato ideal (carrossel, reels, stories)\n- Tamanho de imagem recomendado\n\nNicho: Marketing Digital. Tom: profissional mas engajante.`
+            );
+            result = { success: true, data: { content: scheduleContent }, message: 'Conteúdo para agendamento gerado com IA' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'generateCopy':
@@ -484,37 +486,59 @@ const SocialMediaToolsPage: React.FC = () => {
           break;
           
         case 'editVideo':
-          result = await apiClient.callToolAPI(action, {
-            duration: 30,
-            transcript: 'Este é um vídeo sobre marketing digital...',
-            mood: 'upbeat',
-            csrfToken
-          });
+          try {
+            const videoScript = await openaiService.generate('scripts',
+              `Crie um roteiro completo de vídeo de 30 segundos sobre marketing digital.\n\nInclua:\n- Storyboard (cena por cena com descrição visual)\n- Narração/falas\n- Música sugerida\n- Efeitos visuais\n- Texto na tela\n- Transições recomendadas\n- Duração de cada cena`
+            );
+            result = { success: true, data: { content: videoScript }, message: 'Roteiro de vídeo gerado com IA' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'generateAnimation':
-          result = await apiClient.callToolAPI(action, {
-            imageUrl: 'https://example.com/image.jpg',
-            animationType: '3d_transform',
-            csrfToken
-          });
+          try {
+            const animScript = await openaiService.generate('scripts',
+              `Crie um briefing completo para animação promocional.\n\nInclua:\n- Conceito visual\n- Estilo de animação (2D/3D/motion graphics)\n- Paleta de cores\n- Sequência de cenas\n- Texto animado\n- Duração sugerida\n- Referências visuais\n- Música/efeitos sonoros`
+            );
+            result = { success: true, data: { content: animScript }, message: 'Briefing de animação gerado com IA' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'generateMusic':
-          result = await apiClient.callToolAPI(action, {
-            style: 'upbeat_electronic',
-            duration: 30,
-            csrfToken
-          });
+          try {
+            const musicBrief = await openaiService.generate('general',
+              `Crie uma descrição detalhada de música para vídeo de marketing digital (30 segundos).\n\nInclua:\n- Gênero musical recomendado\n- BPM (batidas por minuto)\n- Humor/atmosfera\n- Instrumentos sugeridos\n- Estrutura (intro, desenvolvimento, clímax)\n- Licenciamento: sugira 3 músicas royalty-free similares de bibliotecas como Epidemic Sound, Artlist ou YouTube Audio Library\n- Links de referência`
+            );
+            result = { success: true, data: { content: musicBrief }, message: 'Briefing musical gerado com IA' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'generateThumbnails':
-          result = await apiClient.callToolAPI(action, {
-            title: 'Como Viralizar no TikTok',
-            style: 'modern',
-            colors: ['#FF6B6B', '#4ECDC4', '#45B7D1'],
-            csrfToken
-          });
+          try {
+            const thumbResponse = await fetch(`${window.location.origin}/api/ai-image`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                prompt: 'Como Viralizar no TikTok - thumbnail para YouTube, cores vibrantes, texto bold, profissional',
+                style: 'thumbnail',
+                size: '1024x1024',
+                quality: 'standard'
+              })
+            });
+            const thumbData = await thumbResponse.json();
+            if (thumbData.success) {
+              result = { success: true, data: { content: `\n\n✨ Thumbnail gerada com DALL-E 3:\n${thumbData.imageUrl}\n\nPrompt revisado: ${thumbData.revisedPrompt || ''}` }, message: 'Thumbnail gerada com DALL-E 3' };
+            } else {
+              result = { success: false, message: thumbData.error || 'Erro ao gerar thumbnail' };
+            }
+          } catch (e: any) {
+            result = { success: false, message: `Erro: ${e.message}` };
+          }
           break;
           
         case 'generateHashtags':
@@ -531,32 +555,36 @@ const SocialMediaToolsPage: React.FC = () => {
           break;
           
         case 'createChatbot':
-          result = await apiClient.callToolAPI(action, {
-            platform: 'Telegram',
-            responses: {
-              welcome: 'Olá! Como posso ajudar?',
-              fallback: 'Desculpe, não entendi. Pode reformular?'
-            },
-            csrfToken
-          });
+          try {
+            const chatbot = await openaiService.generate('general',
+              `Crie um chatbot completo para atendimento automático via DM/Telegram para um negócio de marketing digital.\n\nInclua:\n- Mensagem de boas-vindas\n- 10 perguntas frequentes com respostas\n- Fluxo de captura de leads (nome, email, telefone)\n- Mensagens de promoção\n- Respostas para objeções comuns\n- Fluxo de agendamento\n- Mensagem de fallback\n- Gatilhos de palavras-chave\n\nFormate como fluxograma de conversação.`
+            );
+            result = { success: true, data: { content: chatbot }, message: 'Chatbot gerado com IA' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'createGamification':
-          result = await apiClient.callToolAPI(action, {
-            type: 'quiz',
-            content: {
-              title: 'Qual seu perfil de empreendedor?',
-              questions: ['Pergunta 1', 'Pergunta 2', 'Pergunta 3']
-            },
-            csrfToken
-          });
+          try {
+            const quiz = await openaiService.generate('general',
+              `Crie conteúdo gamificado completo para redes sociais de marketing digital.\n\nInclua:\n1. Quiz: "Qual seu perfil de empreendedor?" (10 perguntas com 4 opções cada + 4 resultados possíveis)\n2. Desafio de 7 dias para engajamento\n3. Enquete interativa (5 enquetes prontas)\n4. Sistema de pontos e recompensas\n5. Ranking de engajamento\n\nFormate tudo pronto para copiar e usar.`
+            );
+            result = { success: true, data: { content: quiz }, message: 'Gamificação gerada com IA' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'showDashboard':
-          result = await apiClient.callToolAPI(action, {
-            platforms: ['Instagram', 'TikTok', 'Facebook', 'Twitter'],
-            csrfToken
-          });
+          try {
+            const dashInsights = await openaiService.generate('trends',
+              `Gere um relatório de insights de mídias sociais para um negócio de marketing digital.\n\nPlataformas: Instagram, TikTok, Facebook, Twitter\n\nInclua:\n- Métricas-chave para acompanhar (KPIs)\n- Benchmarks do setor para cada plataforma\n- Análise de melhor horário para publicar\n- Tipos de conteúdo com maior ROI\n- Estratégias de crescimento para cada plataforma\n- Metas sugeridas para 30/60/90 dias\n- Template de relatório semanal`
+            );
+            result = { success: true, data: { content: dashInsights }, message: 'Insights do dashboard gerados com IA' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'detectTrends':
@@ -569,29 +597,36 @@ const SocialMediaToolsPage: React.FC = () => {
           break;
           
         case 'generateSalesLinks':
-          result = await apiClient.callToolAPI(action, {
-            products: [
-              { id: '1', name: 'Curso de Marketing', price: 197 },
-              { id: '2', name: 'Consultoria 1:1', price: 497 }
-            ],
-            csrfToken
-          });
+          try {
+            const salesCopy = await openaiService.generate('funnel',
+              `Crie uma estratégia completa de links de vendas para um negócio digital.\n\nProdutos:\n1. Curso de Marketing Digital - R$197\n2. Consultoria 1:1 - R$497\n\nInclua:\n- Copy de venda para cada produto\n- Estrutura da página de vendas\n- Sequência de emails (5 emails)\n- CTAs otimizados\n- Estratégia de upsell/downsell\n- Textos para links na bio\n- Modelo de link tree otimizado`
+            );
+            result = { success: true, data: { content: salesCopy }, message: 'Estratégia de vendas gerada com IA' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'setupLeadCapture':
-          result = await apiClient.callToolAPI(action, {
-            formType: 'popup',
-            fields: ['name', 'email', 'phone'],
-            integrations: ['mailchimp', 'hubspot'],
-            csrfToken
-          });
+          try {
+            const leadStrategy = await openaiService.generate('funnel',
+              `Crie uma estratégia completa de captura de leads para marketing digital.\n\nInclua:\n- 3 modelos de popup (headline + copy + CTA)\n- 5 ideias de lead magnet (ebook, checklist, webinar, etc.)\n- Sequência de nurturing (7 emails)\n- Campos do formulário otimizados\n- Integrações recomendadas (Mailchimp, HubSpot, etc.)\n- Estratégia de segmentação\n- A/B tests sugeridos\n- Métricas de acompanhamento`
+            );
+            result = { success: true, data: { content: leadStrategy }, message: 'Estratégia de leads gerada com IA' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'setupRemarketing':
-          result = await apiClient.callToolAPI(action, {
-            audience: { size: 1000, interests: ['marketing', 'business'] },
-            csrfToken
-          });
+          try {
+            const remarketing = await openaiService.generate('general',
+              `Crie uma estratégia completa de remarketing para negócio digital.\n\nAudiência: 1000 visitantes, interesses em marketing e negócios.\n\nInclua:\n- Segmentos de audiência (quente, morna, fria)\n- Copy de anúncios para cada segmento (5 variações)\n- Estratégia de retargeting por plataforma\n- Orçamento sugerido (diário/mensal)\n- Frequência ideal de exibição\n- Públicos lookalike\n- Métricas de acompanhamento (CPA, ROAS, CTR)\n- Sequência de anúncios (7 dias)`
+            );
+            result = { success: true, data: { content: remarketing }, message: 'Estratégia de remarketing gerada com IA' };
+          } catch (e: any) {
+            result = { success: false, message: `Erro na IA: ${e.message}` };
+          }
           break;
           
         case 'analyzeCompetitors':
