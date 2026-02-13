@@ -5,6 +5,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import AccessControlService from '../../services/accessControlService';
 import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
+import openaiService from '../../services/openaiService';
 
 interface AnimationConfig {
   type: 'logo' | 'text' | 'shape' | 'particle';
@@ -54,6 +55,8 @@ const AnimationGeneratorPage: React.FC = () => {
   const [hasAccess, setHasAccess] = useState(false);
   const [showPixModal, setShowPixModal] = useState(false);
   const [selectedElement, setSelectedElement] = useState<AnimationElement | null>(null);
+  const [aiBrief, setAiBrief] = useState<string>('');
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Verificar acesso
   useEffect(() => {
@@ -531,7 +534,31 @@ const AnimationGeneratorPage: React.FC = () => {
               >
                 ✏️ Texto
               </button>
+              <button
+                onClick={async () => {
+                  setAiLoading(true);
+                  try {
+                    const brief = await openaiService.generate('scripts',
+                      `Crie um briefing completo para animação promocional de marketing digital.\n\nInclua:\n- Conceito visual e narrativa\n- Estilo de animação (2D/3D/motion graphics)\n- Paleta de cores (códigos hex)\n- Sequência de cenas (5 cenas)\n- Texto animado para cada cena\n- Duração sugerida por cena\n- Efeitos e transições\n- Música/efeitos sonoros sugeridos`
+                    );
+                    setAiBrief(brief);
+                  } catch (e: any) {
+                    alert('Erro IA: ' + e.message);
+                  } finally {
+                    setAiLoading(false);
+                  }
+                }}
+                disabled={aiLoading}
+                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 py-2 rounded hover:from-yellow-600 hover:to-orange-600 font-semibold"
+              >
+                {aiLoading ? '⏳ Gerando...' : '🤖 Briefing IA'}
+              </button>
             </div>
+            {aiBrief && (
+              <div className="mt-3 bg-gray-700 rounded p-3 text-xs max-h-48 overflow-y-auto whitespace-pre-wrap">
+                {aiBrief}
+              </div>
+            )}
 
             <div className="mt-6">
               <h4 className="font-bold mb-2">Elementos na Cena:</h4>

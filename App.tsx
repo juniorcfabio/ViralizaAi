@@ -73,6 +73,7 @@ import AdvertisingSuccessPage from './components/pages/AdvertisingSuccessPage';
 import TargetingAreasPage from './components/pages/TargetingAreasPage';
 import PricingPage from './components/pages/PricingPage';
 import SupabaseMonitorPage from './components/pages/SupabaseMonitorPage';
+import QRCodeGeneratorPage from './components/pages/QRCodeGeneratorPage';
 
 const UpdateModal: React.FC = () => {
     const [hasUpdate, setHasUpdate] = useState(false);
@@ -165,6 +166,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="revenue-projection" element={<RevenueProjectionPage />} />
                 <Route path="social-media-tools" element={<SocialMediaToolsPage />} />
                 <Route path="viral-analyzer" element={<ViralProductAnalyzerPage />} />
+                <Route path="qr-generator" element={<QRCodeGeneratorPage />} />
             </Route>
 
             {/* Admin Routes */}

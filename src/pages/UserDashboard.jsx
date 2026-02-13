@@ -206,169 +206,141 @@ const UserDashboard = () => {
     `);
   };
 
-  // 🎨 CRIADOR DE THUMBNAILS - FUNCIONAL
+  // 🎨 CRIADOR DE THUMBNAILS - COM DALL-E 3
   const openThumbnailCreator = () => {
-    const thumbWindow = window.open('', '_blank', 'width=1200,height=800');
-    thumbWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>🎨 Criador de Thumbnails - ViralizaAI</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; }
-          .container { max-width: 1000px; margin: 0 auto; background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; }
-          .canvas-container { background: white; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center; }
-          canvas { border: 2px solid #ddd; border-radius: 8px; }
-          .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
-          .control-group { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; }
-          input, select { width: 100%; padding: 10px; border: none; border-radius: 5px; margin-top: 5px; }
-          button { background: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; margin: 5px; }
-          button:hover { background: #45a049; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h1>🎨 Criador de Thumbnails</h1>
-          <p>Crie thumbnails atrativas para seus vídeos</p>
-          
-          <div class="canvas-container">
-            <canvas id="thumbnail" width="640" height="360"></canvas>
-          </div>
-          
-          <div class="controls">
-            <div class="control-group">
-              <label>Texto Principal:</label>
-              <input type="text" id="mainText" placeholder="Título do vídeo" value="COMO GANHAR R$ 1000">
-            </div>
-            <div class="control-group">
-              <label>Cor do Fundo:</label>
-              <input type="color" id="bgColor" value="#ff6b6b">
-            </div>
-            <div class="control-group">
-              <label>Cor do Texto:</label>
-              <input type="color" id="textColor" value="#ffffff">
-            </div>
-            <div class="control-group">
-              <label>Tamanho da Fonte:</label>
-              <input type="range" id="fontSize" min="20" max="80" value="40">
-            </div>
-          </div>
-          
-          <button onclick="updateThumbnail()">🔄 Atualizar</button>
-          <button onclick="downloadThumbnail()">💾 Baixar</button>
-          <button onclick="randomStyle()">🎲 Estilo Aleatório</button>
+    const w = window.open('', '_blank', 'width=1100,height=800');
+    w.document.write(`<!DOCTYPE html><html><head><title>🎨 Criador de Thumbnails IA - ViralizaAI</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{font-family:system-ui,-apple-system,sans-serif;background:linear-gradient(135deg,#ff6b6b,#ee5a24);min-height:100vh;color:#fff;padding:20px;}
+      .c{max-width:900px;margin:0 auto;background:rgba(255,255,255,.08);backdrop-filter:blur(20px);border-radius:20px;padding:32px;border:1px solid rgba(255,255,255,.15);}
+      h1{font-size:28px;margin-bottom:8px;}
+      p.sub{color:rgba(255,255,255,.7);margin-bottom:24px;}
+      .form{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+      .form.full{grid-template-columns:1fr;}
+      label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:rgba(255,255,255,.9);}
+      input,select,textarea{width:100%;padding:12px 16px;border:1px solid rgba(255,255,255,.2);border-radius:10px;font-size:15px;background:rgba(255,255,255,.1);color:#fff;outline:none;}
+      input::placeholder,textarea::placeholder{color:rgba(255,255,255,.4);}
+      select option{background:#1e1b4b;color:#fff;}
+      textarea{height:80px;resize:vertical;}
+      .btn{background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;padding:16px 32px;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;width:100%;transition:transform .15s;}
+      .btn:hover{transform:translateY(-1px);}
+      .btn:disabled{opacity:.5;cursor:wait;transform:none;}
+      .loader{text-align:center;padding:40px;display:none;}
+      .loader.show{display:block;}
+      .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;}
+      @keyframes spin{to{transform:rotate(360deg)}}
+      .result{display:none;text-align:center;margin-top:24px;background:rgba(255,255,255,.1);border-radius:16px;padding:24px;}
+      .result.show{display:block;}
+      .result img{max-width:100%;max-height:400px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.3);margin:16px 0;}
+      .actions{display:flex;gap:12px;justify-content:center;margin-top:16px;}
+      .actions button{padding:12px 24px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;}
+      .dl{background:#10b981;color:#fff;}
+      .regen{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.2)!important;}
+    </style></head>
+    <body>
+    <div class="c">
+      <h1>🎨 Criador de Thumbnails com IA</h1>
+      <p class="sub">Gere thumbnails profissionais usando DALL-E 3 da OpenAI</p>
+      
+      <div class="form">
+        <div><label>Título do Vídeo</label><input id="title" placeholder="Ex: Como Ganhar R$1000 por Dia"></div>
+        <div><label>Plataforma</label>
+          <select id="platform">
+            <option value="YouTube">YouTube (1280x720)</option>
+            <option value="Instagram Reels">Instagram Reels</option>
+            <option value="TikTok">TikTok</option>
+          </select>
         </div>
+        <div><label>Estilo Visual</label>
+          <select id="style">
+            <option value="vibrante e chamativo com cores neon">Vibrante/Neon</option>
+            <option value="minimalista e clean">Minimalista</option>
+            <option value="dramático com alto contraste">Dramático</option>
+            <option value="divertido e colorido estilo cartoon">Cartoon/Divertido</option>
+            <option value="profissional e corporativo">Profissional</option>
+            <option value="dark e misterioso">Dark/Misterioso</option>
+          </select>
+        </div>
+        <div><label>Elementos</label>
+          <select id="elements">
+            <option value="pessoa expressiva, setas, emojis">Pessoa + Setas + Emojis</option>
+            <option value="ícones e gráficos modernos">Ícones Modernos</option>
+            <option value="paisagem ou cenário">Cenário/Paisagem</option>
+            <option value="produto em destaque">Produto em Destaque</option>
+            <option value="texto bold grande">Texto Bold</option>
+          </select>
+        </div>
+      </div>
+      <div class="form full">
+        <div><label>Detalhes extras (opcional)</label><textarea id="extra" placeholder="Ex: fundo vermelho, incluir ícone de dinheiro, expressão de surpresa..."></textarea></div>
+      </div>
+      
+      <button class="btn" id="btnGen" onclick="generate()">🚀 Gerar Thumbnail com DALL-E 3</button>
+      <p style="font-size:12px;color:rgba(255,255,255,.5);margin-top:8px;text-align:center;">Custo: ~$0.04 por imagem (DALL-E 3)</p>
+      
+      <div class="loader" id="loader">
+        <div class="spinner"></div>
+        <p>Gerando thumbnail com DALL-E 3...</p>
+        <p style="font-size:13px;color:rgba(255,255,255,.5);margin-top:8px;">10-20 segundos</p>
+      </div>
+      
+      <div class="result" id="result">
+        <h3>✨ Thumbnail Gerada por IA</h3>
+        <img id="thumbImg" src="" alt="Thumbnail">
+        <p id="revised" style="font-size:12px;color:rgba(255,255,255,.5);margin-top:8px;"></p>
+        <div class="actions">
+          <button class="dl" onclick="download()">💾 Baixar Thumbnail</button>
+          <button class="regen" onclick="generate()">🔄 Gerar Outra</button>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      async function generate(){
+        var title=document.getElementById('title').value;
+        if(!title){alert('Insira o título do vídeo!');return;}
         
-        <script>
-          const canvas = document.getElementById('thumbnail');
-          const ctx = canvas.getContext('2d');
-          
-          function updateThumbnail() {
-            const mainText = document.getElementById('mainText').value;
-            const bgColor = document.getElementById('bgColor').value;
-            const textColor = document.getElementById('textColor').value;
-            const fontSize = document.getElementById('fontSize').value;
-            
-            // Limpar canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Fundo gradiente
-            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-            gradient.addColorStop(0, bgColor);
-            gradient.addColorStop(1, adjustBrightness(bgColor, -30));
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Texto principal
-            ctx.font = 'bold ' + fontSize + 'px Arial';
-            ctx.fillStyle = textColor;
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 2;
-            ctx.textAlign = 'center';
-            
-            const lines = wrapText(mainText, canvas.width - 40);
-            const lineHeight = parseInt(fontSize) * 1.2;
-            const startY = (canvas.height - (lines.length * lineHeight)) / 2 + parseInt(fontSize);
-            
-            lines.forEach((line, index) => {
-              const y = startY + (index * lineHeight);
-              ctx.strokeText(line, canvas.width / 2, y);
-              ctx.fillText(line, canvas.width / 2, y);
-            });
-            
-            // Elementos decorativos
-            drawDecorations();
+        document.getElementById('btnGen').disabled=true;
+        document.getElementById('loader').classList.add('show');
+        document.getElementById('result').classList.remove('show');
+        
+        var style=document.getElementById('style').value;
+        var elements=document.getElementById('elements').value;
+        var extra=document.getElementById('extra').value;
+        var platform=document.getElementById('platform').value;
+        var prompt=platform+' thumbnail for video: "'+title+'". Style: '+style+'. Include: '+elements+'. '+(extra||'')+'. High quality, eye-catching, clickbait style.';
+        
+        try{
+          var res=await fetch('${window.location.origin}/api/ai-image',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({prompt:prompt,style:'thumbnail',size:'1024x1024',quality:'standard'})
+          });
+          var d=await res.json();
+          if(d.success&&d.imageUrl){
+            document.getElementById('thumbImg').src=d.imageUrl;
+            document.getElementById('revised').textContent=d.revisedPrompt||'';
+            document.getElementById('result').classList.add('show');
+          }else{
+            alert('Erro: '+(d.error||d.details||'Tente novamente'));
           }
-          
-          function wrapText(text, maxWidth) {
-            const words = text.split(' ');
-            const lines = [];
-            let currentLine = '';
-            
-            words.forEach(word => {
-              const testLine = currentLine + word + ' ';
-              const metrics = ctx.measureText(testLine);
-              if (metrics.width > maxWidth && currentLine !== '') {
-                lines.push(currentLine.trim());
-                currentLine = word + ' ';
-              } else {
-                currentLine = testLine;
-              }
-            });
-            lines.push(currentLine.trim());
-            return lines;
-          }
-          
-          function drawDecorations() {
-            // Setas e elementos visuais
-            ctx.fillStyle = '#FFD700';
-            ctx.beginPath();
-            ctx.moveTo(50, 50);
-            ctx.lineTo(80, 35);
-            ctx.lineTo(80, 45);
-            ctx.lineTo(120, 45);
-            ctx.lineTo(120, 55);
-            ctx.lineTo(80, 55);
-            ctx.lineTo(80, 65);
-            ctx.closePath();
-            ctx.fill();
-          }
-          
-          function adjustBrightness(hex, percent) {
-            const num = parseInt(hex.replace('#', ''), 16);
-            const amt = Math.round(2.55 * percent);
-            const R = (num >> 16) + amt;
-            const G = (num >> 8 & 0x00FF) + amt;
-            const B = (num & 0x0000FF) + amt;
-            return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
-              (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
-              (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
-          }
-          
-          function downloadThumbnail() {
-            const link = document.createElement('a');
-            link.download = 'thumbnail-viralizaai.png';
-            link.href = canvas.toDataURL();
-            link.click();
-            alert('✅ Thumbnail baixada com sucesso!');
-          }
-          
-          function randomStyle() {
-            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3'];
-            const texts = ['INCRÍVEL!', 'VOCÊ PRECISA VER!', 'SURREAL!', 'NÃO ACREDITO!', 'TOP DEMAIS!'];
-            
-            document.getElementById('bgColor').value = colors[Math.floor(Math.random() * colors.length)];
-            document.getElementById('mainText').value = texts[Math.floor(Math.random() * texts.length)];
-            document.getElementById('fontSize').value = Math.floor(Math.random() * 30) + 35;
-            updateThumbnail();
-          }
-          
-          // Inicializar
-          updateThumbnail();
-        </script>
-      </body>
-      </html>
-    `);
+        }catch(e){
+          alert('Erro: '+e.message);
+        }finally{
+          document.getElementById('btnGen').disabled=false;
+          document.getElementById('loader').classList.remove('show');
+        }
+      }
+      function download(){
+        var a=document.createElement('a');
+        a.href=document.getElementById('thumbImg').src;
+        a.download='thumbnail-'+document.getElementById('title').value.replace(/\\s+/g,'-').toLowerCase()+'.png';
+        a.target='_blank';
+        a.click();
+      }
+    </script>
+    </body></html>`);
   };
 
   // 📈 ANALISADOR DE TRENDS - COM OPENAI REAL
