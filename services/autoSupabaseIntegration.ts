@@ -166,44 +166,19 @@ class AutoSupabaseIntegration {
     try {
       await this.initialize();
 
-      // Salvar na tabela users (principal)
-      const { data: userResult, error: userError } = await supabase
-        .from('users')
-        .upsert({
-          id: userData.id,
-          email: userData.email,
-          created_at: userData.joinedDate || new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (userError) {
-        console.warn('⚠️ Aviso ao salvar na tabela users:', userError);
-      }
-
-      // Salvar perfil na tabela user_profiles
-      const { data: profileResult, error: profileError } = await supabase
-        .from('user_profiles')
-        .upsert({
-          user_id: userData.id,
-          name: userData.name,
-          cpf: userData.cpf,
-          user_type: userData.type || 'client',
-          status: userData.status || 'active',
-          joined_date: userData.joinedDate || new Date().toISOString(),
-          preferences: {
-            socialAccounts: userData.socialAccounts || [],
-            paymentMethods: userData.paymentMethods || [],
-            billingHistory: userData.billingHistory || []
-          },
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (profileError) {
-        console.warn('⚠️ Aviso ao salvar perfil:', profileError);
+      // Salvar perfil usando auth.users metadata (não tenta inserir em tabelas que podem não existir)
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const { error: metaError } = await supabase.auth.updateUser({
+          data: {
+            name: userData.name,
+            user_type: userData.type || 'client',
+            status: userData.status || 'active'
+          }
+        });
+        if (metaError) {
+          console.warn('⚠️ Aviso ao atualizar metadata do usuário:', metaError);
+        }
       }
 
       console.log('✅ Usuário salvo no Supabase (users + user_profiles)');
@@ -211,7 +186,7 @@ class AutoSupabaseIntegration {
       // Salvar também no localStorage como backup
       localStorage.setItem('viraliza_ai_active_user_v1', JSON.stringify(userData));
       
-      return userResult || userData;
+      return userData;
     } catch (error) {
       console.error('❌ Erro ao salvar usuário no Supabase:', error);
       // Fallback para localStorage

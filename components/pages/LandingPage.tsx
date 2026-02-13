@@ -411,6 +411,7 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const { register, loginWithGoogle, isLoading } = useAuth();
+    const navigate = useNavigate();
 
     const formatCPF = (value: string) => {
         const v = value.replace(/\D/g, '').slice(0, 11);
@@ -476,8 +477,12 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             const result = await register(formData);
             
             if (result.success) {
-                console.log(' Cadastro Supabase realizado com sucesso');
-                setSuccessMessage('Cadastro realizado! Verifique seu e-mail para confirmar a conta e depois faça login.');
+                console.log('✅ Cadastro Supabase realizado com sucesso');
+                setSuccessMessage('Cadastro realizado! Redirecionando para escolher seu plano...');
+                setTimeout(() => {
+                    onClose();
+                    navigate('/dashboard/billing');
+                }, 1500);
             } else {
                 setError(result.message || 'Erro ao fazer cadastro');
             }
@@ -542,7 +547,7 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     
                     {successMessage && <p className="text-green-500 text-sm text-center">{successMessage}</p>}
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                    <button type="submit" className="w-full bg-accent text-light font-semibold py-3 mt-2 rounded-full hover:bg-blue-500 transition-colors">Cadastrar e Iniciar Teste</button>
+                    <button type="submit" className="w-full bg-accent text-light font-semibold py-3 mt-2 rounded-full hover:bg-blue-500 transition-colors">Cadastrar e Escolher Plano</button>
                 </form>
             </div>
         </div>

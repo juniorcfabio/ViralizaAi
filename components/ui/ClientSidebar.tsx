@@ -317,12 +317,14 @@ const ClientSidebar: React.FC = () => {
     }
   };
 
-  // Filtrar itens de navegação com base no plano do usuário
+  // Filtrar itens de navegação — ocultar ferramentas fora do plano do usuário
   const filteredNavItems = useMemo(() => {
-    return navItems.map(item => ({
-      ...item,
-      locked: !hasRouteAccess(item.path, user?.plan, user?.type)
-    }));
+    return navItems
+      .map(item => ({
+        ...item,
+        locked: !hasRouteAccess(item.path, user?.plan, user?.type)
+      }))
+      .filter(item => !item.locked); // Ocultar itens bloqueados
   }, [user?.plan, user?.type]);
 
   const navLinkClasses = ({ isActive }: { isActive: boolean }) =>

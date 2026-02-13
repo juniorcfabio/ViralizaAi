@@ -29,32 +29,22 @@ const MobileNav: React.FC = () => {
                 <LayoutGridIcon className="w-6 h-6" />
                 <span className="text-[10px] font-medium">{t('sidebar.dashboard')}</span>
             </NavLink>
-            {canSocial ? (
+            {canSocial && (
                 <NavLink to="/dashboard/social" className={navClass}>
                     <UsersIcon className="w-6 h-6" />
                     <span className="text-[10px] font-medium">Social</span>
                 </NavLink>
-            ) : (
-                <div className={lockedClass}>
-                    <UsersIcon className="w-6 h-6" />
-                    <span className="text-[10px] font-medium">🔒</span>
-                </div>
             )}
             <div className="relative -top-5">
                 <NavLink to="/dashboard/billing" className="flex items-center justify-center w-14 h-14 rounded-full bg-accent text-white shadow-lg border-4 border-primary">
                     <CreditCardIcon className="w-7 h-7" />
                 </NavLink>
             </div>
-            {canAnalytics ? (
+            {canAnalytics && (
                 <NavLink to="/dashboard/analytics" className={navClass}>
                     <BarChart3Icon className="w-6 h-6" />
                     <span className="text-[10px] font-medium">Dados</span>
                 </NavLink>
-            ) : (
-                <div className={lockedClass}>
-                    <BarChart3Icon className="w-6 h-6" />
-                    <span className="text-[10px] font-medium">🔒</span>
-                </div>
             )}
             <NavLink to="/dashboard/settings" className={navClass}>
                 <MoreHorizontalIcon className="w-6 h-6" />
