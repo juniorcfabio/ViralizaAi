@@ -10,8 +10,8 @@
  *
  * Deploy: supabase functions deploy stripe-webhook --no-verify-jwt
  * ===================================================== */
-import Stripe from "npm:stripe@11.26.0";
-import { createClient } from "npm:@supabase/supabase-js@2.32.0";
+import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const STRIPE_API_KEY = Deno.env.get("STRIPE_SECRET")!;
 const STRIPE_WEBHOOK_SIGNING_SECRET = Deno.env.get("STRIPE_WEBHOOK_SIGNING_SECRET")!;

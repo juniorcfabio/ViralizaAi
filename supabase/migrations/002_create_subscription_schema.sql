@@ -93,18 +93,18 @@ EXCEPTION WHEN others THEN NULL;
 END $$;
 
 CREATE POLICY "authenticated_select_own_subscriptions" ON public.subscriptions
-  FOR SELECT TO authenticated USING (user_id = (SELECT auth.uid())::text);
+  FOR SELECT TO authenticated USING (user_id::text = (SELECT auth.uid())::text);
 
 CREATE POLICY "authenticated_insert_subscriptions" ON public.subscriptions
-  FOR INSERT TO authenticated WITH CHECK (user_id = (SELECT auth.uid())::text);
+  FOR INSERT TO authenticated WITH CHECK (user_id::text = (SELECT auth.uid())::text);
 
 CREATE POLICY "authenticated_update_own_subscriptions" ON public.subscriptions
   FOR UPDATE TO authenticated 
-  USING (user_id = (SELECT auth.uid())::text) 
-  WITH CHECK (user_id = (SELECT auth.uid())::text);
+  USING (user_id::text = (SELECT auth.uid())::text) 
+  WITH CHECK (user_id::text = (SELECT auth.uid())::text);
 
 CREATE POLICY "authenticated_delete_own_subscriptions" ON public.subscriptions
-  FOR DELETE TO authenticated USING (user_id = (SELECT auth.uid())::text);
+  FOR DELETE TO authenticated USING (user_id::text = (SELECT auth.uid())::text);
 
 -- Service role tem acesso total (para webhooks)
 CREATE POLICY "service_role_full_access_subscriptions" ON public.subscriptions
@@ -124,7 +124,7 @@ CREATE POLICY "authenticated_select_subscription_events" ON public.subscription_
     EXISTS (
       SELECT 1 FROM public.subscriptions s 
       WHERE s.id = subscription_events.subscription_id 
-      AND s.user_id = (SELECT auth.uid())::text
+      AND s.user_id::text = (SELECT auth.uid())::text
     )
   );
 
@@ -195,7 +195,7 @@ RETURNS TABLE (
     COALESCE(s.current_period_end, s.end_date) as current_period_end
   FROM public.subscriptions s
   LEFT JOIN public.subscription_plans sp ON sp.id = s.plan_id
-  WHERE s.user_id = p_user_id 
+  WHERE s.user_id::text = p_user_id 
     AND s.status = 'active'
     AND (s.end_date IS NULL OR s.end_date > now())
   ORDER BY s.created_at DESC
