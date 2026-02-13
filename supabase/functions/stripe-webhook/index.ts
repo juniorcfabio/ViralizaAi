@@ -1,201 +1,308 @@
-/**
+/* =====================================================
  * Edge Function: stripe-webhook
- * - Receives Stripe webhooks and updates public.stripe_sessions, subscriptions/purchases as appropriate.
- * - Uses processed_webhook_events table to avoid duplicate processing.
+ * Recebe webhooks do Stripe, valida assinatura e atualiza subscriptions.
+ * 
+ * Secrets necessários:
+ *  - STRIPE_API_KEY (sk_live_... ou sk_test_...)
+ *  - STRIPE_WEBHOOK_SIGNING_SECRET (whsec_...)
+ *  - SUPABASE_URL (automático)
+ *  - SUPABASE_SERVICE_ROLE_KEY (automático)
  *
- * Env variables required:
- *  - STRIPE_SECRET
- *  - STRIPE_WEBHOOK_SECRET  (optional for signature validation; we use event fetch as fallback)
- *
- * Note:
- *  - For secure signature verification prefer using stripe-node to verify signatures.
- *  - This implementation fetches the event from Stripe by event id to validate the event server-side
- *    (avoids adding npm deps, functional for many use cases).
- */
-declare const Deno: any;
+ * Deploy: supabase functions deploy stripe-webhook --no-verify-jwt
+ * ===================================================== */
+import Stripe from "npm:stripe@11.26.0";
+import { createClient } from "npm:@supabase/supabase-js@2.32.0";
+
+const STRIPE_API_KEY = Deno.env.get("STRIPE_API_KEY")!;
+const STRIPE_WEBHOOK_SIGNING_SECRET = Deno.env.get("STRIPE_WEBHOOK_SIGNING_SECRET")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const stripe = new Stripe(STRIPE_API_KEY, { apiVersion: "2024-11-20" });
+const cryptoProvider = Stripe.createSubtleCryptoProvider();
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false }
+});
+
+console.log("stripe-webhook function started");
+
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204 });
+  if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
+
+  const sig = req.headers.get("Stripe-Signature") ?? "";
+  const body = await req.text();
+
+  // 1. Validar assinatura do webhook
+  let event: Stripe.Event;
   try {
-    if (req.method === 'OPTIONS') return new Response(null, { status: 204 });
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const STRIPE_SECRET = Deno.env.get('STRIPE_SECRET');
-    // STRIPE_WEBHOOK_SECRET could be used with stripe-node to verify signatures; not used here.
-    const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? null;
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !STRIPE_SECRET) {
-      return new Response('Missing environment variables', { status: 500 });
-    }
-    const rawBody = await req.text();
-    let parsed;
-    try {
-      parsed = JSON.parse(rawBody);
-    } catch (err) {
-      return new Response('Invalid JSON', { status: 400 });
-    }
-    const eventId = parsed?.id;
-    if (!eventId) return new Response('Missing event id', { status: 400 });
-    // Idempotency: check if event already processed
-    const checkResp = await fetch(`${SUPABASE_URL}/rest/v1/processed_webhook_events?id=eq.${encodeURIComponent(eventId)}`, {
-      headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` }
-    });
-    if (checkResp.ok) {
-      const rows = await checkResp.json();
-      if (Array.isArray(rows) && rows.length > 0) {
-        return new Response('Event already processed', { status: 200 });
-      }
-    }
-    // Validate event with Stripe by fetching it by id (fallback to signature verification)
-    const stripeEventRes = await fetch(`https://api.stripe.com/v1/events/${encodeURIComponent(eventId)}`, {
-      headers: { Authorization: `Bearer ${STRIPE_SECRET}` }
-    });
-    if (!stripeEventRes.ok) {
-      const txt = await stripeEventRes.text();
-      console.error('Stripe event fetch error:', stripeEventRes.status, txt);
-      return new Response('Invalid event', { status: 400 });
-    }
-    const stripeEvent = await stripeEventRes.json();
-    const type = stripeEvent.type;
-    // Mark event as processed (insert into processed_webhook_events)
-    await fetch(`${SUPABASE_URL}/rest/v1/processed_webhook_events`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-      body: JSON.stringify({ id: eventId })
-    });
-    // Helper: update stripe_sessions by stripe_session_id
-    const patchStripeSession = async (sessionId: string, patch: any) => {
-      await fetch(`${SUPABASE_URL}/rest/v1/stripe_sessions?stripe_session_id=eq.${encodeURIComponent(sessionId)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-        body: JSON.stringify(patch)
-      });
-    };
-    // Process main events
-    if (type === 'checkout.session.completed') {
-      const session = stripeEvent.data.object;
-      // Update stripe_sessions
-      await patchStripeSession(session.id, {
-        status: 'succeeded',
-        stripe_payment_intent_id: session.payment_intent ?? null,
-        stripe_customer_id: session.customer ?? null,
-        stripe_subscription_id: session.subscription ?? null,
-        raw_payload: session
-      });
-      // If subscription created, fetch subscription and upsert into subscriptions table
-      if (session.subscription) {
-        // Get subscription details
-        const subRes = await fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(session.subscription)}`, {
-          headers: { Authorization: `Bearer ${STRIPE_SECRET}` }
-        });
-        if (subRes.ok) {
-          const sub = await subRes.json();
-          // Try to get user_id from stripe_sessions where stripe_subscription_id or stripe_session_id
-          let user_id: string | null = null;
-          // first try find by stripe_session_id
-          const findResp = await fetch(`${SUPABASE_URL}/rest/v1/stripe_sessions?stripe_session_id=eq.${encodeURIComponent(session.id)}`, {
-            headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` }
-          });
-          if (findResp.ok) {
-            const srows = await findResp.json();
-            if (Array.isArray(srows) && srows.length > 0) user_id = srows[0].user_id ?? null;
-          }
-          const upsertSub = {
-            user_id,
-            plan_type: sub.items?.data?.[0]?.price?.nickname ?? null,
-            status: sub.status,
-            stripe_subscription_id: sub.id,
-            stripe_customer_id: sub.customer,
-            current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
-            current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+    event = await stripe.webhooks.constructEventAsync(
+      body, sig, STRIPE_WEBHOOK_SIGNING_SECRET, undefined, cryptoProvider
+    );
+  } catch (err: any) {
+    console.error("Stripe signature verification failed:", err?.message ?? err);
+    return new Response(`Signature verification failed: ${err?.message ?? err}`, { status: 400 });
+  }
+
+  console.log("Received Stripe event:", event.type, event.id);
+
+  try {
+    const payload = event.data.object as any;
+    const eventType = event.type;
+
+    // ─── CHECKOUT SESSION COMPLETED ───
+    if (eventType === "checkout.session.completed") {
+      const session = payload;
+      const providerSubId = session.subscription ?? null;
+      const metadata = session.metadata ?? {};
+      const authUserId = metadata.auth_user_id ?? null;
+      const planSlug = metadata.plan_slug ?? null;
+
+      console.log("checkout.session.completed:", { providerSubId, authUserId, planSlug });
+
+      if (providerSubId && authUserId) {
+        // Buscar plan_id pelo slug
+        let plan_id = null;
+        let planType = planSlug;
+        if (planSlug) {
+          const { data: plans } = await supabase
+            .from("subscription_plans")
+            .select("id, slug")
+            .eq("slug", planSlug)
+            .limit(1);
+          plan_id = plans?.[0]?.id ?? null;
+        }
+
+        // Verificar se já existe subscription para este provider_subscription_id
+        const { data: existing } = await supabase
+          .from("subscriptions")
+          .select("id")
+          .eq("provider_subscription_id", providerSubId)
+          .limit(1);
+
+        if (existing?.length) {
+          // Atualizar existente
+          await supabase.from("subscriptions").update({
+            status: "active",
+            plan_id,
+            plan_type: planType,
+            metadata: session,
+            updated_at: new Date().toISOString()
+          }).eq("id", existing[0].id);
+        } else {
+          // Cancelar subscriptions ativas anteriores do usuário
+          await supabase
+            .from("subscriptions")
+            .update({ status: "cancelled", updated_at: new Date().toISOString() })
+            .eq("user_id", authUserId)
+            .eq("status", "active");
+
+          // Criar nova subscription
+          await supabase.from("subscriptions").insert({
+            user_id: authUserId,
+            plan_id,
+            plan_type: planType,
+            status: "active",
+            payment_provider: "stripe",
+            provider_subscription_id: providerSubId,
+            stripe_subscription_id: providerSubId,
+            stripe_customer_id: session.customer ?? null,
+            metadata: session,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
-          };
-          // Insert subscription record (simple insert; adjust as required to avoid duplicates)
-          await fetch(`${SUPABASE_URL}/rest/v1/subscriptions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-            body: JSON.stringify(upsertSub)
           });
         }
+
+        // Atualizar user_profiles com plano ativo
+        await supabase
+          .from("user_profiles")
+          .update({
+            plan: planType,
+            plan_status: "active",
+            updated_at: new Date().toISOString()
+          })
+          .eq("user_id", authUserId);
+
+        console.log("✅ Subscription activated:", authUserId, planType);
       }
-      // If it's a one-time payment (payment mode), create a purchases record optionally
-      if (session.mode === 'payment') {
-        // Find stripe_sessions record to glean product_id and user_id
-        const findResp2 = await fetch(`${SUPABASE_URL}/rest/v1/stripe_sessions?stripe_session_id=eq.${encodeURIComponent(session.id)}`, {
-          headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` }
-        });
-        if (findResp2.ok) {
-          const srows = await findResp2.json();
-          if (Array.isArray(srows) && srows.length > 0) {
-            const rec = srows[0];
-            // Insert purchase
-            const purchase = {
-              user_id: rec.user_id ?? null,
-              product_id: rec.product_id ?? null,
-              stripe_payment_intent_id: session.payment_intent ?? null,
-              stripe_customer_id: session.customer ?? null,
-              amount: rec.amount ?? null,
-              currency: rec.currency ?? 'BRL',
-              status: 'completed',
-              metadata: { stripe_session: session.id },
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            };
-            await fetch(`${SUPABASE_URL}/rest/v1/purchases`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-              body: JSON.stringify(purchase)
-            });
+    }
+
+    // ─── INVOICE PAID ───
+    else if (eventType === "invoice.paid" || eventType === "invoice.payment_succeeded") {
+      const invoice = payload;
+      const providerSubId = invoice.subscription ?? null;
+      const periodStart = invoice.current_period_start
+        ? new Date(invoice.current_period_start * 1000).toISOString()
+        : null;
+      const periodEnd = invoice.current_period_end
+        ? new Date(invoice.current_period_end * 1000).toISOString()
+        : null;
+
+      if (providerSubId) {
+        const { data: subs } = await supabase
+          .from("subscriptions")
+          .select("id, user_id")
+          .or(`provider_subscription_id.eq.${providerSubId},stripe_subscription_id.eq.${providerSubId}`)
+          .limit(1);
+
+        if (subs?.length) {
+          await supabase.from("subscriptions").update({
+            status: "active",
+            current_period_start: periodStart,
+            current_period_end: periodEnd,
+            start_date: periodStart,
+            end_date: periodEnd,
+            updated_at: new Date().toISOString()
+          }).eq("id", subs[0].id);
+
+          // Atualizar user_profiles
+          if (subs[0].user_id) {
+            await supabase
+              .from("user_profiles")
+              .update({ plan_status: "active", plan_expires_at: periodEnd, updated_at: new Date().toISOString() })
+              .eq("user_id", subs[0].user_id);
           }
         }
+        console.log("✅ Invoice paid, subscription renewed");
       }
-    } else if (type === 'invoice.paid') {
-      // Optionally update subscriptions/purchases: mark as paid
-      const invoice = stripeEvent.data.object;
-      // find by invoice.subscription or invoice.payment_intent
-      if (invoice.subscription) {
-        // Update subscriptions table where stripe_subscription_id = invoice.subscription
-        await fetch(`${SUPABASE_URL}/rest/v1/subscriptions?stripe_subscription_id=eq.${encodeURIComponent(invoice.subscription)}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-          body: JSON.stringify({ status: 'active', updated_at: new Date().toISOString() })
-        });
-      }
-    } else if (type.startsWith('customer.subscription.')) {
-      // Handle subscription created/updated/deleted
-      const sub = stripeEvent.data.object;
-      // Upsert or update subscriptions table
-      await fetch(`${SUPABASE_URL}/rest/v1/subscriptions?stripe_subscription_id=eq.${encodeURIComponent(sub.id)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-        body: JSON.stringify({
-          status: sub.status,
-          current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
-          current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
-          stripe_customer_id: sub.customer ?? null,
-          updated_at: new Date().toISOString()
-        })
-      }).catch(async () => {
-        // If PATCH fails (no existing record), create
-        const upsert = {
-          user_id: null,
-          plan_type: sub.items?.data?.[0]?.price?.nickname ?? null,
-          status: sub.status,
-          stripe_subscription_id: sub.id,
-          stripe_customer_id: sub.customer ?? null,
-          current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
-          current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        await fetch(`${SUPABASE_URL}/rest/v1/subscriptions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-          body: JSON.stringify(upsert)
-        });
-      });
     }
-    return new Response('ok', { status: 200 });
+
+    // ─── SUBSCRIPTION UPDATED / DELETED ───
+    else if (eventType === "customer.subscription.updated" || eventType === "customer.subscription.deleted") {
+      const sub = payload;
+      const providerSubId = sub.id;
+      const status = sub.status ?? (eventType === "customer.subscription.deleted" ? "canceled" : null);
+      const periodStart = sub.current_period_start
+        ? new Date(sub.current_period_start * 1000).toISOString()
+        : null;
+      const periodEnd = sub.current_period_end
+        ? new Date(sub.current_period_end * 1000).toISOString()
+        : null;
+
+      if (providerSubId) {
+        const { data: subs } = await supabase
+          .from("subscriptions")
+          .select("id, user_id")
+          .or(`provider_subscription_id.eq.${providerSubId},stripe_subscription_id.eq.${providerSubId}`)
+          .limit(1);
+
+        if (subs?.length) {
+          await supabase.from("subscriptions").update({
+            status,
+            current_period_start: periodStart,
+            current_period_end: periodEnd,
+            cancel_at_period_end: sub.cancel_at_period_end ?? false,
+            metadata: sub,
+            updated_at: new Date().toISOString()
+          }).eq("id", subs[0].id);
+
+          // Se cancelado, atualizar user_profiles
+          if (status === "canceled" && subs[0].user_id) {
+            await supabase
+              .from("user_profiles")
+              .update({ plan_status: "canceled", updated_at: new Date().toISOString() })
+              .eq("user_id", subs[0].user_id);
+          }
+        }
+        console.log("✅ Subscription", eventType, status);
+      }
+    }
+
+    // ─── PAYMENT INTENT SUCCEEDED (PIX/Boleto) ───
+    else if (eventType === "payment_intent.succeeded") {
+      const pi = payload;
+      const metadata = pi.metadata ?? {};
+      const authUserId = metadata.auth_user_id ?? null;
+      const planSlug = metadata.plan_slug ?? null;
+
+      if (authUserId && planSlug) {
+        // Buscar plan_id
+        let plan_id = null;
+        if (planSlug) {
+          const { data: plans } = await supabase
+            .from("subscription_plans")
+            .select("id")
+            .eq("slug", planSlug)
+            .limit(1);
+          plan_id = plans?.[0]?.id ?? null;
+        }
+
+        // Calcular expiração
+        const now = new Date();
+        const endDate = new Date(now);
+        if (planSlug.includes("anual")) endDate.setFullYear(endDate.getFullYear() + 1);
+        else if (planSlug.includes("semestral")) endDate.setMonth(endDate.getMonth() + 6);
+        else if (planSlug.includes("trimestral")) endDate.setMonth(endDate.getMonth() + 3);
+        else endDate.setMonth(endDate.getMonth() + 1);
+
+        // Cancelar ativas anteriores
+        await supabase
+          .from("subscriptions")
+          .update({ status: "cancelled", updated_at: now.toISOString() })
+          .eq("user_id", authUserId)
+          .eq("status", "active");
+
+        // Criar subscription
+        await supabase.from("subscriptions").insert({
+          user_id: authUserId,
+          plan_id,
+          plan_type: planSlug,
+          status: "active",
+          payment_provider: "stripe_pix",
+          payment_id: pi.id,
+          amount: (pi.amount ?? 0) / 100,
+          start_date: now.toISOString(),
+          end_date: endDate.toISOString(),
+          metadata: pi
+        });
+
+        // Atualizar user_profiles
+        await supabase
+          .from("user_profiles")
+          .update({
+            plan: planSlug,
+            plan_status: "active",
+            plan_expires_at: endDate.toISOString(),
+            updated_at: now.toISOString()
+          })
+          .eq("user_id", authUserId);
+
+        console.log("✅ PIX/Boleto payment_intent succeeded, plan activated:", planSlug);
+      }
+    }
+
+    // ─── LOG DO EVENTO ───
+    const providerEventId = event.id;
+    const possibleProviderSubId = payload?.subscription ?? payload?.id;
+
+    let subscription_id = null;
+    if (possibleProviderSubId) {
+      const { data: subs } = await supabase
+        .from("subscriptions")
+        .select("id")
+        .or(`provider_subscription_id.eq.${possibleProviderSubId},stripe_subscription_id.eq.${possibleProviderSubId}`)
+        .limit(1);
+      subscription_id = subs?.[0]?.id ?? null;
+    }
+
+    await supabase.from("subscription_events").insert({
+      subscription_id,
+      provider_event_id: providerEventId,
+      event_type: event.type,
+      payload: event as any
+    });
+
+    return new Response(JSON.stringify({ received: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+
   } catch (err) {
-    console.error('stripe-webhook error', err);
-    return new Response('internal error', { status: 500 });
+    console.error("Processing error:", err);
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 });

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
-import StripeService from '../../services/stripeService';
 import { SUBSCRIPTION_PLANS } from '../../data/plansConfig';
 import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
+import { supabase } from '../../src/lib/supabase';
 
 interface Plan {
     id: string;
@@ -41,7 +41,9 @@ const BillingPage: React.FC = () => {
     const [pixGrowthEngineOpen, setPixGrowthEngineOpen] = useState(false);
     const [pixGrowthEngineData, setPixGrowthEngineData] = useState<{label: string, price: number} | null>(null);
 
-    const API_BASE_URL = 'https://viralizaai.vercel.app/api';
+    // Supabase Edge Function URL
+    const SUPABASE_URL = 'https://ymmswnmietxoupeazmok.supabase.co';
+    const EDGE_FN_URL = `${SUPABASE_URL}/functions/v1/create-checkout-session`;
 
     // Usar planos dinâmicos do plansConfig.ts
     const plans: Plan[] = SUBSCRIPTION_PLANS.map(plan => ({
@@ -85,49 +87,57 @@ const BillingPage: React.FC = () => {
         setSubscribingPlan(plan.name);
 
         try {
-            const normalizedPrice = typeof plan.price === 'number' 
-                ? plan.price.toFixed(2) 
-                : String(plan.price);
-            const amount = parseFloat(normalizedPrice.replace(',', '.'));
+            // Mapear nome do plano para slug
+            const planSlug = plan.id || plan.name.toLowerCase()
+                .replace('mensal', 'mensal')
+                .replace('trimestral', 'trimestral')
+                .replace('semestral', 'semestral')
+                .replace('anual', 'anual');
+
             const appBaseUrl = buildAppBaseUrl();
 
-            // Usar API funcional stripe-test
-            console.log('💳 Usando API funcional stripe-test para assinatura');
-            
-            const paymentData = {
-                planName: `Assinatura ${plan.name} - ViralizaAI`,
-                amount: Math.round(amount * 100), // Converter para centavos
-                successUrl: `${appBaseUrl}/#/dashboard/social-tools?payment=success&plan=${encodeURIComponent(plan.name)}`,
-                cancelUrl: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`
-            };
+            // Obter JWT do Supabase para autenticação
+            const { data: sessionData } = await supabase.auth.getSession();
+            const jwt = sessionData?.session?.access_token;
 
+            if (!jwt) {
+                showNotification('Erro: Sessão não encontrada. Faça login novamente.');
+                return;
+            }
+
+            console.log('💳 Criando checkout via Supabase Edge Function:', planSlug);
             showNotification('Redirecionando para o pagamento seguro...');
             
-            const response = await fetch('/api/stripe-test', {
+            const response = await fetch(EDGE_FN_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${jwt}`,
                 },
-                body: JSON.stringify(paymentData)
+                body: JSON.stringify({
+                    plan_slug: planSlug,
+                    payment_method_types: ['card'],
+                    success_url: `${appBaseUrl}/#/dashboard?checkout=success&plan=${encodeURIComponent(planSlug)}`,
+                    cancel_url: `${appBaseUrl}/#/dashboard/billing?checkout=cancel`,
+                })
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Erro na API: ${response.status} - ${errorText}`);
-            }
-
             const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || `Erro: ${response.status}`);
+            }
             
             if (result.success && result.url) {
-                console.log('🔄 Redirecionando para Stripe:', result.url);
+                console.log('🔄 Redirecionando para Stripe Checkout:', result.url);
                 window.location.href = result.url;
             } else {
-                throw new Error(result.error || 'Erro desconhecido');
+                throw new Error(result.error || 'URL de checkout não retornada');
             }
 
         } catch (error) {
             console.error('Erro no pagamento:', error);
-            showNotification('Houve um erro ao iniciar o pagamento da assinatura. Tente novamente.');
+            showNotification('Houve um erro ao iniciar o pagamento. Tente novamente.');
         } finally {
             setSubscribingPlan(null);
         }
@@ -160,29 +170,31 @@ const BillingPage: React.FC = () => {
             
             const appBaseUrl = buildAppBaseUrl();
 
-            // Usar API funcional stripe-test
-            const paymentData = {
-                planName: `Motor de Crescimento Viraliza - ${label}`,
-                amount: Math.round(price * 100), // Converter para centavos
-                successUrl: `${appBaseUrl}/#/dashboard/growth-engine?payment=success&addon=${encodeURIComponent(label)}`,
-                cancelUrl: `${appBaseUrl}/#/dashboard/billing?payment=cancelled`
-            };
+            // Obter JWT
+            const { data: sessionData } = await supabase.auth.getSession();
+            const jwt = sessionData?.session?.access_token;
 
-            console.log('📋 Dados da compra Motor de Crescimento:', paymentData);
+            if (!jwt) {
+                showNotification('Erro: Sessão não encontrada. Faça login novamente.');
+                return;
+            }
+
             showNotification('Redirecionando para pagamento...');
             
-            const response = await fetch('/api/stripe-test', {
+            // Usar Edge Function com plano especial growth-engine
+            const response = await fetch(EDGE_FN_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${jwt}`,
                 },
-                body: JSON.stringify(paymentData)
+                body: JSON.stringify({
+                    plan_slug: 'growth-engine',
+                    payment_method_types: ['card'],
+                    success_url: `${appBaseUrl}/#/dashboard/growth-engine?checkout=success&addon=${encodeURIComponent(label)}`,
+                    cancel_url: `${appBaseUrl}/#/dashboard/billing?checkout=cancel`,
+                })
             });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Erro na API: ${response.status} - ${errorText}`);
-            }
 
             const result = await response.json();
             
