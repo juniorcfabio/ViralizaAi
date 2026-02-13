@@ -1,248 +1,407 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
-import { User } from '../../types';
-import AffiliatePaymentService from '../../services/affiliatePaymentService';
-import WithdrawalManagement from '../ui/WithdrawalManagement';
+import RealAffiliateService from '../../services/realAffiliateService';
+import type { AffiliateAccount, AffiliateCommission, WithdrawalRequest as WR, AffiliateSettings } from '../../services/realAffiliateService';
 
-// Icons
-const GiftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>;
-const DollarSignIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
-const UsersIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-const PercentIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg>;
-
-const StatCard: React.FC<{ title: string; value: string; icon: React.ElementType; }> = ({ title, value, icon: Icon }) => (
-    <div className="bg-secondary p-6 rounded-lg">
-        <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-dark font-medium">{title}</p>
-            <Icon className="w-6 h-6 text-gray-dark" />
-        </div>
-        <p className="text-3xl font-bold mt-2">{value}</p>
-    </div>
-);
+const svc = RealAffiliateService.getInstance();
 
 const AdminAffiliatesPage: React.FC = () => {
-    const { platformUsers, user, updateUser } = useAuth();
-    const [commissionRate, setCommissionRate] = useState(20);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState<'affiliates' | 'withdrawals'>('affiliates');
-    const [notification, setNotification] = useState('');
-    const [affiliateCommission, setAffiliateCommission] = useState(20);
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'overview' | 'affiliates' | 'commissions' | 'withdrawals' | 'settings'>('overview');
+  const [affiliates, setAffiliates] = useState<AffiliateAccount[]>([]);
+  const [commissions, setCommissions] = useState<AffiliateCommission[]>([]);
+  const [withdrawals, setWithdrawals] = useState<WR[]>([]);
+  const [withdrawalFilter, setWithdrawalFilter] = useState('all');
+  const [adminStats, setAdminStats] = useState({ totalAffiliates: 0, activeAffiliates: 0, totalCommissions: 0, pendingCommissions: 0, totalPaid: 0, pendingWithdrawals: 0, pendingWithdrawalsAmount: 0 });
+  const [settings, setSettings] = useState<AffiliateSettings>({ commission_rate: 20, min_withdrawal_amount: 50, payment_cycle_days: 7, payment_delay_days: 7, auto_approve_withdrawals: false, max_commission_per_sale: 0 });
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
 
-    const paymentService = AffiliatePaymentService.getInstance();
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [affs, comms, wds, st, sett] = await Promise.all([
+        svc.getAllAffiliates(),
+        svc.getAllCommissions(),
+        svc.getAllWithdrawals(withdrawalFilter),
+        svc.getAdminStats(),
+        svc.getSettings()
+      ]);
+      setAffiliates(affs);
+      setCommissions(comms);
+      setWithdrawals(wds);
+      setAdminStats(st);
+      setSettings(sett);
+    } catch (e) {
+      console.error('Erro ao carregar dados admin:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [withdrawalFilter]);
 
-    useEffect(() => {
-        // Carregar taxa de comissão atual
-        const currentRate = paymentService.getCommissionPercentage();
-        setCommissionRate(currentRate);
+  useEffect(() => { loadData(); }, [loadData]);
 
-        // Escutar mudanças na comissão
-        const handleCommissionUpdate = (event: CustomEvent) => {
-            setCommissionRate(event.detail.percentage);
-        };
+  const handleSaveSettings = async () => {
+    if (!user?.id) return;
+    setSavingSettings(true);
+    try {
+      const ok = await svc.saveSettings(settings, user.id);
+      if (ok) alert('Configurações salvas com sucesso!');
+      else alert('Erro ao salvar configurações.');
+    } catch { alert('Erro ao salvar configurações.'); }
+    finally { setSavingSettings(false); }
+  };
 
-        window.addEventListener('commissionUpdated', handleCommissionUpdate as EventListener);
-        
-        return () => {
-            window.removeEventListener('commissionUpdated', handleCommissionUpdate as EventListener);
-        };
-    }, []);
+  const handleApproveWithdrawal = async (id: string) => {
+    if (!user?.id) return;
+    setProcessingId(id);
+    try {
+      const ok = await svc.approveWithdrawal(id, user.id);
+      if (ok) {
+        alert('Saque aprovado! Marque como pago após efetuar o pagamento.');
+        await loadData();
+      } else alert('Erro ao aprovar.');
+    } catch { alert('Erro ao aprovar saque.'); }
+    finally { setProcessingId(null); }
+  };
 
-    const affiliates = platformUsers.filter(user => 
-        user.affiliateInfo && 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const handleMarkPaid = async (id: string) => {
+    setProcessingId(id);
+    try {
+      const txnId = `TXN_${Date.now()}`;
+      const ok = await svc.markWithdrawalPaid(id, txnId);
+      if (ok) { alert(`Pagamento registrado! Transação: ${txnId}`); await loadData(); }
+      else alert('Erro ao registrar pagamento.');
+    } catch { alert('Erro ao registrar pagamento.'); }
+    finally { setProcessingId(null); }
+  };
 
-    const filteredAffiliates = useMemo(() => {
-        return affiliates.filter(aff =>
-            aff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            aff.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            aff.affiliateInfo?.referralCode.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [affiliates, searchTerm]);
+  const handleRejectWithdrawal = async (id: string) => {
+    if (!user?.id || !rejectReason.trim()) { alert('Informe o motivo da rejeição.'); return; }
+    setProcessingId(id);
+    try {
+      const ok = await svc.rejectWithdrawal(id, rejectReason, user.id);
+      if (ok) { alert('Saque rejeitado. Valor devolvido ao saldo do afiliado.'); setRejectingId(null); setRejectReason(''); await loadData(); }
+      else alert('Erro ao rejeitar.');
+    } catch { alert('Erro ao rejeitar saque.'); }
+    finally { setProcessingId(null); }
+  };
 
-    const totalPendingEarnings = useMemo(() => {
-        return affiliates.reduce((total, aff) => total + (aff.affiliateInfo?.earnings || 0), 0);
-    }, [affiliates]);
+  const handleSuspend = async (id: string) => {
+    const ok = await svc.suspendAffiliate(id);
+    if (ok) { alert('Afiliado suspenso.'); await loadData(); }
+  };
 
-    const showNotification = (message: string) => {
-        setNotification(message);
-        setTimeout(() => setNotification(''), 3000);
-    };
+  const handleReactivate = async (id: string) => {
+    const ok = await svc.reactivateAffiliate(id);
+    if (ok) { alert('Afiliado reativado.'); await loadData(); }
+  };
 
-    const handleRegisterPayout = (affiliateId: string) => {
-        const affiliate = affiliates.find(a => a.id === affiliateId);
-        if (affiliate && affiliate.affiliateInfo) {
-            if (window.confirm(`Registrar pagamento de R$ ${affiliate.affiliateInfo.earnings.toFixed(2)} para ${affiliate.name}? Isso irá zerar os ganhos pendentes.`)) {
-                updateUser(affiliateId, {
-                    affiliateInfo: {
-                        ...affiliate.affiliateInfo,
-                        earnings: 0,
-                    }
-                });
-                showNotification(`Pagamento para ${affiliate.name} registrado com sucesso.`);
-            }
-        }
-    };
-    
-    const handleSaveCommission = () => {
-        localStorage.setItem('viraliza_affiliate_commission_rate', String(affiliateCommission));
-        // SYNC COM SUPABASE
-        import('../../src/lib/supabase').then(({ supabase }) => {
-            supabase.from('system_settings').upsert({ key: 'affiliate_commission_rate', value: { rate: affiliateCommission }, updated_at: new Date().toISOString() }).then(() => {});
-        });
-        showNotification('Percentual de comissão de afiliados salvo com sucesso!');
-    };
+  const handleRunWeeklyCycle = async () => {
+    setProcessingId('cycle');
+    try {
+      const result = await svc.runWeeklyPaymentCycle();
+      alert(`Ciclo semanal executado!\n${result.confirmed} comissões confirmadas\n${result.processed} saques processados`);
+      await loadData();
+    } catch { alert('Erro ao executar ciclo semanal.'); }
+    finally { setProcessingId(null); }
+  };
 
-    const handleCommissionUpdate = () => {
-        if (!user?.id) {
-            alert('❌ Erro: Usuário não identificado');
-            return;
-        }
+  const getStatusColor = (s: string) => {
+    const m: Record<string, string> = { active: 'text-green-400', inactive: 'text-gray-400', suspended: 'text-red-400', pending: 'text-yellow-400', approved: 'text-blue-400', processing: 'text-blue-400', paid: 'text-green-400', rejected: 'text-red-400', confirmed: 'text-green-300' };
+    return m[s] || 'text-gray-400';
+  };
+  const getStatusBadge = (s: string) => {
+    const m: Record<string, string> = { active: 'bg-green-500/20 border-green-500/30', inactive: 'bg-gray-500/20 border-gray-500/30', suspended: 'bg-red-500/20 border-red-500/30', pending: 'bg-yellow-500/20 border-yellow-500/30', approved: 'bg-blue-500/20 border-blue-500/30', processing: 'bg-blue-500/20 border-blue-500/30', paid: 'bg-green-500/20 border-green-500/30', rejected: 'bg-red-500/20 border-red-500/30', confirmed: 'bg-green-500/20 border-green-500/30' };
+    return m[s] || 'bg-gray-500/20 border-gray-500/30';
+  };
+  const getStatusText = (s: string) => {
+    const m: Record<string, string> = { active: 'Ativo', inactive: 'Inativo', suspended: 'Suspenso', pending: 'Pendente', approved: 'Aprovado', processing: 'Processando', paid: 'Pago', rejected: 'Rejeitado', confirmed: 'Confirmado', cancelled: 'Cancelado' };
+    return m[s] || s;
+  };
 
-        if (commissionRate < 1 || commissionRate > 50) {
-            alert('❌ Taxa de comissão deve estar entre 1% e 50%');
-            return;
-        }
+  if (loading) {
+    return <div className="flex items-center justify-center py-20"><div className="text-xl text-gray-400 animate-pulse">Carregando dados de afiliados...</div></div>;
+  }
 
-        // Salvar nova taxa de comissão
-        paymentService.setCommissionPercentage(commissionRate, user.id);
-        alert(`✅ Taxa de comissão atualizada para ${commissionRate}%\n\n📢 Todas as referências de comissão no sistema foram atualizadas automaticamente!`);
-    };
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-green-700 to-emerald-700 p-6 rounded-xl">
+        <h1 className="text-3xl font-bold text-white mb-2">Gerenciamento de Afiliados</h1>
+        <p className="text-green-100">Controle completo do programa de afiliados - dados reais do Supabase</p>
+      </div>
 
-    return (
+      {/* Abas */}
+      <div className="flex gap-2 flex-wrap">
+        {(['overview', 'affiliates', 'commissions', 'withdrawals', 'settings'] as const).map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)} className={`px-5 py-2.5 rounded-lg font-semibold text-sm transition-colors ${activeTab === tab ? 'bg-green-600 text-white' : 'bg-secondary text-gray-300 hover:bg-green-600/20'}`}>
+            {tab === 'overview' && 'Visão Geral'}
+            {tab === 'affiliates' && `Afiliados (${affiliates.length})`}
+            {tab === 'commissions' && `Comissões (${commissions.length})`}
+            {tab === 'withdrawals' && `Saques (${withdrawals.length})`}
+            {tab === 'settings' && 'Configurações'}
+          </button>
+        ))}
+      </div>
+
+      {/* ──── VISÃO GERAL ──── */}
+      {activeTab === 'overview' && (
         <>
-            <header className="mb-8">
-                <h2 className="text-3xl font-bold">Gerenciamento de Afiliados</h2>
-                <p className="text-gray-dark">Monitore o desempenho e gerencie pagamentos dos afiliados.</p>
-            </header>
-
-            {notification && (
-                <div className="bg-green-500 bg-opacity-20 text-green-300 p-3 rounded-lg mb-6 text-center transition-opacity duration-300">
-                    {notification}
-                </div>
-            )}
-
-            {/* Abas de Navegação */}
-            <div className="flex gap-4 mb-6">
-                <button
-                    onClick={() => setActiveTab('affiliates')}
-                    className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
-                        activeTab === 'affiliates'
-                            ? 'bg-accent text-white'
-                            : 'bg-secondary text-gray-300 hover:bg-accent/20'
-                    }`}
-                >
-                    👥 Afiliados
-                </button>
-                <button
-                    onClick={() => setActiveTab('withdrawals')}
-                    className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
-                        activeTab === 'withdrawals'
-                            ? 'bg-accent text-white'
-                            : 'bg-secondary text-gray-300 hover:bg-accent/20'
-                    }`}
-                >
-                    💸 Gerenciar Saques
-                </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+              <div className="text-sm text-green-400 font-semibold mb-1">Afiliados Ativos</div>
+              <div className="text-2xl font-bold text-white">{adminStats.activeAffiliates} / {adminStats.totalAffiliates}</div>
             </div>
+            <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+              <div className="text-sm text-blue-400 font-semibold mb-1">Total Comissões</div>
+              <div className="text-2xl font-bold text-white">R$ {adminStats.totalCommissions.toFixed(2)}</div>
+            </div>
+            <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+              <div className="text-sm text-yellow-400 font-semibold mb-1">Comissões Pendentes</div>
+              <div className="text-2xl font-bold text-white">R$ {adminStats.pendingCommissions.toFixed(2)}</div>
+            </div>
+            <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+              <div className="text-sm text-purple-400 font-semibold mb-1">Total Pago</div>
+              <div className="text-2xl font-bold text-white">R$ {adminStats.totalPaid.toFixed(2)}</div>
+            </div>
+          </div>
 
-            {activeTab === 'affiliates' ? (
-                <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <StatCard title="Total de Afiliados" value={String(affiliates.length)} icon={UsersIcon} />
-                        <StatCard title="Total Ganhos Pendentes" value={`R$ ${totalPendingEarnings.toFixed(2)}`} icon={DollarSignIcon} />
-                        <StatCard title="Comissão Atual" value={`${affiliateCommission}%`} icon={PercentIcon} />
-                    </div>
-                    
-                    <div className="bg-secondary p-6 rounded-lg mb-8">
-                        <h3 className="text-xl font-bold mb-4">⚙️ Configuração de Comissão</h3>
-                        <div className="flex items-center justify-between bg-primary p-4 rounded-lg">
-                            <p className="text-gray-dark">Defina o percentual de comissão global para novos ganhos de afiliados.</p>
-                            <div className="flex items-center gap-2">
-                                <input 
-                                    type="number" 
-                                    min="1"
-                                    max="50"
-                                    value={affiliateCommission}
-                                    onChange={(e) => setAffiliateCommission(Number(e.target.value))}
-                                    className="w-24 bg-secondary p-2 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent text-center text-white"
-                                />
-                                <span className="text-lg font-bold">%</span>
-                                <button 
-                                    onClick={handleSaveCommission} 
-                                    className="bg-accent text-light font-semibold py-2 px-4 rounded-full hover:bg-blue-500 transition-colors"
-                                >
-                                    💾 Salvar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+          {adminStats.pendingWithdrawals > 0 && (
+            <div className="bg-yellow-500/20 border border-yellow-500/30 p-4 rounded-lg">
+              <p className="text-yellow-300 font-semibold">{adminStats.pendingWithdrawals} saque(s) pendente(s) totalizando R$ {adminStats.pendingWithdrawalsAmount.toFixed(2)}</p>
+              <button onClick={() => setActiveTab('withdrawals')} className="text-yellow-200 underline text-sm mt-1">Ver saques pendentes</button>
+            </div>
+          )}
 
-                    <div className="bg-secondary p-6 rounded-lg">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold">👥 Lista de Afiliados</h3>
-                            <input
-                                type="text"
-                                placeholder="Buscar por afiliado ou código..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="bg-primary p-2 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent w-full md:w-1/3 text-white"
-                            />
-                        </div>
-                        
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-gray-dark uppercase bg-primary">
-                                    <tr>
-                                        <th className="p-3">Afiliado</th>
-                                        <th className="p-3">Código de Referência</th>
-                                        <th className="p-3">Indicados</th>
-                                        <th className="p-3">Ganhos Pendentes (R$)</th>
-                                        <th className="p-3">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredAffiliates.length === 0 ? (
-                                         <tr>
-                                            <td colSpan={5} className="text-center p-8 text-gray-dark">
-                                                <div className="flex flex-col items-center">
-                                                    <GiftIcon className="w-12 h-12 text-gray-600 mb-2"/>
-                                                    Nenhum afiliado encontrado.
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        filteredAffiliates.map(aff => (
-                                            <tr key={aff.id} className="border-t border-primary">
-                                                <td className="p-3">
-                                                    <div className="font-medium text-white">{aff.name}</div>
-                                                    <div className="text-xs text-gray-dark">{aff.email}</div>
-                                                </td>
-                                                <td className="p-3 font-mono text-accent">{aff.affiliateInfo?.referralCode}</td>
-                                                <td className="p-3 text-center text-white">{aff.affiliateInfo?.referredUserIds.length || 0}</td>
-                                                <td className="p-3 font-semibold text-green-400">R$ {aff.affiliateInfo?.earnings.toFixed(2)}</td>
-                                                <td className="p-3">
-                                                    <button 
-                                                        onClick={() => handleRegisterPayout(aff.id)} 
-                                                        disabled={(aff.affiliateInfo?.earnings || 0) === 0}
-                                                        className="bg-accent text-light font-semibold py-1 px-3 rounded-full hover:bg-blue-500 transition-colors text-xs disabled:bg-gray-600 disabled:cursor-not-allowed"
-                                                    >
-                                                        💰 Registrar Pagamento
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </>
-            ) : (
-                <WithdrawalManagement adminId={user?.id || 'admin'} />
-            )}
+          <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+            <h3 className="text-lg font-bold text-white mb-3">Ciclo Semanal de Pagamento</h3>
+            <p className="text-gray-400 text-sm mb-4">Confirma comissões elegíveis e processa saques aprovados. Executar manualmente ou configurar via cron job.</p>
+            <button onClick={handleRunWeeklyCycle} disabled={processingId === 'cycle'} className="bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 disabled:opacity-50">
+              {processingId === 'cycle' ? 'Processando...' : 'Executar Ciclo Semanal Agora'}
+            </button>
+          </div>
         </>
-    );
+      )}
+
+      {/* ──── AFILIADOS ──── */}
+      {activeTab === 'affiliates' && (
+        <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+          <h2 className="text-xl font-bold text-white mb-4">Todos os Afiliados</h2>
+          {affiliates.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">Nenhum afiliado cadastrado ainda.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-gray-400 uppercase bg-primary">
+                  <tr>
+                    <th className="p-3">Nome</th>
+                    <th className="p-3">Código</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Comissão</th>
+                    <th className="p-3">Ganhos</th>
+                    <th className="p-3">Saldo Disp.</th>
+                    <th className="p-3">Indicações</th>
+                    <th className="p-3">Pagamento</th>
+                    <th className="p-3">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {affiliates.map(a => (
+                    <tr key={a.id} className="border-t border-gray-700">
+                      <td className="p-3">
+                        <div className="text-white font-semibold">{a.name}</div>
+                        <div className="text-xs text-gray-500">{a.email}</div>
+                      </td>
+                      <td className="p-3 text-gray-300 font-mono text-xs">{a.referral_code}</td>
+                      <td className="p-3"><span className={`px-2 py-1 rounded text-xs font-semibold border ${getStatusBadge(a.status)} ${getStatusColor(a.status)}`}>{getStatusText(a.status)}</span></td>
+                      <td className="p-3 text-white">{a.commission_rate}%</td>
+                      <td className="p-3 text-green-400 font-semibold">R$ {(a.total_earnings || 0).toFixed(2)}</td>
+                      <td className="p-3 text-blue-400">R$ {(a.available_balance || 0).toFixed(2)}</td>
+                      <td className="p-3 text-white">{a.total_referrals || 0}</td>
+                      <td className="p-3 text-gray-300 text-xs">{a.payment_method === 'pix' ? `PIX` : a.payment_method === 'deposit' ? 'Depósito' : 'Não config.'}</td>
+                      <td className="p-3">
+                        {a.status === 'active' ? (
+                          <button onClick={() => handleSuspend(a.id!)} className="text-red-400 hover:text-red-300 text-xs font-semibold">Suspender</button>
+                        ) : (
+                          <button onClick={() => handleReactivate(a.id!)} className="text-green-400 hover:text-green-300 text-xs font-semibold">Reativar</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ──── COMISSÕES ──── */}
+      {activeTab === 'commissions' && (
+        <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+          <h2 className="text-xl font-bold text-white mb-4">Todas as Comissões</h2>
+          {commissions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">Nenhuma comissão registrada.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-gray-400 uppercase bg-primary">
+                  <tr>
+                    <th className="p-3">Data</th>
+                    <th className="p-3">Afiliado</th>
+                    <th className="p-3">Produto</th>
+                    <th className="p-3">Valor Venda</th>
+                    <th className="p-3">Taxa</th>
+                    <th className="p-3">Comissão</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Elegível em</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {commissions.map(c => (
+                    <tr key={c.id} className="border-t border-gray-700">
+                      <td className="p-3 text-gray-300">{new Date(c.sale_date).toLocaleDateString('pt-BR')}</td>
+                      <td className="p-3 text-white text-xs">{c.affiliate_id?.slice(0, 8)}...</td>
+                      <td className="p-3 text-white">{c.product_name || 'Assinatura'}</td>
+                      <td className="p-3 text-gray-300">R$ {c.sale_amount.toFixed(2)}</td>
+                      <td className="p-3 text-gray-300">{c.commission_rate}%</td>
+                      <td className="p-3 text-green-400 font-bold">R$ {c.commission_value.toFixed(2)}</td>
+                      <td className={`p-3 font-semibold ${getStatusColor(c.status)}`}>{getStatusText(c.status)}</td>
+                      <td className="p-3 text-gray-400 text-xs">{new Date(c.payment_eligible_date).toLocaleDateString('pt-BR')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ──── SAQUES ──── */}
+      {activeTab === 'withdrawals' && (
+        <div className="space-y-4">
+          <div className="flex gap-2 flex-wrap">
+            {['all', 'pending', 'approved', 'paid', 'rejected'].map(f => (
+              <button key={f} onClick={() => setWithdrawalFilter(f)} className={`px-4 py-2 rounded-lg text-sm font-semibold ${withdrawalFilter === f ? 'bg-green-600 text-white' : 'bg-primary text-gray-300 border border-gray-600'}`}>
+                {f === 'all' ? 'Todos' : getStatusText(f)}
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+            <h2 className="text-xl font-bold text-white mb-4">Solicitações de Saque</h2>
+            {withdrawals.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">Nenhum saque com este filtro.</div>
+            ) : (
+              <div className="space-y-4">
+                {withdrawals.map(w => (
+                  <div key={w.id} className="bg-primary/50 p-5 rounded-lg border border-gray-600">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                      <div>
+                        <div className="text-xl font-bold text-white">R$ {w.amount.toFixed(2)}</div>
+                        <div className="text-sm text-gray-300">{w.affiliate_name} ({w.affiliate_email})</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Solicitado: {new Date(w.request_date).toLocaleDateString('pt-BR')} | Via: {w.payment_method === 'pix' ? `PIX (${w.pix_key || ''})` : `Depósito (${w.bank_info || ''})`}
+                        </div>
+                        {w.paid_date && <div className="text-xs text-green-400">Pago em: {new Date(w.paid_date).toLocaleDateString('pt-BR')}</div>}
+                        {w.transaction_id && <div className="text-xs text-gray-500 font-mono">Transação: {w.transaction_id}</div>}
+                        {w.rejected_reason && <div className="text-xs text-red-400">Motivo: {w.rejected_reason}</div>}
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(w.status)} ${getStatusColor(w.status)}`}>{getStatusText(w.status)}</span>
+                        <div className="flex gap-2">
+                          {w.status === 'pending' && (
+                            <>
+                              <button onClick={() => handleApproveWithdrawal(w.id!)} disabled={processingId === w.id} className="bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-blue-700 disabled:opacity-50">
+                                {processingId === w.id ? '...' : 'Aprovar'}
+                              </button>
+                              {rejectingId === w.id ? (
+                                <div className="flex gap-1">
+                                  <input type="text" value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Motivo" className="bg-primary text-white text-xs p-1.5 rounded border border-gray-600 w-32" />
+                                  <button onClick={() => handleRejectWithdrawal(w.id!)} disabled={processingId === w.id} className="bg-red-600 text-white text-xs px-2 py-1.5 rounded">OK</button>
+                                  <button onClick={() => { setRejectingId(null); setRejectReason(''); }} className="text-gray-400 text-xs px-2 py-1.5">X</button>
+                                </div>
+                              ) : (
+                                <button onClick={() => setRejectingId(w.id!)} className="bg-red-600/20 text-red-400 text-xs font-semibold px-3 py-1.5 rounded hover:bg-red-600/40 border border-red-500/30">
+                                  Rejeitar
+                                </button>
+                              )}
+                            </>
+                          )}
+                          {w.status === 'approved' && (
+                            <button onClick={() => handleMarkPaid(w.id!)} disabled={processingId === w.id} className="bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-green-700 disabled:opacity-50">
+                              {processingId === w.id ? '...' : 'Marcar como Pago'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ──── CONFIGURAÇÕES ──── */}
+      {activeTab === 'settings' && (
+        <div className="bg-secondary p-6 rounded-lg border border-gray-700">
+          <h2 className="text-xl font-bold text-white mb-6">Configurações do Programa</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-gray-300 mb-2 font-semibold">Taxa de Comissão (%)</label>
+              <input type="number" value={settings.commission_rate} onChange={e => setSettings({ ...settings, commission_rate: Number(e.target.value) })} className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white" min={1} max={100} />
+              <p className="text-xs text-gray-500 mt-1">Percentual global de comissão para afiliados</p>
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-2 font-semibold">Valor Mínimo para Saque (R$)</label>
+              <input type="number" value={settings.min_withdrawal_amount} onChange={e => setSettings({ ...settings, min_withdrawal_amount: Number(e.target.value) })} className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white" min={1} />
+              <p className="text-xs text-gray-500 mt-1">Valor mínimo que o afiliado precisa ter para solicitar saque</p>
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-2 font-semibold">Ciclo de Pagamento (dias)</label>
+              <input type="number" value={settings.payment_cycle_days} onChange={e => setSettings({ ...settings, payment_cycle_days: Number(e.target.value) })} className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white" min={1} />
+              <p className="text-xs text-gray-500 mt-1">Período de acumulação de vendas (7 = semanal)</p>
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-2 font-semibold">Prazo para Pagamento (dias)</label>
+              <input type="number" value={settings.payment_delay_days} onChange={e => setSettings({ ...settings, payment_delay_days: Number(e.target.value) })} className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white" min={1} />
+              <p className="text-xs text-gray-500 mt-1">Dias após o ciclo para liberar pagamento (7 = 1 semana)</p>
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-2 font-semibold">Teto de Comissão por Venda (R$)</label>
+              <input type="number" value={settings.max_commission_per_sale} onChange={e => setSettings({ ...settings, max_commission_per_sale: Number(e.target.value) })} className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white" min={0} />
+              <p className="text-xs text-gray-500 mt-1">0 = sem teto. Define valor máximo de comissão por venda</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input type="checkbox" id="autoApprove" checked={settings.auto_approve_withdrawals} onChange={e => setSettings({ ...settings, auto_approve_withdrawals: e.target.checked })} className="w-5 h-5 rounded" />
+              <label htmlFor="autoApprove" className="text-gray-300 font-semibold">Aprovar saques automaticamente</label>
+            </div>
+          </div>
+
+          <div className="mt-6 flex gap-4">
+            <button onClick={handleSaveSettings} disabled={savingSettings} className="bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50">
+              {savingSettings ? 'Salvando...' : 'Salvar Configurações'}
+            </button>
+          </div>
+
+          <div className="mt-6 bg-primary/50 p-4 rounded-lg border border-gray-600">
+            <h3 className="text-white font-semibold mb-2">Resumo do Ciclo</h3>
+            <p className="text-gray-400 text-sm">
+              Comissão: <span className="text-white font-bold">{settings.commission_rate}%</span> |
+              Ciclo: <span className="text-white font-bold">{settings.payment_cycle_days} dias</span> de vendas +
+              <span className="text-white font-bold"> {settings.payment_delay_days} dias</span> para pagamento |
+              Saque mínimo: <span className="text-white font-bold">R$ {settings.min_withdrawal_amount.toFixed(2)}</span>
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default AdminAffiliatesPage;

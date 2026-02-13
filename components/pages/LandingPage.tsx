@@ -1589,6 +1589,10 @@ const LandingPage: React.FC = () => {
 
         if (refCode) {
             sessionStorage.setItem('referralCode', refCode);
+            // Registrar click do afiliado no Supabase
+            import('../../services/realAffiliateService').then(({ default: RealAffiliateService }) => {
+                RealAffiliateService.getInstance().trackClick(refCode).catch(() => {});
+            }).catch(() => {});
             setTimeout(() => {
                 const pricingSection = document.getElementById('pricing');
                 if (pricingSection) {

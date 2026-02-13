@@ -67,9 +67,13 @@ export interface User {
   trialFollowers?: number;
   trialSales?: number;
   affiliateInfo?: {
+    isActive?: boolean;
     referralCode: string;
+    affiliateCode?: string;
+    commissionRate?: number;
     earnings: number;
-    referredUserIds: string[]; // Store IDs of referred users
+    referredUserIds: string[];
+    joinDate?: string;
   };
   referredBy?: string; // The referral code of the affiliate who referred this user
   avatar?: string;

@@ -210,6 +210,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           details: { email: data.email, name: data.name }
         });
 
+        // Registrar indicação de afiliado se houver referral code
+        try {
+          const refCode = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('referralCode') : null;
+          if (refCode && authData.user.id) {
+            const { default: RealAffiliateService } = await import('../services/realAffiliateService');
+            const affiliateSvc = RealAffiliateService.getInstance();
+            const tracked = await affiliateSvc.trackReferral(refCode, authData.user.id);
+            if (tracked) {
+              console.log('✅ Indicação de afiliado registrada:', refCode, '->', authData.user.id);
+              sessionStorage.removeItem('referralCode');
+            }
+          }
+        } catch (refErr) {
+          console.warn('⚠️ Erro ao registrar indicação de afiliado:', refErr);
+        }
+
         console.log('✅ Usuário cadastrado no SUPABASE com perfil criado');
         return { success: true, user: userData };
       }

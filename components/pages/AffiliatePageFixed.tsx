@@ -1,488 +1,448 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
-import StripeService from '../../services/stripeService';
-import { supabase } from '../../src/lib/supabase';
+import RealAffiliateService from '../../services/realAffiliateService';
+import type { AffiliateAccount, AffiliateCommission, WithdrawalRequest as WR } from '../../services/realAffiliateService';
 
-interface AffiliateStats {
-  totalEarnings: number;
-  pendingEarnings: number;
-  totalReferrals: number;
-  activeReferrals: number;
-  conversionRate: number;
-  clicksThisMonth: number;
-}
-
-interface WithdrawalRequest {
-  id: string;
-  amount: number;
-  status: 'pending' | 'processing' | 'paid' | 'rejected';
-  requestDate: string;
-  expectedPaymentDate: string;
-  bankInfo: {
-    bank: string;
-    account: string;
-    pix: string;
-  };
-}
+const svc = RealAffiliateService.getInstance();
 
 const AffiliatePageFixed: React.FC = () => {
   const { user, updateUser } = useAuth();
-  const [isActivatingAffiliate, setIsActivatingAffiliate] = useState(false);
-  const [affiliateStats, setAffiliateStats] = useState<AffiliateStats>({
-    totalEarnings: 0,
-    pendingEarnings: 0,
-    totalReferrals: 0,
-    activeReferrals: 0,
-    conversionRate: 0,
-    clicksThisMonth: 0
-  });
-  const [bankInfo, setBankInfo] = useState({
-    bank: '',
-    account: '',
-    pix: ''
-  });
-  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isActivating, setIsActivating] = useState(false);
+  const [affiliate, setAffiliate] = useState<AffiliateAccount | null>(null);
+  const [stats, setStats] = useState({ totalEarnings: 0, pendingBalance: 0, availableBalance: 0, totalReferrals: 0, totalClicks: 0, conversionRate: 0, commissionsThisMonth: 0, commissionsThisWeek: 0 });
+  const [commissions, setCommissions] = useState<AffiliateCommission[]>([]);
+  const [withdrawals, setWithdrawals] = useState<WR[]>([]);
+  const [minWithdrawal, setMinWithdrawal] = useState(50);
+  const [commissionRate, setCommissionRate] = useState(20);
   const [isRequestingWithdrawal, setIsRequestingWithdrawal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'commissions' | 'withdrawals' | 'banking'>('dashboard');
+  const [savingBank, setSavingBank] = useState(false);
+  const [bankName, setBankName] = useState('');
+  const [bankAgency, setBankAgency] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
+  const [bankAccountType, setBankAccountType] = useState('corrente');
+  const [pixKey, setPixKey] = useState('');
+  const [pixKeyType, setPixKeyType] = useState('cpf');
+  const [holderName, setHolderName] = useState('');
+  const [holderCpf, setHolderCpf] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'deposit'>('pix');
 
-  useEffect(() => {
-    if (user?.affiliateInfo?.isActive) {
-      loadAffiliateData();
+  const loadData = useCallback(async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    try {
+      const [aff, sett] = await Promise.all([
+        svc.getAffiliateByUserId(user.id),
+        svc.getSettings()
+      ]);
+      setAffiliate(aff);
+      setMinWithdrawal(sett.min_withdrawal_amount);
+      setCommissionRate(sett.commission_rate);
+      if (aff?.id) {
+        const [st, comms, wds] = await Promise.all([
+          svc.getAffiliateStats(user.id),
+          svc.getCommissionsByAffiliate(aff.id),
+          svc.getWithdrawalsByAffiliate(user.id)
+        ]);
+        setStats(st);
+        setCommissions(comms);
+        setWithdrawals(wds);
+        if (aff.bank_name) setBankName(aff.bank_name);
+        if (aff.bank_agency) setBankAgency(aff.bank_agency);
+        if (aff.bank_account) setBankAccount(aff.bank_account);
+        if (aff.bank_account_type) setBankAccountType(aff.bank_account_type);
+        if (aff.pix_key) setPixKey(aff.pix_key);
+        if (aff.pix_key_type) setPixKeyType(aff.pix_key_type);
+        if (aff.account_holder_name) setHolderName(aff.account_holder_name);
+        if (aff.account_holder_cpf) setHolderCpf(aff.account_holder_cpf);
+        if (aff.payment_method) setPaymentMethod(aff.payment_method as 'pix' | 'deposit');
+      }
+    } catch (e) {
+      console.error('Erro ao carregar dados do afiliado:', e);
+    } finally {
+      setLoading(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
-  const loadAffiliateData = () => {
-    // Carregar dados reais do afiliado
-    const savedStats = localStorage.getItem(`affiliate_stats_${user?.id}`);
-    if (savedStats) {
-      setAffiliateStats(JSON.parse(savedStats));
-    } else {
-      // Dados iniciais realísticos
-      const initialStats = {
-        totalEarnings: 1247.50,
-        pendingEarnings: 320.75,
-        totalReferrals: 23,
-        activeReferrals: 18,
-        conversionRate: 12.4,
-        clicksThisMonth: 187
-      };
-      setAffiliateStats(initialStats);
-      localStorage.setItem(`affiliate_stats_${user?.id}`, JSON.stringify(initialStats));
-      // SYNC COM SUPABASE
-      if (user?.id) supabase.from('affiliates').upsert({ id: user.id, stats: initialStats, updated_at: new Date().toISOString() }).then(() => {});
-    }
-
-    // Carregar dados bancários
-    if (user?.affiliateInfo?.bankInfo) {
-      setBankInfo(user.affiliateInfo.bankInfo);
-    }
-
-    // Carregar solicitações de saque
-    const savedWithdrawals = localStorage.getItem(`withdrawals_${user?.id}`);
-    if (savedWithdrawals) {
-      setWithdrawalRequests(JSON.parse(savedWithdrawals));
-    }
-  };
+  useEffect(() => { loadData(); }, [loadData]);
 
   const activateAffiliate = async () => {
-    if (!user) return;
-    
-    setIsActivatingAffiliate(true);
-    
+    if (!user?.id) return;
+    setIsActivating(true);
     try {
-      // Simular ativação
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const affiliateCode = `VIR${user.id?.slice(-6).toUpperCase()}${Date.now().toString().slice(-4)}`;
-      
-      const affiliateInfo = {
-        isActive: true,
-        affiliateCode,
-        commissionRate: 30, // 30% de comissão
-        totalEarnings: 0,
-        pendingEarnings: 0,
-        joinDate: new Date().toISOString(),
-        bankInfo: null
-      };
-      
-      await updateUser(user.id, { affiliateInfo });
-      
-      // Gerar dados iniciais
-      const initialStats = {
-        totalEarnings: 0,
-        pendingEarnings: 0,
-        totalReferrals: 0,
-        activeReferrals: 0,
-        conversionRate: 0,
-        clicksThisMonth: 0
-      };
-      setAffiliateStats(initialStats);
-      localStorage.setItem(`affiliate_stats_${user.id}`, JSON.stringify(initialStats));
-      // SYNC COM SUPABASE
-      supabase.from('affiliates').upsert({ id: user.id, stats: initialStats, status: 'active', updated_at: new Date().toISOString() }).then(() => {});
-      
-    } catch (error) {
-      console.error('Erro ao ativar afiliado:', error);
-      alert('Erro ao ativar conta de afiliado. Tente novamente.');
+      const result = await svc.activateAffiliate(user.id, user.name || 'Afiliado', user.email || '');
+      if (result) {
+        setAffiliate(result);
+        await updateUser(user.id, {
+          affiliateInfo: { isActive: true, referralCode: result.referral_code, earnings: 0, referredUserIds: [] }
+        });
+        alert('Conta de afiliado ativada com sucesso!');
+        await loadData();
+      } else {
+        alert('Erro ao ativar conta. Tente novamente.');
+      }
+    } catch (e) {
+      console.error('Erro:', e);
+      alert('Erro ao ativar conta de afiliado.');
     } finally {
-      setIsActivatingAffiliate(false);
+      setIsActivating(false);
     }
   };
 
-  const saveBankInfo = () => {
-    if (!user || !bankInfo.bank || !bankInfo.account || !bankInfo.pix) {
-      alert('Preencha todos os dados bancários');
-      return;
-    }
-
-    const updatedUser = {
-      ...user,
-      affiliateInfo: {
-        ...user.affiliateInfo!,
-        bankInfo
-      }
-    };
-    
-    updateUser(updatedUser);
-    alert('Dados bancários salvos com sucesso!');
+  const saveBankInfoHandler = async () => {
+    if (!user?.id) return;
+    if (paymentMethod === 'pix' && !pixKey) { alert('Informe sua chave PIX'); return; }
+    if (paymentMethod === 'deposit' && (!bankName || !bankAgency || !bankAccount)) { alert('Preencha todos os dados bancários'); return; }
+    if (!holderName || !holderCpf) { alert('Preencha nome do titular e CPF'); return; }
+    setSavingBank(true);
+    try {
+      const ok = await svc.updateBankingData(user.id, {
+        bank_name: bankName, bank_agency: bankAgency, bank_account: bankAccount,
+        bank_account_type: bankAccountType, pix_key: pixKey, pix_key_type: pixKeyType,
+        account_holder_name: holderName, account_holder_cpf: holderCpf, payment_method: paymentMethod
+      });
+      if (ok) { alert('Dados bancários salvos com sucesso!'); await loadData(); }
+      else alert('Erro ao salvar dados bancários.');
+    } catch { alert('Erro ao salvar dados bancários.'); }
+    finally { setSavingBank(false); }
   };
 
   const requestWithdrawal = async () => {
-    if (!user?.affiliateInfo?.isActive || affiliateStats.pendingEarnings < 50) {
-      alert('Valor mínimo para saque é R$ 50,00');
-      return;
-    }
-
-    if (!bankInfo.bank || !bankInfo.account || !bankInfo.pix) {
-      alert('Cadastre seus dados bancários primeiro');
-      return;
-    }
-
+    if (!user?.id) return;
+    if (!affiliate?.payment_method) { alert('Cadastre seus dados bancários/PIX antes'); setActiveTab('banking'); return; }
     setIsRequestingWithdrawal(true);
-
     try {
-      const withdrawal: WithdrawalRequest = {
-        id: 'WD' + Date.now(),
-        amount: affiliateStats.pendingEarnings,
-        status: 'pending',
-        requestDate: new Date().toISOString(),
-        expectedPaymentDate: addBusinessDays(new Date(), 3).toISOString(),
-        bankInfo
-      };
-
-      const updatedWithdrawals = [...withdrawalRequests, withdrawal];
-      setWithdrawalRequests(updatedWithdrawals);
-      localStorage.setItem(`withdrawals_${user.id}`, JSON.stringify(updatedWithdrawals));
-      // SYNC COM SUPABASE
-      supabase.from('affiliate_withdrawals').insert({ id: withdrawal.id, affiliate_id: user.id, amount: withdrawal.amount, status: 'pending', created_at: new Date().toISOString() }).then(() => {});
-
-      // Atualizar stats
-      const updatedStats = {
-        ...affiliateStats,
-        pendingEarnings: 0
-      };
-      setAffiliateStats(updatedStats);
-      localStorage.setItem(`affiliate_stats_${user.id}`, JSON.stringify(updatedStats));
-      // SYNC COM SUPABASE
-      supabase.from('affiliates').upsert({ id: user.id, stats: updatedStats, updated_at: new Date().toISOString() }).then(() => {});
-
-      // Notificar admin (simulado)
-      console.log('Notificação enviada para admin sobre solicitação de saque');
-      
-      alert(`Solicitação de saque de R$ ${withdrawal.amount.toFixed(2)} enviada com sucesso!`);
-      
-    } catch (error) {
-      console.error('Erro ao solicitar saque:', error);
-      alert('Erro ao solicitar saque. Tente novamente.');
-    } finally {
-      setIsRequestingWithdrawal(false);
-    }
-  };
-
-  const addBusinessDays = (date: Date, days: number): Date => {
-    const result = new Date(date);
-    let addedDays = 0;
-    
-    while (addedDays < days) {
-      result.setDate(result.getDate() + 1);
-      if (result.getDay() !== 0 && result.getDay() !== 6) {
-        addedDays++;
+      const result = await svc.requestWithdrawal(user.id);
+      if (result) {
+        alert(`Saque de R$ ${result.amount.toFixed(2)} solicitado! Pagamento via ${result.payment_method === 'pix' ? 'PIX' : 'Depósito'}. Prazo: 1 semana.`);
+        await loadData();
       }
-    }
-    
-    return result;
+    } catch (e: any) { alert(e.message || 'Erro ao solicitar saque.'); }
+    finally { setIsRequestingWithdrawal(false); }
   };
 
   const copyReferralLink = () => {
-    if (!user?.affiliateInfo?.affiliateCode) return;
-    
-    const referralLink = `https://viralizaai.vercel.app/?ref=${user.affiliateInfo.affiliateCode}`;
-    navigator.clipboard.writeText(referralLink);
-    alert('Link de indicação copiado!');
+    if (!affiliate?.referral_code) return;
+    navigator.clipboard.writeText(`https://viralizaai.vercel.app/?ref=${affiliate.referral_code}`);
+    alert('Link copiado!');
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'text-yellow-400';
-      case 'processing': return 'text-blue-400';
-      case 'paid': return 'text-green-400';
-      case 'rejected': return 'text-red-400';
-      default: return 'text-gray-400';
-    }
+  const getStatusColor = (s: string) => {
+    const m: Record<string, string> = { pending: 'text-yellow-400', approved: 'text-blue-400', processing: 'text-blue-400', paid: 'text-green-400', rejected: 'text-red-400', confirmed: 'text-green-300', cancelled: 'text-red-300' };
+    return m[s] || 'text-gray-400';
+  };
+  const getStatusText = (s: string) => {
+    const m: Record<string, string> = { pending: 'Pendente', approved: 'Aprovado', processing: 'Processando', paid: 'Pago', rejected: 'Rejeitado', confirmed: 'Confirmado', cancelled: 'Cancelado' };
+    return m[s] || s;
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'pending': return 'Pendente';
-      case 'processing': return 'Processando';
-      case 'paid': return 'Pago';
-      case 'rejected': return 'Rejeitado';
-      default: return 'Desconhecido';
-    }
-  };
-
-  if (!user?.affiliateInfo?.isActive) {
+  // ──── TELA DE ATIVAÇÃO ────
+  if (!affiliate) {
     return (
       <div className="space-y-8">
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-8 rounded-xl text-center">
-          <h1 className="text-4xl font-bold text-white mb-4">
-            💰 Programa de Afiliados ViralizaAi
-          </h1>
-          <p className="text-green-100 text-lg mb-6">
-            Ganhe até 30% de comissão em todas as vendas que você indicar!
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white/10 p-4 rounded-lg">
-              <div className="text-3xl font-bold text-white">30%</div>
-              <div className="text-green-100">Comissão</div>
-            </div>
-            <div className="bg-white/10 p-4 rounded-lg">
-              <div className="text-3xl font-bold text-white">R$ 50</div>
-              <div className="text-green-100">Saque Mínimo</div>
-            </div>
-            <div className="bg-white/10 p-4 rounded-lg">
-              <div className="text-3xl font-bold text-white">3 dias</div>
-              <div className="text-green-100">Prazo Pagamento</div>
-            </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-xl text-gray-400 animate-pulse">Carregando...</div>
           </div>
-
-          <button
-            onClick={activateAffiliate}
-            disabled={isActivatingAffiliate}
-            className="bg-white text-green-600 font-bold py-4 px-8 rounded-xl hover:bg-gray-100 transition-all transform hover:scale-105 disabled:opacity-50"
-          >
-            {isActivatingAffiliate ? (
-              <>
-                <span className="animate-pulse">🔄 Ativando...</span>
-              </>
-            ) : (
-              '🚀 Ativar Minha Conta de Afiliado'
-            )}
-          </button>
-        </div>
-
-        <div className="bg-secondary p-6 rounded-lg border border-gray-700">
-          <h2 className="text-2xl font-bold text-white mb-4">Como Funciona</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold text-green-400 mb-2">1. Ative sua conta</h3>
-              <p className="text-gray-300">Clique no botão acima para ativar sua conta de afiliado gratuitamente.</p>
+        ) : (
+          <>
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-8 rounded-xl text-center">
+              <h1 className="text-4xl font-bold text-white mb-4">Programa de Afiliados ViralizaAi</h1>
+              <p className="text-green-100 text-lg mb-6">Ganhe {commissionRate}% de comissão em todas as vendas que indicar!</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-white/10 p-4 rounded-lg">
+                  <div className="text-3xl font-bold text-white">{commissionRate}%</div>
+                  <div className="text-green-100">Comissão</div>
+                </div>
+                <div className="bg-white/10 p-4 rounded-lg">
+                  <div className="text-3xl font-bold text-white">R$ {minWithdrawal}</div>
+                  <div className="text-green-100">Saque Mínimo</div>
+                </div>
+                <div className="bg-white/10 p-4 rounded-lg">
+                  <div className="text-3xl font-bold text-white">Semanal</div>
+                  <div className="text-green-100">Ciclo Pagamento</div>
+                </div>
+              </div>
+              <button onClick={activateAffiliate} disabled={isActivating} className="bg-white text-green-600 font-bold py-4 px-8 rounded-xl hover:bg-gray-100 transition-all transform hover:scale-105 disabled:opacity-50">
+                {isActivating ? 'Ativando...' : 'Ativar Minha Conta de Afiliado'}
+              </button>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-green-400 mb-2">2. Compartilhe seu link</h3>
-              <p className="text-gray-300">Receba um link único para compartilhar com seus contatos.</p>
+            <div className="bg-secondary p-6 rounded-lg border border-gray-700">
+              <h2 className="text-2xl font-bold text-white mb-4">Como Funciona</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div><h3 className="text-lg font-semibold text-green-400 mb-2">1. Ative sua conta</h3><p className="text-gray-300">Clique no botão acima para ativar gratuitamente.</p></div>
+                <div><h3 className="text-lg font-semibold text-green-400 mb-2">2. Compartilhe seu link</h3><p className="text-gray-300">Receba um link único para compartilhar.</p></div>
+                <div><h3 className="text-lg font-semibold text-green-400 mb-2">3. Ganhe comissões</h3><p className="text-gray-300">Receba {commissionRate}% de comissão em cada venda.</p></div>
+                <div><h3 className="text-lg font-semibold text-green-400 mb-2">4. Receba pagamentos</h3><p className="text-gray-300">Pagamentos semanais via PIX ou depósito bancário.</p></div>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-green-400 mb-2">3. Ganhe comissões</h3>
-              <p className="text-gray-300">Receba 30% de comissão em todas as vendas realizadas através do seu link.</p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-green-400 mb-2">4. Receba pagamentos</h3>
-              <p className="text-gray-300">Solicite saques a partir de R$ 50 e receba em até 3 dias úteis.</p>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     );
   }
 
+  // ──── DASHBOARD PRINCIPAL DO AFILIADO ────
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 rounded-xl">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">
-              💰 Dashboard do Afiliado
-            </h1>
-            <p className="text-purple-100">
-              Código: <span className="font-bold">{user.affiliateInfo.affiliateCode}</span>
-            </p>
+            <h1 className="text-3xl font-bold text-white mb-1">Dashboard do Afiliado</h1>
+            <p className="text-purple-100">Código: <span className="font-bold font-mono">{affiliate.referral_code}</span></p>
           </div>
-          <div className="bg-white/20 p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-white">
-              {affiliateStats.conversionRate.toFixed(1)}%
+          <div className="flex gap-3">
+            <div className="bg-white/20 p-3 rounded-lg text-center">
+              <div className="text-xl font-bold text-white">{stats.conversionRate.toFixed(1)}%</div>
+              <div className="text-purple-100 text-xs">Conversão</div>
             </div>
-            <div className="text-purple-100 text-sm">Taxa de Conversão</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-secondary p-6 rounded-lg border border-gray-700">
-          <h3 className="text-lg font-semibold text-green-400 mb-2">💰 Ganhos Totais</h3>
-          <div className="text-3xl font-bold text-white">
-            R$ {affiliateStats.totalEarnings.toFixed(2)}
-          </div>
-        </div>
-        
-        <div className="bg-secondary p-6 rounded-lg border border-gray-700">
-          <h3 className="text-lg font-semibold text-yellow-400 mb-2">⏳ Pendente</h3>
-          <div className="text-3xl font-bold text-white">
-            R$ {affiliateStats.pendingEarnings.toFixed(2)}
-          </div>
-        </div>
-        
-        <div className="bg-secondary p-6 rounded-lg border border-gray-700">
-          <h3 className="text-lg font-semibold text-blue-400 mb-2">👥 Indicações</h3>
-          <div className="text-3xl font-bold text-white">
-            {affiliateStats.totalReferrals}
-          </div>
-          <div className="text-sm text-gray-400">
-            {affiliateStats.activeReferrals} ativos
-          </div>
-        </div>
-        
-        <div className="bg-secondary p-6 rounded-lg border border-gray-700">
-          <h3 className="text-lg font-semibold text-purple-400 mb-2">🖱️ Clicks</h3>
-          <div className="text-3xl font-bold text-white">
-            {affiliateStats.clicksThisMonth}
-          </div>
-          <div className="text-sm text-gray-400">Este mês</div>
-        </div>
-      </div>
-
-      {/* Link de Indicação */}
-      <div className="bg-secondary p-6 rounded-lg border border-gray-700">
-        <h2 className="text-2xl font-bold text-white mb-4">🔗 Seu Link de Indicação</h2>
-        <div className="flex gap-4">
-          <input
-            type="text"
-            value={`https://viralizaai.vercel.app/?ref=${user.affiliateInfo.affiliateCode}`}
-            readOnly
-            className="flex-1 bg-primary p-3 rounded-lg border border-gray-600 text-white"
-          />
-          <button
-            onClick={copyReferralLink}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            📋 Copiar
-          </button>
-        </div>
-      </div>
-
-      {/* Dados Bancários */}
-      <div className="bg-secondary p-6 rounded-lg border border-gray-700">
-        <h2 className="text-2xl font-bold text-white mb-4">🏦 Dados Bancários</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div>
-            <label className="block text-gray-300 mb-2">Banco</label>
-            <input
-              type="text"
-              value={bankInfo.bank}
-              onChange={(e) => setBankInfo({...bankInfo, bank: e.target.value})}
-              className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white"
-              placeholder="Ex: Banco do Brasil"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-300 mb-2">Conta (Agência-Conta)</label>
-            <input
-              type="text"
-              value={bankInfo.account}
-              onChange={(e) => setBankInfo({...bankInfo, account: e.target.value})}
-              className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white"
-              placeholder="Ex: 1234-5 / 12345-6"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-300 mb-2">Chave PIX</label>
-            <input
-              type="text"
-              value={bankInfo.pix}
-              onChange={(e) => setBankInfo({...bankInfo, pix: e.target.value})}
-              className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white"
-              placeholder="CPF, e-mail ou telefone"
-            />
-          </div>
-        </div>
-        <button
-          onClick={saveBankInfo}
-          className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
-        >
-          💾 Salvar Dados Bancários
-        </button>
-      </div>
-
-      {/* Solicitação de Saque */}
-      <div className="bg-secondary p-6 rounded-lg border border-gray-700">
-        <h2 className="text-2xl font-bold text-white mb-4">💸 Solicitar Saque</h2>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="text-lg text-gray-300">Valor disponível para saque:</div>
-            <div className="text-3xl font-bold text-green-400">
-              R$ {affiliateStats.pendingEarnings.toFixed(2)}
+            <div className="bg-white/20 p-3 rounded-lg text-center">
+              <div className="text-xl font-bold text-white">{affiliate.commission_rate}%</div>
+              <div className="text-purple-100 text-xs">Comissão</div>
             </div>
           </div>
-          <button
-            onClick={requestWithdrawal}
-            disabled={isRequestingWithdrawal || affiliateStats.pendingEarnings < 50}
-            className="bg-green-600 text-white font-bold py-4 px-8 rounded-xl hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isRequestingWithdrawal ? (
-              <>🔄 Processando...</>
-            ) : (
-              <>💰 Solicitar Saque</>
-            )}
-          </button>
         </div>
-        
-        {affiliateStats.pendingEarnings < 50 && (
-          <div className="bg-yellow-500/20 border border-yellow-500/30 p-4 rounded-lg">
-            <p className="text-yellow-300 text-sm">
-              ⚠️ Valor mínimo para saque é R$ 50,00. Continue indicando para atingir o valor mínimo!
-            </p>
-          </div>
-        )}
       </div>
 
-      {/* Histórico de Saques */}
-      {withdrawalRequests.length > 0 && (
-        <div className="bg-secondary p-6 rounded-lg border border-gray-700">
-          <h2 className="text-2xl font-bold text-white mb-4">📋 Histórico de Saques</h2>
-          <div className="space-y-4">
-            {withdrawalRequests.map(withdrawal => (
-              <div key={withdrawal.id} className="bg-primary/50 p-4 rounded-lg border border-gray-600">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-lg font-bold text-white">
-                      R$ {withdrawal.amount.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      Solicitado em: {new Date(withdrawal.requestDate).toLocaleDateString()}
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      Previsão: {new Date(withdrawal.expectedPaymentDate).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div className={`font-bold ${getStatusColor(withdrawal.status)}`}>
-                    {getStatusText(withdrawal.status)}
-                  </div>
-                </div>
+      {/* Abas */}
+      <div className="flex gap-2 flex-wrap">
+        {(['dashboard', 'commissions', 'withdrawals', 'banking'] as const).map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)} className={`px-5 py-2.5 rounded-lg font-semibold transition-colors text-sm ${activeTab === tab ? 'bg-accent text-white' : 'bg-secondary text-gray-300 hover:bg-accent/20'}`}>
+            {tab === 'dashboard' && 'Resumo'}
+            {tab === 'commissions' && 'Comissões'}
+            {tab === 'withdrawals' && 'Saques'}
+            {tab === 'banking' && 'Dados Bancários'}
+          </button>
+        ))}
+      </div>
+
+      {/* ──── ABA RESUMO ──── */}
+      {activeTab === 'dashboard' && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+              <div className="text-sm text-green-400 font-semibold mb-1">Ganhos Totais</div>
+              <div className="text-2xl font-bold text-white">R$ {stats.totalEarnings.toFixed(2)}</div>
+            </div>
+            <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+              <div className="text-sm text-yellow-400 font-semibold mb-1">Saldo Pendente</div>
+              <div className="text-2xl font-bold text-white">R$ {stats.pendingBalance.toFixed(2)}</div>
+              <div className="text-xs text-gray-500">Aguardando período de confirmação</div>
+            </div>
+            <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+              <div className="text-sm text-blue-400 font-semibold mb-1">Disponível p/ Saque</div>
+              <div className="text-2xl font-bold text-white">R$ {stats.availableBalance.toFixed(2)}</div>
+            </div>
+            <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+              <div className="text-sm text-purple-400 font-semibold mb-1">Indicações / Clicks</div>
+              <div className="text-2xl font-bold text-white">{stats.totalReferrals} / {stats.totalClicks}</div>
+            </div>
+          </div>
+
+          {/* Link */}
+          <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+            <h2 className="text-lg font-bold text-white mb-3">Seu Link de Indicação</h2>
+            <div className="flex gap-3">
+              <input type="text" value={`https://viralizaai.vercel.app/?ref=${affiliate.referral_code}`} readOnly className="flex-1 bg-primary p-3 rounded-lg border border-gray-600 text-white text-sm font-mono" />
+              <button onClick={copyReferralLink} className="bg-blue-600 text-white px-5 py-3 rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap">Copiar</button>
+            </div>
+          </div>
+
+          {/* Resumo semanal */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+              <div className="text-sm text-gray-400 mb-1">Comissões esta semana</div>
+              <div className="text-2xl font-bold text-green-400">R$ {stats.commissionsThisWeek.toFixed(2)}</div>
+            </div>
+            <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+              <div className="text-sm text-gray-400 mb-1">Comissões este mês</div>
+              <div className="text-2xl font-bold text-green-400">R$ {stats.commissionsThisMonth.toFixed(2)}</div>
+            </div>
+          </div>
+
+          {/* Solicitar saque rápido */}
+          <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-gray-300">Disponível para saque:</div>
+                <div className="text-2xl font-bold text-green-400">R$ {stats.availableBalance.toFixed(2)}</div>
+                <div className="text-xs text-gray-500">Mínimo: R$ {minWithdrawal.toFixed(2)}</div>
               </div>
-            ))}
+              <button onClick={requestWithdrawal} disabled={isRequestingWithdrawal || stats.availableBalance < minWithdrawal} className="bg-green-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                {isRequestingWithdrawal ? 'Processando...' : 'Solicitar Saque'}
+              </button>
+            </div>
+            {!affiliate.payment_method && (
+              <div className="mt-3 bg-yellow-500/20 border border-yellow-500/30 p-3 rounded-lg">
+                <p className="text-yellow-300 text-sm">Cadastre seus dados bancários na aba "Dados Bancários" para poder solicitar saques.</p>
+              </div>
+            )}
           </div>
+        </>
+      )}
+
+      {/* ──── ABA COMISSÕES ──── */}
+      {activeTab === 'commissions' && (
+        <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+          <h2 className="text-xl font-bold text-white mb-4">Histórico de Comissões</h2>
+          {commissions.length === 0 ? (
+            <div className="text-center py-10 text-gray-500">
+              <p className="text-lg">Nenhuma comissão registrada ainda.</p>
+              <p className="text-sm mt-2">Compartilhe seu link para começar a ganhar!</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-gray-400 uppercase bg-primary">
+                  <tr>
+                    <th className="p-3">Data</th>
+                    <th className="p-3">Produto</th>
+                    <th className="p-3">Valor Venda</th>
+                    <th className="p-3">Comissão</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Elegível em</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {commissions.map(c => (
+                    <tr key={c.id} className="border-t border-gray-700">
+                      <td className="p-3 text-gray-300">{new Date(c.sale_date).toLocaleDateString('pt-BR')}</td>
+                      <td className="p-3 text-white">{c.product_name || 'Assinatura'}</td>
+                      <td className="p-3 text-gray-300">R$ {c.sale_amount.toFixed(2)}</td>
+                      <td className="p-3 font-bold text-green-400">R$ {c.commission_value.toFixed(2)}</td>
+                      <td className={`p-3 font-semibold ${getStatusColor(c.status)}`}>{getStatusText(c.status)}</td>
+                      <td className="p-3 text-gray-400 text-xs">{new Date(c.payment_eligible_date).toLocaleDateString('pt-BR')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ──── ABA SAQUES ──── */}
+      {activeTab === 'withdrawals' && (
+        <div className="space-y-4">
+          <div className="bg-secondary p-5 rounded-lg border border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">Meus Saques</h2>
+              <button onClick={requestWithdrawal} disabled={isRequestingWithdrawal || stats.availableBalance < minWithdrawal || !affiliate.payment_method} className="bg-green-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                {isRequestingWithdrawal ? 'Processando...' : `Solicitar Saque (R$ ${stats.availableBalance.toFixed(2)})`}
+              </button>
+            </div>
+            <div className="bg-primary/50 p-3 rounded-lg mb-4 text-sm text-gray-400">
+              Ciclo: 1 semana de vendas + 1 semana para pagamento. Pagamento via {affiliate.payment_method === 'pix' ? 'PIX' : affiliate.payment_method === 'deposit' ? 'Depósito' : 'não configurado'}.
+            </div>
+            {withdrawals.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">Nenhum saque solicitado ainda.</div>
+            ) : (
+              <div className="space-y-3">
+                {withdrawals.map(w => (
+                  <div key={w.id} className="bg-primary/50 p-4 rounded-lg border border-gray-600">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-lg font-bold text-white">R$ {w.amount.toFixed(2)}</div>
+                        <div className="text-xs text-gray-400">Solicitado: {new Date(w.request_date).toLocaleDateString('pt-BR')}</div>
+                        {w.paid_date && <div className="text-xs text-green-400">Pago em: {new Date(w.paid_date).toLocaleDateString('pt-BR')}</div>}
+                        {w.rejected_reason && <div className="text-xs text-red-400">Motivo: {w.rejected_reason}</div>}
+                        {w.transaction_id && <div className="text-xs text-gray-500 font-mono">ID: {w.transaction_id}</div>}
+                      </div>
+                      <span className={`font-bold text-sm ${getStatusColor(w.status)}`}>{getStatusText(w.status)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ──── ABA DADOS BANCÁRIOS ──── */}
+      {activeTab === 'banking' && (
+        <div className="bg-secondary p-6 rounded-lg border border-gray-700">
+          <h2 className="text-xl font-bold text-white mb-4">Dados para Recebimento</h2>
+
+          {/* Método de pagamento */}
+          <div className="mb-6">
+            <label className="block text-gray-300 mb-2 font-semibold">Método de Pagamento</label>
+            <div className="flex gap-4">
+              <button onClick={() => setPaymentMethod('pix')} className={`px-6 py-3 rounded-lg font-semibold transition-colors ${paymentMethod === 'pix' ? 'bg-green-600 text-white' : 'bg-primary text-gray-300 border border-gray-600'}`}>
+                PIX
+              </button>
+              <button onClick={() => setPaymentMethod('deposit')} className={`px-6 py-3 rounded-lg font-semibold transition-colors ${paymentMethod === 'deposit' ? 'bg-blue-600 text-white' : 'bg-primary text-gray-300 border border-gray-600'}`}>
+                Depósito Bancário
+              </button>
+            </div>
+          </div>
+
+          {/* Titular */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-gray-300 mb-2">Nome do Titular</label>
+              <input type="text" value={holderName} onChange={e => setHolderName(e.target.value)} className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white" placeholder="Nome completo" />
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-2">CPF do Titular</label>
+              <input type="text" value={holderCpf} onChange={e => setHolderCpf(e.target.value)} className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white" placeholder="000.000.000-00" />
+            </div>
+          </div>
+
+          {/* PIX */}
+          {paymentMethod === 'pix' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-gray-300 mb-2">Tipo da Chave PIX</label>
+                <select value={pixKeyType} onChange={e => setPixKeyType(e.target.value)} className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white">
+                  <option value="cpf">CPF</option>
+                  <option value="email">E-mail</option>
+                  <option value="phone">Telefone</option>
+                  <option value="random">Chave Aleatória</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">Chave PIX</label>
+                <input type="text" value={pixKey} onChange={e => setPixKey(e.target.value)} className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white" placeholder="Sua chave PIX" />
+              </div>
+            </div>
+          )}
+
+          {/* Depósito */}
+          {paymentMethod === 'deposit' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-gray-300 mb-2">Banco</label>
+                <input type="text" value={bankName} onChange={e => setBankName(e.target.value)} className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white" placeholder="Ex: Banco do Brasil" />
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">Agência</label>
+                <input type="text" value={bankAgency} onChange={e => setBankAgency(e.target.value)} className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white" placeholder="Ex: 1234-5" />
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">Conta</label>
+                <input type="text" value={bankAccount} onChange={e => setBankAccount(e.target.value)} className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white" placeholder="Ex: 12345-6" />
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">Tipo de Conta</label>
+                <select value={bankAccountType} onChange={e => setBankAccountType(e.target.value)} className="w-full bg-primary p-3 rounded-lg border border-gray-600 text-white">
+                  <option value="corrente">Corrente</option>
+                  <option value="poupanca">Poupança</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          <button onClick={saveBankInfoHandler} disabled={savingBank} className="bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50">
+            {savingBank ? 'Salvando...' : 'Salvar Dados Bancários'}
+          </button>
+
+          {affiliate.payment_method && (
+            <div className="mt-4 bg-green-500/20 border border-green-500/30 p-3 rounded-lg">
+              <p className="text-green-300 text-sm">Dados configurados: {affiliate.payment_method === 'pix' ? `PIX (${affiliate.pix_key})` : `Depósito (${affiliate.bank_name} - Ag: ${affiliate.bank_agency} - Cc: ${affiliate.bank_account})`}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
