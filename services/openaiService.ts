@@ -170,6 +170,35 @@ Forneça:
     return this.generate('trends', prompt);
   }
 
+  async generateLogo(
+    businessName: string,
+    businessType: string,
+    style: string,
+    colors: string,
+    imageStyle: string = 'logo'
+  ): Promise<{ imageUrl: string; revisedPrompt: string }> {
+    const prompt = `Logo for "${businessName}", a ${businessType} business. Style: ${style}. Colors: ${colors}. Modern, professional, memorable.`;
+
+    const response = await fetch(`${window.location.origin}/api/ai-image`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        style: imageStyle,
+        size: '1024x1024',
+        quality: 'standard'
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+      throw new Error(err.error || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    return { imageUrl: data.imageUrl, revisedPrompt: data.revisedPrompt };
+  }
+
   async translateContent(content: string, targetLanguage: string, context: string): Promise<string> {
     const prompt = `Traduza o seguinte conteúdo para ${targetLanguage}.
 Contexto: ${context}

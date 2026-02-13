@@ -409,9 +409,153 @@ const UserDashboard = () => {
     <script>async function go(){var n=document.getElementById('n').value;if(!n){alert('Insira um nicho!');return;}document.getElementById('b').disabled=true;document.getElementById('sp').style.display='block';document.getElementById('r').style.display='none';try{var res=await fetch('${window.location.origin}/api/ai-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'hashtags',prompt:'Gere hashtags estratégicas para '+document.getElementById('p').value+'. Nicho: '+n+'. Tipo de conteúdo: '+document.getElementById('t').value+'. Divida em: alta competição (5), média (10), nicho específico (10), trending (5). Total 30 hashtags.'})});var d=await res.json();if(d.success){document.getElementById('r').textContent=d.content;document.getElementById('r').style.display='block';}else{alert('Erro: '+(d.error||'Tente novamente'));}}catch(e){alert('Erro: '+e.message);}finally{document.getElementById('b').disabled=false;document.getElementById('sp').style.display='none';}}</script></body></html>`);
   };
 
-  // 🎨 CRIADOR DE LOGOS - FUNCIONAL
+  // 🎨 CRIADOR DE LOGOS - COM DALL-E 3 REAL
   const openLogoCreator = () => {
-    alert('🎨 Criador de Logos\n\nEsta ferramenta requer API de geração de imagens (DALL-E/Stability AI).\nConfiguração necessária: VITE_STABILITY_API_KEY\n\nEm breve disponível!');
+    const w = window.open('', '_blank', 'width=1100,height=800');
+    w.document.write(`<!DOCTYPE html><html><head><title>🎨 Criador de Logos IA - ViralizaAI</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{font-family:system-ui,-apple-system,sans-serif;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);min-height:100vh;color:#fff;padding:20px;}
+      .c{max-width:900px;margin:0 auto;background:rgba(255,255,255,.08);backdrop-filter:blur(20px);border-radius:20px;padding:32px;border:1px solid rgba(255,255,255,.15);}
+      h1{font-size:28px;margin-bottom:8px;}
+      p.sub{color:rgba(255,255,255,.7);margin-bottom:24px;}
+      .form{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+      .form.full{grid-template-columns:1fr;}
+      label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:rgba(255,255,255,.9);}
+      input,select{width:100%;padding:12px 16px;border:1px solid rgba(255,255,255,.2);border-radius:10px;font-size:15px;background:rgba(255,255,255,.1);color:#fff;outline:none;transition:border .2s;}
+      input:focus,select:focus{border-color:#a855f7;}
+      input::placeholder{color:rgba(255,255,255,.4);}
+      select option{background:#1e1b4b;color:#fff;}
+      .btn{background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;padding:16px 32px;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;width:100%;transition:transform .15s,opacity .15s;}
+      .btn:hover{transform:translateY(-1px);opacity:.9;}
+      .btn:disabled{opacity:.5;cursor:wait;transform:none;}
+      .loader{text-align:center;padding:40px 20px;display:none;}
+      .loader.show{display:block;}
+      .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;}
+      @keyframes spin{to{transform:rotate(360deg)}}
+      .result{display:none;text-align:center;margin-top:24px;background:rgba(255,255,255,.1);border-radius:16px;padding:24px;border:1px solid rgba(255,255,255,.15);}
+      .result.show{display:block;}
+      .result img{max-width:100%;max-height:400px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.3);margin:16px 0;}
+      .actions{display:flex;gap:12px;justify-content:center;margin-top:16px;}
+      .actions button{padding:12px 24px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;}
+      .dl{background:#10b981;color:#fff;}
+      .dl:hover{background:#059669;}
+      .regen{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.2)!important;}
+      .regen:hover{background:rgba(255,255,255,.25);}
+      .cost{font-size:12px;color:rgba(255,255,255,.5);margin-top:8px;}
+    </style></head>
+    <body>
+    <div class="c">
+      <h1>🎨 Criador de Logos com IA</h1>
+      <p class="sub">Gere logos profissionais usando DALL-E 3 da OpenAI</p>
+      
+      <div class="form">
+        <div><label>Nome do Negócio</label><input id="name" placeholder="Ex: ViralizaAI"></div>
+        <div><label>Tipo de Negócio</label><input id="type" placeholder="Ex: Marketing Digital, Restaurante"></div>
+        <div><label>Estilo do Logo</label>
+          <select id="style">
+            <option value="minimalista e moderno">Minimalista / Moderno</option>
+            <option value="elegante e luxuoso">Elegante / Luxuoso</option>
+            <option value="divertido e colorido">Divertido / Colorido</option>
+            <option value="corporativo e profissional">Corporativo / Profissional</option>
+            <option value="tecnológico e futurista">Tech / Futurista</option>
+            <option value="orgânico e natural">Orgânico / Natural</option>
+            <option value="retrô e vintage">Retrô / Vintage</option>
+          </select>
+        </div>
+        <div><label>Cores Preferidas</label>
+          <select id="colors">
+            <option value="azul e branco">Azul e Branco</option>
+            <option value="preto e dourado">Preto e Dourado</option>
+            <option value="verde e branco">Verde e Branco</option>
+            <option value="roxo e rosa">Roxo e Rosa</option>
+            <option value="vermelho e preto">Vermelho e Preto</option>
+            <option value="laranja e amarelo">Laranja e Amarelo</option>
+            <option value="multicolorido">Multicolorido</option>
+          </select>
+        </div>
+      </div>
+      <div class="form full">
+        <div><label>Detalhes Adicionais (opcional)</label><input id="extra" placeholder="Ex: inclua um ícone de foguete, estilo flat design"></div>
+      </div>
+      <div><label>Tipo de Imagem</label>
+        <select id="imgStyle" style="margin-bottom:20px;">
+          <option value="logo">Logo (ícone sem texto)</option>
+          <option value="logo-text">Logo com Texto</option>
+          <option value="icon">Ícone de App</option>
+          <option value="banner">Banner/Cover</option>
+        </select>
+      </div>
+      
+      <button class="btn" id="btnGen" onclick="generate()">🚀 Gerar Logo com DALL-E 3</button>
+      <p class="cost">Custo estimado: ~$0.04 por imagem (DALL-E 3 Standard)</p>
+      
+      <div class="loader" id="loader">
+        <div class="spinner"></div>
+        <p id="loaderText">Gerando logo com DALL-E 3...</p>
+        <p style="font-size:13px;color:rgba(255,255,255,.5);margin-top:8px;">Isso pode levar 10-20 segundos</p>
+      </div>
+      
+      <div class="result" id="result">
+        <h3 style="margin-bottom:8px;">✨ Logo Gerado por IA</h3>
+        <img id="logoImg" src="" alt="Logo gerado">
+        <p id="revised" style="font-size:12px;color:rgba(255,255,255,.5);margin-top:8px;"></p>
+        <div class="actions">
+          <button class="dl" onclick="download()">💾 Baixar Logo</button>
+          <button class="regen" onclick="generate()">🔄 Gerar Outra Variação</button>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      async function generate(){
+        var name=document.getElementById('name').value;
+        var type=document.getElementById('type').value;
+        if(!name){alert('Insira o nome do negócio!');return;}
+        
+        document.getElementById('btnGen').disabled=true;
+        document.getElementById('loader').classList.add('show');
+        document.getElementById('result').classList.remove('show');
+        
+        var extra=document.getElementById('extra').value;
+        var prompt=name+', '+type+' business. Style: '+document.getElementById('style').value+'. Colors: '+document.getElementById('colors').value+'. '+(extra||'');
+        
+        try{
+          var res=await fetch('${window.location.origin}/api/ai-image',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              prompt:prompt,
+              style:document.getElementById('imgStyle').value,
+              size:'1024x1024',
+              quality:'standard'
+            })
+          });
+          var d=await res.json();
+          if(d.success&&d.imageUrl){
+            document.getElementById('logoImg').src=d.imageUrl;
+            document.getElementById('revised').textContent=d.revisedPrompt||'';
+            document.getElementById('result').classList.add('show');
+          }else{
+            alert('Erro: '+(d.error||d.details||'Tente novamente'));
+          }
+        }catch(e){
+          alert('Erro de conexão: '+e.message);
+        }finally{
+          document.getElementById('btnGen').disabled=false;
+          document.getElementById('loader').classList.remove('show');
+        }
+      }
+      function download(){
+        var img=document.getElementById('logoImg');
+        var a=document.createElement('a');
+        a.href=img.src;
+        a.download='logo-'+document.getElementById('name').value.replace(/\\s+/g,'-').toLowerCase()+'.png';
+        a.target='_blank';
+        a.click();
+      }
+    </script>
+    </body></html>`);
   };
 
   const handlePurchaseTool = async (tool) => {
