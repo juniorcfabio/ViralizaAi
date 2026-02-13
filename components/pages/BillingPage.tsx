@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import { SUBSCRIPTION_PLANS } from '../../data/plansConfig';
-import PixPaymentModalFixed from '../ui/PixPaymentModalFixed';
+// PIX agora vai via Stripe Checkout (verificação real de pagamento)
 import { supabase } from '../../src/lib/supabase';
 
 interface Plan {
@@ -36,10 +36,7 @@ const BillingPage: React.FC = () => {
     const [subscribingPlan, setSubscribingPlan] = useState<string | null>(null);
     const [buyingGrowthEngine, setBuyingGrowthEngine] = useState<string | null>(null);
     const [growthEnginePlan, setGrowthEnginePlan] = useState<string | null>(null);
-    const [pixModalOpen, setPixModalOpen] = useState(false);
-    const [pixSelectedPlan, setPixSelectedPlan] = useState<Plan | null>(null);
-    const [pixGrowthEngineOpen, setPixGrowthEngineOpen] = useState(false);
-    const [pixGrowthEngineData, setPixGrowthEngineData] = useState<{label: string, price: number} | null>(null);
+    // PIX e Cartão agora usam Stripe Checkout (verificação real)
 
     // Supabase Edge Function URL
     const SUPABASE_URL = 'https://ymmswnmietxoupeazmok.supabase.co';
@@ -213,14 +210,98 @@ const BillingPage: React.FC = () => {
         }
     };
 
-    const handlePixPayment = (plan: Plan) => {
-        setPixSelectedPlan(plan);
-        setPixModalOpen(true);
+    const handlePixPayment = async (plan: Plan) => {
+        setSubscribingPlan(plan.name);
+        try {
+            const planSlug = plan.id || plan.name.toLowerCase();
+            const appBaseUrl = buildAppBaseUrl();
+
+            const { data: sessionData } = await supabase.auth.getSession();
+            const jwt = sessionData?.session?.access_token;
+
+            if (!jwt) {
+                showNotification('Erro: Sessão não encontrada. Faça login novamente.');
+                return;
+            }
+
+            console.log('⚡ Criando checkout PIX via Stripe:', planSlug);
+            showNotification('Redirecionando para pagamento PIX...');
+
+            const response = await fetch(EDGE_FN_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${jwt}`,
+                },
+                body: JSON.stringify({
+                    plan_slug: planSlug,
+                    payment_method_types: ['pix'],
+                    success_url: `${appBaseUrl}/dashboard?checkout=success&plan=${encodeURIComponent(planSlug)}`,
+                    cancel_url: `${appBaseUrl}/dashboard/billing?checkout=cancel`,
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || `Erro: ${response.status}`);
+            }
+
+            if (result.success && result.url) {
+                console.log('🔄 Redirecionando para Stripe Checkout (PIX):', result.url);
+                window.location.href = result.url;
+            } else {
+                throw new Error(result.error || 'URL de checkout não retornada');
+            }
+        } catch (error) {
+            console.error('Erro no pagamento PIX:', error);
+            showNotification('Erro ao iniciar pagamento PIX. Tente novamente.');
+        } finally {
+            setSubscribingPlan(null);
+        }
     };
 
-    const handlePixGrowthEngine = (label: string, price: number) => {
-        setPixGrowthEngineData({label, price});
-        setPixGrowthEngineOpen(true);
+    const handlePixGrowthEngine = async (label: string, price: number) => {
+        setBuyingGrowthEngine(label);
+        try {
+            const appBaseUrl = buildAppBaseUrl();
+            const { data: sessionData } = await supabase.auth.getSession();
+            const jwt = sessionData?.session?.access_token;
+
+            if (!jwt) {
+                showNotification('Erro: Sessão não encontrada. Faça login novamente.');
+                return;
+            }
+
+            showNotification('Redirecionando para pagamento PIX...');
+
+            const response = await fetch(EDGE_FN_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${jwt}`,
+                },
+                body: JSON.stringify({
+                    plan_slug: 'growth-engine',
+                    payment_method_types: ['pix'],
+                    success_url: `${appBaseUrl}/dashboard/growth-engine?checkout=success&addon=${encodeURIComponent(label)}`,
+                    cancel_url: `${appBaseUrl}/dashboard/billing?checkout=cancel`,
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success && result.url) {
+                window.location.href = result.url;
+            } else {
+                throw new Error(result.error || 'Erro desconhecido');
+            }
+        } catch (error) {
+            console.error('Erro PIX Motor de Crescimento:', error);
+            showNotification('Erro ao processar pagamento PIX. Tente novamente.');
+        } finally {
+            setBuyingGrowthEngine(null);
+        }
     };
 
     const getStatusChip = (status: 'Pago' | 'Pendente') => {
@@ -473,27 +554,7 @@ const BillingPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Modal PIX para Planos */}
-            {pixModalOpen && pixSelectedPlan && (
-                <PixPaymentModalFixed
-                    isOpen={pixModalOpen}
-                    onClose={() => setPixModalOpen(false)}
-                    amount={typeof pixSelectedPlan.price === 'number' ? pixSelectedPlan.price : parseFloat(String(pixSelectedPlan.price))}
-                    planName={`Assinatura ${pixSelectedPlan.name} - ViralizaAI`}
-                    onPaymentSuccess={undefined}
-                />
-            )}
-
-            {/* Modal PIX para Ferramentas Avulsas */}
-            {pixGrowthEngineOpen && pixGrowthEngineData && (
-                <PixPaymentModalFixed
-                    isOpen={pixGrowthEngineOpen}
-                    onClose={() => setPixGrowthEngineOpen(false)}
-                    amount={pixGrowthEngineData.price}
-                    planName={`Motor de Crescimento Viraliza - ${pixGrowthEngineData.label}`}
-                    onPaymentSuccess={undefined}
-                />
-            )}
+            {/* PIX agora vai via Stripe Checkout — sem modal estático */}
         </>
     );
 };
