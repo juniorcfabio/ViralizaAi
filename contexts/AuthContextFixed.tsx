@@ -226,6 +226,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.warn('⚠️ Erro ao registrar indicação de afiliado:', refErr);
         }
 
+        // Setar user no contexto imediatamente (não depender apenas do onAuthStateChange)
+        setUser(userData);
+        setIsAuthenticated(true);
+
         console.log('✅ Usuário cadastrado no SUPABASE com perfil criado');
         return { success: true, user: userData };
       }

@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
 
 export const registerUser = async (email: string, password: string) => {
-  const redirectUrl = `${window.location.origin}/#/dashboard/billing`;
+  const redirectUrl = `${window.location.origin}/dashboard/billing`;
   const { data, error } = await supabase.auth.signUp({ 
     email, 
     password,
