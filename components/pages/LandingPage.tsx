@@ -1370,13 +1370,19 @@ const AffiliateSection: React.FC<{ onRegister: () => void }> = ({ onRegister }) 
                     </div>
                 </div>
                 
-                <div className="bg-gradient-to-r from-yellow-500 to-orange-500 p-8 rounded-2xl max-w-2xl mx-auto">
+                <div 
+                    className="bg-gradient-to-r from-yellow-500 to-orange-500 p-8 rounded-2xl max-w-2xl mx-auto cursor-pointer hover:scale-105 transition-transform"
+                    onClick={onRegister}
+                >
                     <h3 className="text-2xl font-bold text-black mb-4">
                         🚀 Comece Agora e Ganhe Dinheiro!
                     </h3>
-                    <p className="text-black/80 mb-6">
+                    <p className="text-black/80 mb-4">
                         Cadastre-se gratuitamente e comece a ganhar comissões hoje mesmo
                     </p>
+                    <button className="bg-black text-white font-bold py-3 px-8 rounded-full hover:bg-gray-800 transition-colors text-lg">
+                        Cadastrar e Ativar Programa de Afiliados
+                    </button>
                 </div>
             </div>
         </section>
