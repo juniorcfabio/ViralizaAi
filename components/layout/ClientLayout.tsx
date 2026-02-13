@@ -1,19 +1,109 @@
-import React from 'react';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
 import ClientSidebar from '../ui/ClientSidebar';
 import MobileNav from '../ui/MobileNav';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import SubscriptionGate from '../guards/SubscriptionGate';
+import { supabase } from '../../src/lib/supabase';
 
 const ClientLayout: React.FC = () => {
-    const { user } = useAuth();
+    const { user, updateUser } = useAuth();
     const userPlan = user?.plan?.toLowerCase();
     const hasPlan = !!userPlan && user?.type !== 'admin';
     const location = useLocation();
+    const navigate = useNavigate();
+    const [checkoutProcessed, setCheckoutProcessed] = useState(false);
 
     // Rotas que NÃO precisam de assinatura (billing, affiliate, settings)
     const freeRoutes = ['/dashboard/billing', '/dashboard/affiliate', '/dashboard/settings', '/dashboard/targeting-areas'];
     const isFreePath = freeRoutes.some(r => location.pathname === r) || location.pathname === '/dashboard';
+
+    // === HANDLER: Checkout Success ===
+    // Detecta ?checkout=success na URL após retorno do Stripe
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const checkoutStatus = params.get('checkout');
+        const planSlug = params.get('plan');
+
+        if (checkoutStatus === 'success' && !checkoutProcessed) {
+            setCheckoutProcessed(true);
+            console.log('✅ Checkout success detectado, plano:', planSlug);
+
+            // Buscar subscription ativa do usuário no Supabase
+            const activateFromCheckout = async () => {
+                try {
+                    const { data: session } = await supabase.auth.getSession();
+                    const userId = session?.session?.user?.id;
+
+                    if (userId) {
+                        // Buscar subscription ativa
+                        const { data: subs } = await supabase
+                            .from('subscriptions')
+                            .select('*, subscription_plans(*)')
+                            .eq('user_id', userId)
+                            .eq('status', 'active')
+                            .order('created_at', { ascending: false })
+                            .limit(1);
+
+                        if (subs?.length) {
+                            const activePlan = subs[0].plan_type || planSlug || 'mensal';
+                            console.log('✅ Plano ativo encontrado:', activePlan);
+
+                            // Atualizar usuário no contexto
+                            if (user && updateUser) {
+                                await updateUser(user.id, { plan: activePlan });
+                            }
+
+                            // Redirecionar para ferramentas
+                            navigate('/dashboard/ultra-tools', { replace: true });
+                            return;
+                        }
+                    }
+
+                    // Se não encontrou subscription ainda (webhook pode demorar)
+                    // Tentar novamente após 3 segundos
+                    setTimeout(async () => {
+                        const { data: session2 } = await supabase.auth.getSession();
+                        const uid2 = session2?.session?.user?.id;
+                        if (uid2) {
+                            const { data: subs2 } = await supabase
+                                .from('subscriptions')
+                                .select('*')
+                                .eq('user_id', uid2)
+                                .eq('status', 'active')
+                                .limit(1);
+
+                            if (subs2?.length) {
+                                const plan = subs2[0].plan_type || planSlug || 'mensal';
+                                if (user && updateUser) {
+                                    await updateUser(user.id, { plan });
+                                }
+                                navigate('/dashboard/ultra-tools', { replace: true });
+                            } else if (planSlug) {
+                                // Fallback: ativar com planSlug da URL
+                                if (user && updateUser) {
+                                    await updateUser(user.id, { plan: planSlug });
+                                }
+                                navigate('/dashboard/ultra-tools', { replace: true });
+                            }
+                        }
+                    }, 3000);
+
+                } catch (err) {
+                    console.error('Erro ao processar checkout success:', err);
+                }
+            };
+
+            activateFromCheckout();
+        }
+    }, [location.search, checkoutProcessed]);
+
+    // === AUTO-REDIRECT: Novo usuário sem plano → billing ===
+    useEffect(() => {
+        if (user && !hasPlan && user.type !== 'admin' && location.pathname === '/dashboard') {
+            navigate('/dashboard/billing', { replace: true });
+        }
+    }, [user, hasPlan, location.pathname]);
 
     return (
         <div className="flex h-screen bg-primary text-light flex-col md:flex-row">

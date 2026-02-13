@@ -117,8 +117,8 @@ const BillingPage: React.FC = () => {
                 body: JSON.stringify({
                     plan_slug: planSlug,
                     payment_method_types: ['card'],
-                    success_url: `${appBaseUrl}/#/dashboard?checkout=success&plan=${encodeURIComponent(planSlug)}`,
-                    cancel_url: `${appBaseUrl}/#/dashboard/billing?checkout=cancel`,
+                    success_url: `${appBaseUrl}/dashboard?checkout=success&plan=${encodeURIComponent(planSlug)}`,
+                    cancel_url: `${appBaseUrl}/dashboard/billing?checkout=cancel`,
                 })
             });
 
@@ -191,8 +191,8 @@ const BillingPage: React.FC = () => {
                 body: JSON.stringify({
                     plan_slug: 'growth-engine',
                     payment_method_types: ['card'],
-                    success_url: `${appBaseUrl}/#/dashboard/growth-engine?checkout=success&addon=${encodeURIComponent(label)}`,
-                    cancel_url: `${appBaseUrl}/#/dashboard/billing?checkout=cancel`,
+                    success_url: `${appBaseUrl}/dashboard/growth-engine?checkout=success&addon=${encodeURIComponent(label)}`,
+                    cancel_url: `${appBaseUrl}/dashboard/billing?checkout=cancel`,
                 })
             });
 

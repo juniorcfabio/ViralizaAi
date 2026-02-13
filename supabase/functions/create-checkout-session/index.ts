@@ -59,8 +59,8 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const planSlug = body.plan_slug;
     const paymentMethodTypes = body.payment_method_types ?? ["card"];
-    const successUrl = body.success_url ?? `${APP_URL}/#/dashboard?checkout=success&plan=${planSlug}`;
-    const cancelUrl = body.cancel_url ?? `${APP_URL}/#/dashboard/billing?checkout=cancel`;
+    const successUrl = body.success_url ?? `${APP_URL}/dashboard?checkout=success&plan=${planSlug}`;
+    const cancelUrl = body.cancel_url ?? `${APP_URL}/dashboard/billing?checkout=cancel`;
 
     if (!planSlug) {
       return new Response(JSON.stringify({ error: "plan_slug required" }), {

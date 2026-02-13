@@ -91,6 +91,7 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const { register, isLoading } = useAuth();
+    const navigate = useNavigate();
 
     const formatCPF = (value: string) => {
         const v = value.replace(/\D/g, '').slice(0, 11);
@@ -140,7 +141,12 @@ const RegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
         const result = await register(dataToRegister);
         if (result.success) {
-            setSuccessMessage('Cadastro realizado! Verifique seu e-mail para confirmar a conta e depois faça login.');
+            setSuccessMessage('Cadastro realizado! Redirecionando para escolher seu plano...');
+            // Redirecionar para billing após 1.5s
+            setTimeout(() => {
+                onClose();
+                navigate('/dashboard/billing');
+            }, 1500);
         } else {
             setError(result.message || 'Ocorreu um erro no cadastro.');
         }
