@@ -1,4 +1,5 @@
 // AI FUNNEL BUILDER COMPLETO - GERAÇÃO REAL DE FUNIS DE VENDAS
+import openaiService from './openaiService';
 
 interface FunnelConfig {
   businessType: string;
@@ -122,10 +123,41 @@ class AIFunnelBuilderComplete {
 
     for (const pageType of strategy.pages) {
       const page = await this.generatePage(config, pageType, strategy);
+      
+      // Enriquecer copy com IA real
+      try {
+        const aiCopy = await openaiService.generateFunnelCopy(
+          config.businessName,
+          config.industry || config.businessType,
+          config.targetAudience,
+          pageType,
+          config.priceRange
+        );
+        if (aiCopy && aiCopy.length > 100) {
+          page.seoDescription = aiCopy.substring(0, 160);
+          // Injetar copy da IA no conteúdo HTML existente
+          page.content = this.injectAICopy(page.content, aiCopy, pageType);
+        }
+      } catch (err) {
+        console.warn(`⚠️ IA copy para ${pageType} falhou, usando template:`, err);
+      }
+      
       pages.push(page);
     }
 
     return pages;
+  }
+
+  private injectAICopy(htmlContent: string, aiCopy: string, pageType: string): string {
+    // Adicionar seção de copy gerada por IA ao final do body
+    const aiSection = `
+        <section class="ai-generated-copy" style="padding:40px 20px;max-width:800px;margin:0 auto;font-family:system-ui;line-height:1.8;">
+          <div style="background:#f8f9fa;border-radius:12px;padding:30px;margin:20px 0;">
+            <h2 style="color:#1a1a2e;margin-bottom:16px;">✨ Conteúdo Gerado por IA</h2>
+            <div style="white-space:pre-wrap;color:#333;">${aiCopy.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+          </div>
+        </section>`;
+    return htmlContent.replace('</body>', `${aiSection}\n</body>`);
   }
 
   private async generatePage(config: FunnelConfig, pageType: string, strategy: any): Promise<FunnelPage> {

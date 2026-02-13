@@ -44,9 +44,9 @@ const UserDashboard = () => {
   }, [authUser]);
 
   // 🛠️ FUNÇÕES PARA USAR E COMPRAR FERRAMENTAS
-  const handleUseTool = (tool) => {
+  const handleUseTool = async (tool) => {
     // Verificar se usuário tem acesso real à ferramenta
-    const hasAccess = AccessControlService.hasToolAccess(
+    const hasAccess = await AccessControlService.hasToolAccess(
       authUser?.id || 'guest', 
       tool.name, 
       authUser?.type
@@ -82,7 +82,7 @@ const UserDashboard = () => {
     }
   };
 
-  // 🤖 GERADOR DE SCRIPTS IA - FUNCIONAL
+  // 🤖 GERADOR DE SCRIPTS IA - COM OPENAI REAL
   const openScriptGenerator = () => {
     const scriptWindow = window.open('', '_blank', 'width=1200,height=800');
     scriptWindow.document.write(`
@@ -95,16 +95,21 @@ const UserDashboard = () => {
           .container { max-width: 800px; margin: 0 auto; background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; }
           .input-group { margin: 20px 0; }
           label { display: block; margin-bottom: 10px; font-weight: bold; }
-          input, textarea, select { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 16px; }
+          input, textarea, select { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
           button { background: #4CAF50; color: white; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; margin: 10px 5px; }
           button:hover { background: #45a049; }
+          button:disabled { background: #999; cursor: wait; }
           .result { background: rgba(255,255,255,0.2); padding: 20px; border-radius: 10px; margin-top: 20px; }
+          .loading { display: none; text-align: center; padding: 20px; }
+          .loading.active { display: block; }
+          .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         </style>
       </head>
       <body>
         <div class="container">
           <h1>🤖 Gerador de Scripts IA</h1>
-          <p>Crie scripts virais para seus vídeos usando inteligência artificial</p>
+          <p>Crie scripts virais usando inteligência artificial GPT-4</p>
           
           <div class="input-group">
             <label>Tema do Vídeo:</label>
@@ -112,87 +117,88 @@ const UserDashboard = () => {
           </div>
           
           <div class="input-group">
-            <label>Duração do Vídeo:</label>
-            <select id="duracao">
-              <option value="30s">30 segundos</option>
-              <option value="1min">1 minuto</option>
-              <option value="3min">3 minutos</option>
-              <option value="5min">5 minutos</option>
+            <label>Plataforma:</label>
+            <select id="plataforma">
+              <option value="TikTok">TikTok</option>
+              <option value="Instagram Reels">Instagram Reels</option>
+              <option value="YouTube Shorts">YouTube Shorts</option>
+              <option value="YouTube">YouTube (longo)</option>
             </select>
           </div>
           
           <div class="input-group">
-            <label>Tom do Conteúdo:</label>
+            <label>Duração:</label>
+            <select id="duracao">
+              <option value="30 segundos">30 segundos</option>
+              <option value="1 minuto">1 minuto</option>
+              <option value="3 minutos">3 minutos</option>
+              <option value="5 minutos">5 minutos</option>
+            </select>
+          </div>
+          
+          <div class="input-group">
+            <label>Tom:</label>
             <select id="tom">
               <option value="motivacional">Motivacional</option>
               <option value="educativo">Educativo</option>
               <option value="divertido">Divertido</option>
-              <option value="serio">Sério</option>
+              <option value="sério e profissional">Sério/Profissional</option>
             </select>
           </div>
           
-          <button onclick="gerarScript()">🚀 Gerar Script</button>
+          <button id="btnGerar" onclick="gerarScript()">🚀 Gerar Script com IA</button>
+          
+          <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Gerando script com IA real...</p>
+          </div>
           
           <div id="resultado" class="result" style="display:none;">
-            <h3>📝 Seu Script Gerado:</h3>
-            <div id="scriptContent"></div>
+            <h3>📝 Script Gerado por IA:</h3>
+            <div id="scriptContent" style="white-space:pre-wrap;"></div>
             <button onclick="copiarScript()">📋 Copiar Script</button>
           </div>
         </div>
         
         <script>
-          function gerarScript() {
+          async function gerarScript() {
             const tema = document.getElementById('tema').value;
+            const plataforma = document.getElementById('plataforma').value;
             const duracao = document.getElementById('duracao').value;
             const tom = document.getElementById('tom').value;
             
-            if (!tema) {
-              alert('Por favor, insira um tema para o vídeo!');
-              return;
+            if (!tema) { alert('Insira um tema!'); return; }
+            
+            document.getElementById('btnGerar').disabled = true;
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('resultado').style.display = 'none';
+            
+            try {
+              const res = await fetch('${window.location.origin}/api/ai-generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  tool: 'scripts',
+                  prompt: 'Crie um script de vídeo viral para ' + plataforma + '. Tema: ' + tema + '. Duração: ' + duracao + '. Tom: ' + tom + '. Formate com GANCHO, DESENVOLVIMENTO, CTA. Inclua marcações de [CENA], [NARRAÇÃO], [TEXTO NA TELA].'
+                })
+              });
+              const data = await res.json();
+              if (data.success) {
+                document.getElementById('scriptContent').textContent = data.content;
+                document.getElementById('resultado').style.display = 'block';
+              } else {
+                alert('Erro: ' + (data.error || 'Tente novamente'));
+              }
+            } catch(e) {
+              alert('Erro de conexão: ' + e.message);
+            } finally {
+              document.getElementById('btnGerar').disabled = false;
+              document.getElementById('loading').classList.remove('active');
             }
-            
-            const scripts = {
-              motivacional: [
-                "🔥 ABERTURA IMPACTANTE: 'Você está a 30 segundos de descobrir o segredo que mudou minha vida!'",
-                "💡 PROBLEMA: 'A maioria das pessoas não sabe que...'",
-                "✅ SOLUÇÃO: 'Mas eu descobri uma forma simples de...'",
-                "🎯 CALL TO ACTION: 'Comenta AÍ se você quer saber mais!'"
-              ],
-              educativo: [
-                "📚 INTRODUÇÃO: 'Hoje vou te ensinar algo que 90% das pessoas não sabem...'",
-                "🔍 EXPLICAÇÃO: 'O primeiro passo é entender que...'",
-                "📊 EXEMPLO PRÁTICO: 'Vou mostrar na prática como funciona...'",
-                "🎓 CONCLUSÃO: 'Agora você já sabe como fazer! Salva esse vídeo!'"
-              ],
-              divertido: [
-                "😂 GANCHO: 'Gente, vocês não vão acreditar no que aconteceu...'",
-                "🤪 DESENVOLVIMENTO: 'Aí eu pensei: e se eu tentasse...'",
-                "😱 CLÍMAX: 'E o resultado foi SURREAL!'",
-                "🤣 FINALIZAÇÃO: 'Conta nos comentários se já passou por isso!'"
-              ],
-              serio: [
-                "⚡ ABERTURA: 'Informação importante que pode mudar sua perspectiva...'",
-                "📈 DADOS: 'Segundo estudos recentes...'",
-                "🔬 ANÁLISE: 'Isso significa que...'",
-                "💼 CONCLUSÃO: 'Portanto, é fundamental que você..'"
-              ]
-            };
-            
-            const scriptBase = scripts[tom] || scripts.motivacional;
-            const scriptFinal = scriptBase.map((linha, index) => 
-              linha.replace(/\\.\\.\\./g, tema)
-            ).join('\\n\\n');
-            
-            document.getElementById('scriptContent').innerHTML = 
-              '<pre style="white-space: pre-wrap; font-family: inherit;">' + scriptFinal + '</pre>';
-            document.getElementById('resultado').style.display = 'block';
           }
-          
           function copiarScript() {
-            const script = document.getElementById('scriptContent').innerText;
-            navigator.clipboard.writeText(script).then(() => {
-              alert('✅ Script copiado para a área de transferência!');
-            });
+            navigator.clipboard.writeText(document.getElementById('scriptContent').textContent)
+              .then(() => alert('✅ Copiado!'));
           }
         </script>
       </body>
@@ -365,24 +371,47 @@ const UserDashboard = () => {
     `);
   };
 
-  // 📈 ANALISADOR DE TRENDS - FUNCIONAL
+  // 📈 ANALISADOR DE TRENDS - COM OPENAI REAL
   const openTrendsAnalyzer = () => {
-    alert('📈 Analisador de Trends\n\n🔍 Analisando tendências atuais...\n📊 Dados em tempo real carregados!\n🎯 Ferramenta totalmente funcional!');
+    const w = window.open('', '_blank', 'width=1000,height=700');
+    w.document.write(`<!DOCTYPE html><html><head><title>📈 Analisador de Trends</title>
+    <style>body{font-family:system-ui;padding:20px;background:linear-gradient(135deg,#0f9b0f,#087f23);color:#fff;}.c{max-width:800px;margin:0 auto;background:rgba(255,255,255,.1);padding:30px;border-radius:15px;}input,select{width:100%;padding:12px;border:none;border-radius:8px;font-size:16px;margin:8px 0;box-sizing:border-box;}button{background:#fff;color:#087f23;padding:14px 28px;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:bold;margin:10px 5px;}button:disabled{opacity:.5;cursor:wait;}.r{background:rgba(255,255,255,.15);padding:20px;border-radius:10px;margin-top:20px;white-space:pre-wrap;display:none;}.sp{border:4px solid rgba(255,255,255,.3);border-top:4px solid #fff;border-radius:50%;width:36px;height:36px;animation:s 1s linear infinite;margin:10px auto;display:none;}@keyframes s{to{transform:rotate(360deg)}}</style></head>
+    <body><div class="c"><h1>📈 Analisador de Trends IA</h1><p>Descubra tendências em tempo real com GPT-4</p>
+    <input id="n" placeholder="Seu nicho (ex: fitness, marketing, moda)">
+    <select id="p"><option>Instagram</option><option>TikTok</option><option>YouTube</option><option>Twitter</option></select>
+    <button id="b" onclick="go()">🔍 Analisar Tendências</button><div class="sp" id="sp"></div><div class="r" id="r"></div></div>
+    <script>async function go(){var n=document.getElementById('n').value;if(!n){alert('Insira um nicho!');return;}document.getElementById('b').disabled=true;document.getElementById('sp').style.display='block';document.getElementById('r').style.display='none';try{var res=await fetch('${window.location.origin}/api/ai-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'trends',prompt:'Analise tendências atuais para o nicho '+n+' na plataforma '+document.getElementById('p').value})});var d=await res.json();if(d.success){document.getElementById('r').textContent=d.content;document.getElementById('r').style.display='block';}else{alert('Erro: '+(d.error||'Tente novamente'));}}catch(e){alert('Erro: '+e.message);}finally{document.getElementById('b').disabled=false;document.getElementById('sp').style.display='none';}}</script></body></html>`);
   };
 
-  // 🔍 OTIMIZADOR DE SEO - FUNCIONAL  
+  // 🔍 OTIMIZADOR DE SEO - COM OPENAI REAL
   const openSEOOptimizer = () => {
-    alert('🔍 Otimizador de SEO\n\n⚡ Otimizando conteúdo para SEO...\n📈 Análise de palavras-chave concluída!\n✅ Ferramenta funcionando perfeitamente!');
+    const w = window.open('', '_blank', 'width=1000,height=700');
+    w.document.write(`<!DOCTYPE html><html><head><title>🔍 Otimizador de SEO</title>
+    <style>body{font-family:system-ui;padding:20px;background:linear-gradient(135deg,#1a237e,#0d47a1);color:#fff;}.c{max-width:800px;margin:0 auto;background:rgba(255,255,255,.1);padding:30px;border-radius:15px;}input,textarea,select{width:100%;padding:12px;border:none;border-radius:8px;font-size:16px;margin:8px 0;box-sizing:border-box;}textarea{height:120px;}button{background:#fff;color:#1a237e;padding:14px 28px;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:bold;margin:10px 5px;}button:disabled{opacity:.5;cursor:wait;}.r{background:rgba(255,255,255,.15);padding:20px;border-radius:10px;margin-top:20px;white-space:pre-wrap;display:none;}.sp{border:4px solid rgba(255,255,255,.3);border-top:4px solid #fff;border-radius:50%;width:36px;height:36px;animation:s 1s linear infinite;margin:10px auto;display:none;}@keyframes s{to{transform:rotate(360deg)}}</style></head>
+    <body><div class="c"><h1>🔍 Otimizador de SEO IA</h1><p>Otimize seu conteúdo com IA real</p>
+    <input id="k" placeholder="Palavras-chave alvo (ex: marketing digital, redes sociais)">
+    <textarea id="t" placeholder="Cole seu texto/conteúdo aqui para otimizar..."></textarea>
+    <input id="b2" placeholder="Tipo de negócio (ex: e-commerce, consultoria)">
+    <button id="b" onclick="go()">⚡ Otimizar com IA</button><div class="sp" id="sp"></div><div class="r" id="r"></div></div>
+    <script>async function go(){var k=document.getElementById('k').value,t=document.getElementById('t').value;if(!k&&!t){alert('Preencha ao menos um campo!');return;}document.getElementById('b').disabled=true;document.getElementById('sp').style.display='block';document.getElementById('r').style.display='none';try{var res=await fetch('${window.location.origin}/api/ai-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'seo',prompt:'Analise e otimize para SEO. Palavras-chave: '+(k||'não especificadas')+'. Tipo de negócio: '+(document.getElementById('b2').value||'geral')+'. Conteúdo: '+(t||'Gere sugestões gerais de SEO para as palavras-chave informadas.')})});var d=await res.json();if(d.success){document.getElementById('r').textContent=d.content;document.getElementById('r').style.display='block';}else{alert('Erro: '+(d.error||'Tente novamente'));}}catch(e){alert('Erro: '+e.message);}finally{document.getElementById('b').disabled=false;document.getElementById('sp').style.display='none';}}</script></body></html>`);
   };
 
-  // #️⃣ GERADOR DE HASHTAGS - FUNCIONAL
+  // #️⃣ GERADOR DE HASHTAGS - COM OPENAI REAL
   const openHashtagGenerator = () => {
-    alert('#️⃣ Gerador de Hashtags\n\n🎯 Gerando hashtags virais...\n📱 Hashtags otimizadas criadas!\n🚀 Ferramenta ativa e funcionando!');
+    const w = window.open('', '_blank', 'width=1000,height=700');
+    w.document.write(`<!DOCTYPE html><html><head><title>#️⃣ Gerador de Hashtags</title>
+    <style>body{font-family:system-ui;padding:20px;background:linear-gradient(135deg,#e91e63,#9c27b0);color:#fff;}.c{max-width:800px;margin:0 auto;background:rgba(255,255,255,.1);padding:30px;border-radius:15px;}input,select{width:100%;padding:12px;border:none;border-radius:8px;font-size:16px;margin:8px 0;box-sizing:border-box;}button{background:#fff;color:#9c27b0;padding:14px 28px;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:bold;margin:10px 5px;}button:disabled{opacity:.5;cursor:wait;}.r{background:rgba(255,255,255,.15);padding:20px;border-radius:10px;margin-top:20px;white-space:pre-wrap;display:none;}.sp{border:4px solid rgba(255,255,255,.3);border-top:4px solid #fff;border-radius:50%;width:36px;height:36px;animation:s 1s linear infinite;margin:10px auto;display:none;}@keyframes s{to{transform:rotate(360deg)}}</style></head>
+    <body><div class="c"><h1>#️⃣ Gerador de Hashtags IA</h1><p>Hashtags estratégicas geradas por GPT-4</p>
+    <input id="n" placeholder="Seu nicho (ex: fitness, gastronomia, moda)">
+    <select id="p"><option>Instagram</option><option>TikTok</option><option>YouTube</option><option>Twitter</option><option>LinkedIn</option></select>
+    <select id="t"><option value="post educativo">Post Educativo</option><option value="reels/vídeo curto">Reels/Vídeo Curto</option><option value="carrossel">Carrossel</option><option value="stories">Stories</option><option value="venda/promoção">Venda/Promoção</option></select>
+    <button id="b" onclick="go()">🚀 Gerar Hashtags</button><div class="sp" id="sp"></div><div class="r" id="r"></div></div>
+    <script>async function go(){var n=document.getElementById('n').value;if(!n){alert('Insira um nicho!');return;}document.getElementById('b').disabled=true;document.getElementById('sp').style.display='block';document.getElementById('r').style.display='none';try{var res=await fetch('${window.location.origin}/api/ai-generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'hashtags',prompt:'Gere hashtags estratégicas para '+document.getElementById('p').value+'. Nicho: '+n+'. Tipo de conteúdo: '+document.getElementById('t').value+'. Divida em: alta competição (5), média (10), nicho específico (10), trending (5). Total 30 hashtags.'})});var d=await res.json();if(d.success){document.getElementById('r').textContent=d.content;document.getElementById('r').style.display='block';}else{alert('Erro: '+(d.error||'Tente novamente'));}}catch(e){alert('Erro: '+e.message);}finally{document.getElementById('b').disabled=false;document.getElementById('sp').style.display='none';}}</script></body></html>`);
   };
 
   // 🎨 CRIADOR DE LOGOS - FUNCIONAL
   const openLogoCreator = () => {
-    alert('🎨 Criador de Logos\n\n✨ Criando logo personalizado...\n🎨 Design profissional gerado!\n💼 Ferramenta empresarial ativa!');
+    alert('🎨 Criador de Logos\n\nEsta ferramenta requer API de geração de imagens (DALL-E/Stability AI).\nConfiguração necessária: VITE_STABILITY_API_KEY\n\nEm breve disponível!');
   };
 
   const handlePurchaseTool = async (tool) => {
@@ -522,11 +551,7 @@ const UserDashboard = () => {
     // Verificar acesso real para cada ferramenta
     return baseTools.map(tool => ({
       ...tool,
-      owned: AccessControlService.hasToolAccess(
-        authUser?.id || 'guest', 
-        tool.name, 
-        authUser?.type
-      )
+      owned: userAccess.some(a => a.toolName === tool.name) || authUser?.type === 'admin'
     }));
   };
 

@@ -133,34 +133,23 @@ class RealVideoGeneratorAI {
 
     const prompt = prompts[config.avatarStyle as keyof typeof prompts] || prompts.professional;
 
-    // Usar OpenAI GPT-4 para gerar script
+    // Usar API centralizada /api/ai-generate para gerar script
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(`${window.location.origin}/api/ai-generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY || 'sk-demo-key'}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gpt-4',
-          messages: [
-            {
-              role: 'system',
-              content: 'Você é um especialista em copywriting para vídeos promocionais. Crie scripts envolventes e persuasivos.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: 500,
-          temperature: 0.7
+          tool: 'scripts',
+          prompt: prompt,
+          params: { maxTokens: 1000 }
         })
       });
 
       if (response.ok) {
         const data = await response.json();
-        return data.choices[0].message.content;
+        if (data.success && data.content) {
+          return data.content;
+        }
       }
     } catch (error) {
       console.log('Usando script padrão devido a erro na API');

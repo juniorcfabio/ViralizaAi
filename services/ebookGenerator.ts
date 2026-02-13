@@ -1,5 +1,6 @@
 import { GLOBAL_NICHES, getRecommendedNiches } from '../data/globalNiches';
 import GeolocationService from './geolocationService';
+import openaiService from './openaiService';
 
 export interface EbookChapter {
   id: number;
@@ -495,59 +496,87 @@ const generateChapterContent = (
   };
 };
 
+// Gera conteúdo de capítulo via OpenAI com fallback para template local
+const generateChapterContentAI = async (
+  chapterNumber: number,
+  title: string,
+  businessInfo: any,
+  businessName: string,
+  targetAudience: string,
+  businessGoals: string[],
+  businessType: string
+): Promise<EbookChapter> => {
+  // Template local como fallback
+  const localChapter = generateChapterContent(chapterNumber, title, businessInfo, businessName, targetAudience, businessGoals, businessType);
+
+  try {
+    const aiContent = await openaiService.generateEbookChapter(
+      title,
+      businessName,
+      businessInfo.name,
+      targetAudience,
+      chapterNumber,
+      15
+    );
+
+    if (aiContent && aiContent.length > 200) {
+      return {
+        ...localChapter,
+        content: aiContent
+      };
+    }
+  } catch (error) {
+    console.warn(`⚠️ Capítulo ${chapterNumber} via IA falhou, usando template local:`, error);
+  }
+
+  return localChapter;
+};
+
 export const generateEbook = async (params: EbookGenerationParams): Promise<GeneratedEbook> => {
   const { businessType, businessName, targetAudience, businessGoals } = params;
   const businessInfo = getBusinessTypeInfo(businessType);
-  
-  const chapters: EbookChapter[] = [
-    {
-      ...generateChapterContent(1, `Entendendo o Cliente Ideal de ${businessName}`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(2, `Estratégias de Posicionamento para ${businessInfo.name}`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(3, `Criando uma Proposta de Valor Irresistível`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(4, `Marketing Digital Avançado para ${businessInfo.name}`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(5, `Otimização de Conversões e Vendas`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(6, `Fidelização e Retenção de Clientes`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(7, `Automação e Sistemas Inteligentes`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(8, `Análise de Dados e Métricas Avançadas`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(9, `Expansão e Crescimento Sustentável`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(10, `Inovação e Diferenciação Competitiva`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(11, `Gestão de Relacionamento com Cliente (CRM)`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(12, `Estratégias de Precificação Inteligente`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(13, `Marketing de Conteúdo e Autoridade`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(14, `Parcerias Estratégicas e Networking`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    },
-    {
-      ...generateChapterContent(15, `Plano de Ação de 90 Dias para Transformação`, businessInfo, businessName, targetAudience, businessGoals, businessType),
-    }
+
+  const chapterTitles = [
+    `Entendendo o Cliente Ideal de ${businessName}`,
+    `Estratégias de Posicionamento para ${businessInfo.name}`,
+    `Criando uma Proposta de Valor Irresistível`,
+    `Marketing Digital Avançado para ${businessInfo.name}`,
+    `Otimização de Conversões e Vendas`,
+    `Fidelização e Retenção de Clientes`,
+    `Automação e Sistemas Inteligentes`,
+    `Análise de Dados e Métricas Avançadas`,
+    `Expansão e Crescimento Sustentável`,
+    `Inovação e Diferenciação Competitiva`,
+    `Gestão de Relacionamento com Cliente (CRM)`,
+    `Estratégias de Precificação Inteligente`,
+    `Marketing de Conteúdo e Autoridade`,
+    `Parcerias Estratégicas e Networking`,
+    `Plano de Ação de 90 Dias para Transformação`
   ];
 
-  const totalPages = Math.ceil(chapters.length * 1.8); // 1.8 páginas por capítulo em média
+  // Gerar capítulos em paralelo (3 por vez para não sobrecarregar API)
+  const chapters: EbookChapter[] = [];
+  const batchSize = 3;
+
+  for (let i = 0; i < chapterTitles.length; i += batchSize) {
+    const batch = chapterTitles.slice(i, i + batchSize);
+    const batchResults = await Promise.all(
+      batch.map((title, idx) =>
+        generateChapterContentAI(
+          i + idx + 1,
+          title,
+          businessInfo,
+          businessName,
+          targetAudience,
+          businessGoals,
+          businessType
+        )
+      )
+    );
+    chapters.push(...batchResults);
+  }
+
+  const totalPages = Math.ceil(chapters.length * 1.8);
 
   return {
     title: `Guia Definitivo para Revolucionar ${businessName}`,
