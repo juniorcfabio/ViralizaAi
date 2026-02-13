@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './components/pages/LandingPage';
 import AdminDashboardPageReal from './components/pages/AdminDashboardPageReal';
 import AdminPaymentsPage from './components/pages/AdminPaymentsPage';
+import AdminPixApprovalsPage from './components/pages/AdminPixApprovalsPage';
 import AdminAdsPage from './components/pages/AdminAdsPage';
 import AdminTrustedCompaniesPage from './components/pages/AdminTrustedCompaniesPage';
 import AdminGrowthEngineConfigPage from './components/pages/AdminGrowthEngineConfigPage';
@@ -179,6 +180,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="financial" element={<AdminFinancialPage />} />
                 <Route path="autonomous-promotion" element={<AutonomousPromotionPage />} />
                 <Route path="payments" element={<AdminPaymentsPage />} />
+                <Route path="pix-approvals" element={<AdminPixApprovalsPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
                 <Route path="withdrawals" element={<AdminWithdrawalsPageFixed />} />
                 <Route path="marketing" element={<AdminMarketingPage />} />

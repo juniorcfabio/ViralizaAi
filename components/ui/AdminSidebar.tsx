@@ -174,6 +174,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
                             <span className="text-lg">🛡️</span>
                             <span className="font-medium">Gerenciar Saques</span>
                         </NavLink>
+                        <NavLink to="/admin/pix-approvals" className={navLinkClasses} onClick={handleNavClick}>
+                            <span className="text-lg">💰</span>
+                            <span className="font-medium">Aprovar PIX</span>
+                        </NavLink>
                         <NavLink to="/admin/affiliates" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🤝</span>
                             <span className="font-medium">Afiliados</span>
