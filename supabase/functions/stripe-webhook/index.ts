@@ -124,6 +124,21 @@ Deno.serve(async (req: Request) => {
           })
           .eq("user_id", authUserId);
 
+        // Atualizar auth.users metadata
+        const { error: metadataError } = await supabase.auth.admin.updateUserById(
+          authUserId,
+          {
+            user_metadata: {
+              plan: planType,
+              plan_status: "active"
+            }
+          }
+        );
+
+        if (metadataError) {
+          console.error("❌ Erro ao atualizar metadata:", metadataError);
+        }
+
         console.log("✅ Subscription activated:", authUserId, planType);
       }
     }

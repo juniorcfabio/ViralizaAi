@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContextFixed';
 import { SUBSCRIPTION_PLANS } from '../../data/plansConfig';
 import { StatCardData, User } from '../../types';
 import RealDataService from '../../services/realDataService';
+import { useCentralizedPricing } from '../../services/centralizedPricingService';
 
 // Icons
 const UsersIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -70,9 +71,16 @@ const AdminDashboardPage: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
+    const { pricing } = useCentralizedPricing(); // 🔥 PREÇOS EM TEMPO REAL
+    
     const dashboardStats = useMemo(() => {
         const activeUsers = platformUsers.filter(u => u.status === 'Ativo' && u.type === 'client');
-        const planPrices: { [key: string]: number } = { 'Anual': 399.90, 'Semestral': 259.90, 'Trimestral': 159.90, 'Mensal': 59.90 };
+        
+        // 🔥 BUSCAR PREÇOS DO SUPABASE EM TEMPO REAL
+        const planPrices: { [key: string]: number } = Object.fromEntries(
+            (pricing?.subscriptionPlans || []).map(p => [p.name, p.price])
+        );
+        
         const mrr = activeUsers.reduce((total, user) => total + (planPrices[user.plan || 'Mensal'] || 0), 0);
         
         return {

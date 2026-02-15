@@ -82,19 +82,30 @@ const PixPaymentSecure: React.FC<PixPaymentSecureProps> = ({
     setDbSaved(false);
   }, [isOpen, amount, planName]);
 
-  // PASSO 2: Salvar no Supabase como best-effort (não bloqueia QR Code)
+  // Normalizar plan_type para o formato padrao (mensal/trimestral/semestral/anual)
+  const getNormalizedPlanType = (): string => {
+    const combined = (planSlug + ' ' + planName).toLowerCase();
+    if (combined.includes('anual') || combined.includes('annual') || combined.includes('yearly')) return 'anual';
+    if (combined.includes('semestral') || combined.includes('semiannual')) return 'semestral';
+    if (combined.includes('trimestral') || combined.includes('quarterly')) return 'trimestral';
+    if (combined.includes('mensal') || combined.includes('monthly')) return 'mensal';
+    return planSlug; // fallback
+  };
+
+  // PASSO 2: Salvar no Supabase como best-effort (nao bloqueia QR Code)
   useEffect(() => {
     if (!isOpen || !user || !pixCode || dbSaved) return;
 
     const savePendingPayment = async () => {
       const paymentId = `pix_${Date.now()}`;
+      const normalizedPlan = getNormalizedPlanType();
       try {
         // Tentar inserir na tabela subscriptions
         const { data: sub, error } = await supabase
           .from('subscriptions')
           .insert({
             user_id: user.id,
-            plan_type: planSlug,
+            plan_type: normalizedPlan,
             status: 'pending_payment',
             payment_provider: 'pix',
             payment_id: paymentId,
@@ -106,7 +117,7 @@ const PixPaymentSecure: React.FC<PixPaymentSecureProps> = ({
         if (!error && sub) {
           setPendingId(sub.id);
           setDbSaved(true);
-          console.log('PIX pendente salvo no Supabase:', sub.id);
+          console.log('PIX pendente salvo no Supabase:', sub.id, 'plan:', normalizedPlan);
         } else {
           console.warn('Supabase insert falhou, tentando via user metadata:', error?.message);
           // Fallback: salvar como metadata do usuario
@@ -114,7 +125,7 @@ const PixPaymentSecure: React.FC<PixPaymentSecureProps> = ({
             data: {
               pending_pix: {
                 payment_id: paymentId,
-                plan: planSlug,
+                plan: normalizedPlan,
                 plan_name: planName,
                 amount: amount,
                 status: 'pending_payment',
@@ -127,7 +138,6 @@ const PixPaymentSecure: React.FC<PixPaymentSecureProps> = ({
         }
       } catch (err) {
         console.warn('Erro ao salvar PIX pendente (QR Code continua funcionando):', err);
-        // Nao bloqueia - QR Code ja esta visivel
         setDbSaved(true);
       }
     };

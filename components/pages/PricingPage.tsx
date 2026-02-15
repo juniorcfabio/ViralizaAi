@@ -4,70 +4,29 @@
 // =======================
 
 import React from 'react';
+import { useCentralizedPricing } from '../../services/centralizedPricingService';
 import PlanCard from '../ui/PlanCard';
 
 const PricingPage: React.FC = () => {
-  const plans = [
-    {
-      planType: 'mensal',
-      planName: 'Plano Mensal',
-      price: 59.90,
-      features: [
-        'Todas as ferramentas de IA',
-        'Geração ilimitada de conteúdo',
-        'Automação de redes sociais',
-        'Analytics avançados',
-        'Suporte prioritário',
-        'Atualizações gratuitas'
-      ]
-    },
-    {
-      planType: 'trimestral',
-      planName: 'Plano Trimestral',
-      price: 149.90,
-      originalPrice: 179.70,
-      discount: '-17%',
-      isPopular: true,
-      features: [
-        'Todas as funcionalidades do mensal',
-        'Desconto de 17%',
-        'Consultoria estratégica mensal',
-        'Templates exclusivos',
-        'Prioridade no suporte',
-        'Relatórios personalizados'
-      ]
-    },
-    {
-      planType: 'semestral',
-      planName: 'Plano Semestral',
-      price: 279.90,
-      originalPrice: 359.40,
-      discount: '-22%',
-      features: [
-        'Todas as funcionalidades anteriores',
-        'Desconto de 22%',
-        'Consultoria quinzenal',
-        'Acesso antecipado a novidades',
-        'Integração personalizada',
-        'Suporte dedicado'
-      ]
-    },
-    {
-      planType: 'anual',
-      planName: 'Plano Anual',
-      price: 499.90,
-      originalPrice: 718.80,
-      discount: '-30%',
-      features: [
-        'Todas as funcionalidades anteriores',
-        'Desconto de 30%',
-        'Consultoria semanal',
-        'Desenvolvimento de features customizadas',
-        'Suporte 24/7',
-        'Garantia de satisfação'
-      ]
-    }
-  ];
+  const { pricing, loading } = useCentralizedPricing(); // 🔥 PREÇOS EM TEMPO REAL
+
+  if (loading || !pricing) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  const plans = pricing.subscriptionPlans.map(plan => ({
+    planType: plan.id,
+    planName: plan.name,
+    price: plan.price,
+    originalPrice: plan.originalPrice,
+    discount: plan.discount ? `-${plan.discount}%` : undefined,
+    isPopular: plan.highlight,
+    features: plan.features
+  }));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 py-12 px-4">

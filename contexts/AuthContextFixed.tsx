@@ -91,59 +91,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         setIsLoading(true);
         
+        // CORREÇÃO: Verificar qual tipo de sessão carregar baseado na URL atual
+        const isAdminRoute = window.location.pathname.startsWith('/admin');
+        
         // 1. VERIFICAR SESSÃO ADMIN NO LOCALSTORAGE (admin não usa Supabase Auth)
-        try {
-          const savedAdmin = localStorage.getItem('viraliza_admin_session');
-          if (savedAdmin) {
-            const adminData = JSON.parse(savedAdmin);
-            if (adminData?.type === 'admin') {
-              console.log('✅ Sessão admin restaurada do localStorage');
-              setUser(adminData);
-              setIsAuthenticated(true);
-              setIsLoading(false);
-              return;
+        if (isAdminRoute) {
+          try {
+            const savedAdmin = localStorage.getItem('viraliza_admin_session_isolated');
+            if (savedAdmin) {
+              const adminData = JSON.parse(savedAdmin);
+              if (adminData?.type === 'admin') {
+                console.log('✅ Sessão admin restaurada (isolada)');
+                setUser(adminData);
+                setIsAuthenticated(true);
+                setIsLoading(false);
+                return;
+              }
             }
+          } catch (e) {
+            console.warn('⚠️ Erro ao restaurar sessão admin:', e);
           }
-        } catch (e) {
-          console.warn('⚠️ Erro ao restaurar sessão admin:', e);
         }
 
-        // 2. Verificar sessão do Supabase (para clientes)
-        const session = await getSession();
-        if (session?.user) {
-          console.log('✅ Sessão Supabase encontrada:', session.user.email);
-          
-          const userData: User = {
-            id: session.user.id,
-            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
-            email: session.user.email || '',
-            type: 'client',
-            status: 'Ativo',
-            joinedDate: new Date().toISOString().split('T')[0],
-            socialAccounts: [],
-            paymentMethods: [],
-            billingHistory: []
-          };
-          
-          setUser(userData);
-          setIsAuthenticated(true);
-        } else {
-          console.log('❌ Nenhuma sessão encontrada');
-          setUser(null);
-          setIsAuthenticated(false);
-        }
-        
-        // Listener para mudanças de autenticação
-        const { data: { subscription } } = onAuthStateChange((event, session) => {
-          console.log('🔄 Auth state changed:', event, session?.user?.email);
-          
-          if (event === 'SIGNED_IN' && session?.user) {
+        // 2. Verificar sessão do Supabase (para clientes) - APENAS se não for rota admin
+        if (!isAdminRoute) {
+          const session = await getSession();
+          if (session?.user) {
+            console.log('✅ Sessão Supabase encontrada:', session.user.email);
+            
             const userData: User = {
               id: session.user.id,
               name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
               email: session.user.email || '',
               type: 'client',
               status: 'Ativo',
+              plan: session.user.user_metadata?.plan || undefined,
               joinedDate: new Date().toISOString().split('T')[0],
               socialAccounts: [],
               paymentMethods: [],
@@ -152,15 +134,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             
             setUser(userData);
             setIsAuthenticated(true);
-          } else if (event === 'SIGNED_OUT') {
+          } else {
+            console.log('❌ Nenhuma sessão encontrada');
             setUser(null);
             setIsAuthenticated(false);
           }
-        });
-        
-        return () => {
-          subscription.unsubscribe();
-        };
+          
+          // Listener para mudanças de autenticação - APENAS para clientes
+          const { data: { subscription } } = onAuthStateChange((event, session) => {
+            console.log('🔄 Auth state changed:', event, session?.user?.email);
+            
+            // Ignorar mudanças se estiver em rota admin
+            if (window.location.pathname.startsWith('/admin')) {
+              console.log('⚠️ Ignorando auth change em rota admin');
+              return;
+            }
+            
+            if (event === 'SIGNED_IN' && session?.user) {
+              const userData: User = {
+                id: session.user.id,
+                name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
+                email: session.user.email || '',
+                type: 'client',
+                status: 'Ativo',
+                plan: session.user.user_metadata?.plan || undefined,
+                joinedDate: new Date().toISOString().split('T')[0],
+                socialAccounts: [],
+                paymentMethods: [],
+                billingHistory: []
+              };
+              
+              setUser(userData);
+              setIsAuthenticated(true);
+            } else if (event === 'SIGNED_OUT') {
+              setUser(null);
+              setIsAuthenticated(false);
+            }
+          });
+          
+          return () => {
+            subscription.unsubscribe();
+          };
+        }
         
       } catch (error) {
         console.error('❌ Erro na inicialização da autenticação:', error);
@@ -295,12 +310,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         setUser(adminUser);
         setIsAuthenticated(true);
-        // Persistir sessão admin no localStorage para sobreviver a refresh
-        localStorage.setItem('viraliza_admin_session', JSON.stringify(adminUser));
+        // Persistir sessão admin no localStorage ISOLADO para não conflitar com usuário
+        localStorage.setItem('viraliza_admin_session_isolated', JSON.stringify(adminUser));
         // SYNC COM SUPABASE/POSTGRESQL
         autoSupabase.saveUser(adminUser);
         autoSupabase.logActivity(adminUser.id, 'admin_login', { cpf: cleanCpf });
-        console.log('✅ Admin logado com sucesso (Supabase + localStorage)');
+        console.log('✅ Admin logado com sucesso (sessão isolada)');
         return adminUser;
       }
 
@@ -334,12 +349,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async () => {
     try {
-      await logoutUser();
+      // Verificar se é admin ou usuário para limpar a sessão correta
+      if (user?.type === 'admin') {
+        localStorage.removeItem('viraliza_admin_session_isolated');
+        console.log('✅ Logout admin realizado (sessão isolada limpa)');
+      } else {
+        await logoutUser();
+        console.log('✅ Logout usuário realizado (Supabase)');
+      }
       setUser(null);
       setIsAuthenticated(false);
-      // Limpar sessão admin do localStorage
-      localStorage.removeItem('viraliza_admin_session');
-      console.log('✅ Logout realizado');
     } catch (error) {
       console.error('❌ Erro no logout:', error);
       setUser(null);

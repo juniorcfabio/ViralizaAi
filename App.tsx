@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContextFixed';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import autoIntegration from './config/autoIntegrationConfig';
+import globalAutoSave from './services/globalAutoSave'; // 🔥 SISTEMA GLOBAL DE AUTO-SAVE
 import AdminFinancialPageReal from './components/pages/AdminFinancialPageReal';
 import AdminFinancialPage from './components/pages/AdminFinancialPage';
 import SocialAccountsPage from './components/pages/SocialAccountsPage';
@@ -199,7 +200,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="ai-funnel-builder" element={<AIFunnelBuilderPage />} />
                 <Route path="ebook-generator" element={<EbookGeneratorPage />} />
                 <Route path="advertise" element={<AdvertisePage />} />
-                <Route path="social-tools" element={<AdminSocialToolsPage />} />
+                <Route path="social-tools" element={<SocialMediaToolsPage />} />
                 <Route path="viral-analyzer" element={<ViralProductAnalyzerPage />} />
                 <Route path="music-generator" element={<AdminMusicGeneratorPage />} />
                 <Route path="marketplace" element={<AdminMarketplacePage />} />
@@ -207,7 +208,6 @@ const AppRoutes: React.FC = () => {
                 <Route path="whitelabel-system" element={<AdminWhiteLabelSystemPage />} />
                 <Route path="global-api" element={<AdminGlobalAPIPage />} />
                 <Route path="ai-tool-creator" element={<AdminAIToolCreatorPage />} />
-                <Route path="smart-pricing" element={<AdminToolsPricingPage />} />
                 <Route path="ai-support" element={<AdminTaskMonitoringPage />} />
                 <Route path="command-center" element={<AdminCommandCenterPage />} />
                 <Route path="supabase-monitor" element={<SupabaseMonitorPage />} />
@@ -246,6 +246,11 @@ const AppRoutes: React.FC = () => {
 const App: React.FC = () => {
     useEffect(() => {
         try {
+            // 🔥 INICIALIZAR SISTEMA GLOBAL DE AUTO-SAVE (PRIORIDADE MÁXIMA)
+            console.log('🚀 Ativando sistema global de auto-save...');
+            globalAutoSave.initialize();
+            console.log('✅ Sistema global de auto-save ATIVO - Tudo será salvo automaticamente no Supabase!');
+            
             // Inicializar sistema de correção emergencial
             const emergencyFix = EmergencyPaymentFix.getInstance();
             console.log('🚨 Sistema de correção emergencial ativado:', emergencyFix.isSystemActive());

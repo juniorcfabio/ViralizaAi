@@ -44,9 +44,21 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      const err = await response.text();
-      console.error('❌ DALL-E error:', err);
-      return res.status(response.status).json({ error: 'Erro na API DALL-E', details: err });
+      let errorDetails;
+      try {
+        errorDetails = await response.json();
+      } catch {
+        errorDetails = await response.text();
+      }
+      console.error('❌ DALL-E error:', errorDetails);
+      
+      // Retornar erro mais descritivo
+      const errorMessage = errorDetails?.error?.message || errorDetails?.error || errorDetails || 'Erro desconhecido';
+      return res.status(response.status).json({ 
+        error: 'Erro na API DALL-E', 
+        details: errorMessage,
+        status: response.status 
+      });
     }
 
     const data = await response.json();

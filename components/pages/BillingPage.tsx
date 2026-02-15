@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
-import { SUBSCRIPTION_PLANS } from '../../data/plansConfig';
+import { useCentralizedPricing } from '../../services/centralizedPricingService';
 import PixPaymentSecure from '../ui/PixPaymentSecure';
 import { supabase } from '../../src/lib/supabase';
 
@@ -29,6 +29,7 @@ interface BillingRecord {
 
 const BillingPage: React.FC = () => {
     const { user, updateUser } = useAuth();
+    const { pricing, loading: pricingLoading } = useCentralizedPricing(); // 🔥 PREÇOS EM TEMPO REAL DO SUPABASE
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
     const [billingHistory, setBillingHistory] = useState<BillingRecord[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,16 +44,14 @@ const BillingPage: React.FC = () => {
     const SUPABASE_URL = 'https://ymmswnmietxoupeazmok.supabase.co';
     const EDGE_FN_URL = `${SUPABASE_URL}/functions/v1/create-checkout-session`;
 
-    // Usar planos dinâmicos do plansConfig.ts
-    const plans: Plan[] = SUBSCRIPTION_PLANS.map(plan => ({
-        id: plan.id || plan.name.toLowerCase(),
+    // 🔥 USAR PREÇOS REAIS DO SUPABASE - ATUALIZAÇÃO AUTOMÁTICA
+    const plans: Plan[] = pricing?.subscriptionPlans.map(plan => ({
+        id: plan.id,
         name: plan.name,
         price: plan.price,
-        period: plan.period || (plan.name.toLowerCase().includes('mensal') ? '/mês' : 
-                               plan.name.toLowerCase().includes('trimestral') ? '/trimestre' :
-                               plan.name.toLowerCase().includes('semestral') ? '/semestre' : '/ano'),
-        features: Array.isArray(plan.features) ? plan.features : [plan.features]
-    }));
+        period: plan.period || '/mês',
+        features: plan.features
+    })) || [];
 
     const growthEnginePricing = {
         quinzenal: 49.90,
@@ -133,9 +132,14 @@ const BillingPage: React.FC = () => {
                 throw new Error(result.error || 'URL de checkout não retornada');
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro no pagamento:', error);
-            showNotification('Houve um erro ao iniciar o pagamento. Tente novamente.');
+            const msg = error?.message || '';
+            if (msg.includes('Expired') || msg.includes('expired') || msg.includes('api_key')) {
+                showNotification('Chave Stripe expirada. Atualize STRIPE_SECRET_KEY no Vercel. Use PIX enquanto isso.');
+            } else {
+                showNotification('Erro ao iniciar pagamento. Tente novamente ou use PIX.');
+            }
         } finally {
             setSubscribingPlan(null);
         }

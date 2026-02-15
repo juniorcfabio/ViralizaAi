@@ -2,9 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { autoSupabaseIntegration } from '../../services/autoSupabaseIntegration';
+import { useCentralizedPricing } from '../../services/centralizedPricingService';
+import { supabase } from '../../src/lib/supabase';
 
 const AdminMarketplacePage: React.FC = () => {
-  const [tools, setTools] = useState([]);
+  const { pricing, loading: pricingLoading } = useCentralizedPricing(); // 🔥 PREÇOS EM TEMPO REAL
+  const [tools, setTools] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -15,50 +18,60 @@ const AdminMarketplacePage: React.FC = () => {
     description: ''
   });
 
-  // 🛠️ FERRAMENTAS REAIS DO SISTEMA
-  const realTools = [
-    { id: 1, name: 'Gerador de Scripts IA', price: 29.90, category: 'IA', description: 'Gera scripts para vídeos usando IA avançada', created_by: 'IA' },
-    { id: 2, name: 'Criador de Thumbnails', price: 19.90, category: 'Design', description: 'Cria thumbnails profissionais automaticamente', created_by: 'Admin' },
-    { id: 3, name: 'Analisador de Trends', price: 39.90, category: 'Analytics', description: 'Analisa tendências em tempo real', created_by: 'IA' },
-    { id: 4, name: 'Otimizador de SEO', price: 24.90, category: 'SEO', description: 'Otimiza conteúdo para mecanismos de busca', created_by: 'Admin' },
-    { id: 5, name: 'Gerador de Hashtags', price: 14.90, category: 'Social', description: 'Gera hashtags relevantes automaticamente', created_by: 'IA' },
-    { id: 6, name: 'Criador de Logos', price: 49.90, category: 'Design', description: 'Cria logos profissionais com IA', created_by: 'IA' },
-    { id: 7, name: 'Agendamento Multiplataforma', price: 34.90, category: 'Social', description: 'Agenda posts em múltiplas redes sociais', created_by: 'Admin' },
-    { id: 8, name: 'IA de Copywriting', price: 44.90, category: 'IA', description: 'Escreve textos persuasivos com IA', created_by: 'IA' },
-    { id: 9, name: 'Tradutor Automático', price: 19.90, category: 'Utilidades', description: 'Traduz conteúdo para múltiplos idiomas', created_by: 'IA' },
-    { id: 10, name: 'Gerador de QR Code', price: 9.90, category: 'Utilidades', description: 'Gera QR codes personalizados', created_by: 'Admin' },
-    { id: 11, name: 'Editor de Vídeo Pro', price: 79.90, category: 'Vídeo', description: 'Editor de vídeo profissional com IA', created_by: 'IA' },
-    { id: 12, name: 'Gerador de Ebooks Premium', price: 59.90, category: 'Conteúdo', description: 'Gera ebooks completos automaticamente', created_by: 'IA' },
-    { id: 13, name: 'Gerador de Animações', price: 69.90, category: 'Vídeo', description: 'Cria animações profissionais', created_by: 'IA' },
-    { id: 14, name: 'IA Video Generator 8K', price: 99.90, category: 'Vídeo', description: 'Gera vídeos em 8K com IA', created_by: 'IA' },
-    { id: 15, name: 'AI Funil Builder', price: 89.90, category: 'Marketing', description: 'Constrói funis de vendas automaticamente', created_by: 'IA' },
-    { id: 16, name: 'Analisador Viral IA', price: 54.90, category: 'Analytics', description: 'Analisa potencial viral de produtos', created_by: 'IA' },
-    { id: 17, name: 'Gerador de Música IA', price: 74.90, category: 'Áudio', description: 'Compõe músicas originais com IA', created_by: 'IA' },
-    { id: 18, name: 'Sistema de Afiliados', price: 39.90, category: 'Marketing', description: 'Gerencia programa de afiliados', created_by: 'Admin' },
-    { id: 19, name: 'Dashboard Analytics', price: 29.90, category: 'Analytics', description: 'Dashboard completo de métricas', created_by: 'Admin' },
-    { id: 20, name: 'Automação de Email', price: 49.90, category: 'Marketing', description: 'Automatiza campanhas de email', created_by: 'IA' },
-    { id: 21, name: 'Gerador de Landing Pages', price: 64.90, category: 'Web', description: 'Cria landing pages otimizadas', created_by: 'IA' },
-    { id: 22, name: 'IA de Atendimento', price: 84.90, category: 'IA', description: 'Chatbot inteligente para atendimento', created_by: 'IA' },
-    { id: 23, name: 'Otimizador de Conversão', price: 94.90, category: 'Marketing', description: 'Otimiza taxas de conversão', created_by: 'IA' },
-    { id: 24, name: 'Sistema de Backup', price: 19.90, category: 'Utilidades', description: 'Backup automático de dados', created_by: 'Admin' }
-  ];
+  // 🔥 CARREGAR FERRAMENTAS DO SUPABASE EM TEMPO REAL
+  useEffect(() => {
+    if (pricing?.toolPrices && Array.isArray(pricing.toolPrices)) {
+      const formattedTools = pricing.toolPrices.map((tool, index) => ({
+        id: index + 1,
+        name: tool.name || 'Ferramenta',
+        price: tool.price || 0,
+        category: tool.description?.split(' ')[0] || 'Geral',
+        description: tool.description || '',
+        created_by: 'IA'
+      }));
+      setTools(formattedTools);
+      console.log('✅ Ferramentas carregadas:', formattedTools.length);
+    } else {
+      console.warn('⚠️ pricing.toolPrices não está disponível:', pricing);
+      setTools([]);
+    }
+  }, [pricing]);
 
   // 📊 CARREGAR DADOS REAIS DO SUPABASE
   useEffect(() => {
-    loadRealData();
-  }, []);
+    if (tools && tools.length > 0) {
+      loadRealData();
+    }
+  }, [tools]);
 
   const loadRealData = async () => {
     try {
       setLoading(true);
       
-      // Carregar dados de vendas reais do Supabase
-      const salesData = await loadSalesFromSupabase();
-      const toolsWithSales = calculateToolStats(realTools, salesData);
+      // Se não há ferramentas, inicializar stats vazios
+      if (!tools || tools.length === 0) {
+        setStats({
+          totalTools: 0,
+          totalSales: 0,
+          totalRevenue: 0,
+          monthlyRevenue: 0,
+          aiCreatedTools: 0
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Adicionar dados de vendas padrão às ferramentas
+      const toolsWithSales = tools.map((tool) => ({
+        ...tool,
+        sales: tool.sales || 0,
+        revenue: tool.revenue || 0,
+        status: tool.status || 'Ativo'
+      }));
       
       // Calcular estatísticas reais
-      const totalSales = toolsWithSales.reduce((sum, tool) => sum + tool.sales, 0);
-      const totalRevenue = toolsWithSales.reduce((sum, tool) => sum + tool.revenue, 0);
+      const totalSales = toolsWithSales.reduce((sum, tool) => sum + (tool.sales || 0), 0);
+      const totalRevenue = toolsWithSales.reduce((sum, tool) => sum + (tool.revenue || 0), 0);
       const aiCreatedTools = toolsWithSales.filter(tool => tool.created_by === 'IA').length;
       const monthlyRevenue = totalRevenue * 0.3; // Estimativa mensal
       
@@ -76,16 +89,12 @@ const AdminMarketplacePage: React.FC = () => {
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       // Fallback para dados base
-      const toolsWithBaseSales = realTools.map((tool, idx) => ({
+      const toolsWithBaseSales = (tools || []).map((tool) => ({
         ...tool,
         sales: 0,
         revenue: 0,
         status: 'Ativo'
       }));
-      
-      toolsWithBaseSales.forEach(tool => {
-        tool.revenue = tool.sales * tool.price;
-      });
       
       setTools(toolsWithBaseSales);
       setStats({
@@ -272,12 +281,24 @@ const AdminMarketplacePage: React.FC = () => {
     </div>
   );
 
-  if (loading) {
+  if (pricingLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-xl font-semibold">Carregando Marketplace...</p>
+          <p className="mt-2 text-sm text-gray-500">Buscando ferramentas do Supabase...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!tools || tools.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xl font-semibold text-gray-700">⚠️ Nenhuma ferramenta encontrada</p>
+          <p className="mt-2 text-sm text-gray-500">Verifique se a tabela tool_pricing está populada no Supabase</p>
         </div>
       </div>
     );
@@ -295,35 +316,35 @@ const AdminMarketplacePage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <StatCard 
           title="Total de Ferramentas" 
-          value={stats.totalTools} 
+          value={stats.totalTools || 0} 
           subtitle={`${stats.aiCreatedTools} criadas pela IA`}
           color="#10B981"
           icon="🛠️"
         />
         <StatCard 
           title="Vendas Totais" 
-          value={stats.totalSales} 
+          value={stats.totalSales || 0} 
           subtitle="Todas as ferramentas"
           color="#4F46E5"
           icon="📊"
         />
         <StatCard 
           title="Receita Total" 
-          value={`R$ ${stats.totalRevenue?.toLocaleString()}`}
+          value={`R$ ${(stats.totalRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           subtitle="Histórico completo"
           color="#F59E0B"
           icon="💰"
         />
         <StatCard 
           title="Receita Mensal" 
-          value={`R$ ${stats.monthlyRevenue?.toLocaleString()}`}
+          value={`R$ ${(stats.monthlyRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           subtitle="Este mês"
           color="#8B5CF6"
           icon="📈"
         />
         <StatCard 
           title="IA Criadora" 
-          value={`${stats.aiCreatedTools} ferramentas`}
+          value={`${stats.aiCreatedTools || 0} ferramentas`}
           subtitle="Criadas automaticamente"
           color="#EF4444"
           icon="🤖"

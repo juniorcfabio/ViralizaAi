@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StripeService from '../../services/stripeService';
-import PixPaymentModal from '../ui/PixPaymentModal';
+import PixPaymentSecure from '../ui/PixPaymentSecure';
 
 interface AdvertisingPlan {
   id: string;
@@ -144,9 +144,14 @@ const AdvertisingPlansPage: React.FC = () => {
         throw new Error(result.error || 'Erro desconhecido');
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao processar pagamento:', error);
-      alert(`Erro ao processar pagamento: ${error.message}`);
+      const msg = error?.message || '';
+      if (msg.includes('Expired') || msg.includes('expired') || msg.includes('api_key')) {
+        alert('Chave Stripe expirada. O administrador precisa atualizar STRIPE_SECRET_KEY no Vercel.\n\nUse PIX enquanto isso.');
+      } else {
+        alert('Erro ao processar pagamento. Tente novamente ou use PIX.');
+      }
       setIsProcessing(false);
     }
   };
@@ -275,12 +280,12 @@ const AdvertisingPlansPage: React.FC = () => {
       </div>
 
       {/* Modal PIX */}
-      <PixPaymentModal
+      <PixPaymentSecure
         isOpen={pixModalOpen}
         onClose={() => setPixModalOpen(false)}
         amount={pixSelectedPlan ? pixSelectedPlan.currentPrice : 0}
-        planName={pixSelectedPlan ? `Plano de Anúncio ${pixSelectedPlan.name} - ${pixSelectedPlan.description}` : ''}
-        pixKey="caccb1b4-6b25-4e5a-98a0-17121d31780e"
+        planName={pixSelectedPlan ? `Plano de Anúncio ${pixSelectedPlan.name}` : ''}
+        planSlug={pixSelectedPlan ? pixSelectedPlan.id : ''}
       />
     </div>
   );

@@ -35,50 +35,54 @@ const PlanCard: React.FC<PlanCardProps> = ({
     }
 
     try {
-      console.log('� MODAL 28/01/2026 - Iniciando pagamento plano:', {
+      console.log('💳 Iniciando pagamento Stripe:', {
         planType,
         planName,
         price,
         userEmail: user?.email
       });
 
-      // Usar a API funcional stripe-test que está funcionando
-      const paymentData = {
-        planName: `${planName} - ViralizaAI`,
-        amount: Math.round(price * 100), // Converter para centavos
-        successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancelUrl: `${window.location.origin}/cancel`
-      };
+      // Criar checkout session via Supabase Edge Function
+      const { data: sessionData } = await (window as any).supabase.auth.getSession();
+      const jwt = sessionData?.session?.access_token;
 
-      console.log('📋 Dados do pagamento PlanCard:', paymentData);
+      if (!jwt) {
+        throw new Error('Sessão não encontrada');
+      }
 
-      const response = await fetch('/api/stripe-test', {
+      const SUPABASE_URL = 'https://ymmswnmietxoupeazmok.supabase.co';
+      const EDGE_FN_URL = `${SUPABASE_URL}/functions/v1/create-checkout-session`;
+
+      const response = await fetch(EDGE_FN_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwt}`,
         },
-        body: JSON.stringify(paymentData)
+        body: JSON.stringify({
+          plan_slug: planType,
+          payment_method_types: ['card'],
+          success_url: `${window.location.origin}/dashboard?checkout=success&plan=${planType}`,
+          cancel_url: `${window.location.origin}/pricing?checkout=cancel`,
+        })
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Erro na API: ${response.status} - ${errorText}`);
-      }
-
       const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `Erro: ${response.status}`);
+      }
       
       if (result.success && result.url) {
         console.log('🔄 Redirecionando para Stripe:', result.url);
         window.location.href = result.url;
       } else {
-        throw new Error(result.error || 'Erro desconhecido');
+        throw new Error(result.error || 'URL de checkout não retornada');
       }
 
     } catch (error) {
-      console.error('❌ Erro no sistema 28/01/2026:', error);
-      
-      // Fallback para modal PIX se falhar
-      console.log('🔄 Fallback para modal PIX');
+      console.error('❌ Erro no pagamento Stripe:', error);
+      console.log('🔄 Abrindo modal PIX como alternativa');
       setShowPixModal(true);
     }
   };

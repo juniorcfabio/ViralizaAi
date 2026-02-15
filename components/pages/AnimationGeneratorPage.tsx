@@ -396,9 +396,14 @@ const AnimationGeneratorPage: React.FC = () => {
       if (result.success && result.url) {
         window.location.href = result.url;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no pagamento:', error);
-      alert('Erro ao processar pagamento.');
+      const msg = error?.message || '';
+      if (msg.includes('Expired') || msg.includes('expired') || msg.includes('api_key')) {
+        alert('Chave Stripe expirada. O administrador precisa atualizar STRIPE_SECRET_KEY no Vercel.\n\nUse PIX enquanto isso.');
+      } else {
+        alert('Erro ao processar pagamento. Tente novamente ou use PIX.');
+      }
     }
   };
 

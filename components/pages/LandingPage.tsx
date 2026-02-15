@@ -4,6 +4,7 @@ import { useAuth, RegistrationData } from '../../contexts/AuthContextFixed';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Plan, Testimonial, AdPartner, TrustedCompany } from '../../types';
 import { API_BASE_URL } from '../../src/config/api';
+import { centralizedPricingService } from '../../services/centralizedPricingService';
 import '../../styles/logos-8k.css';
 import Logo from '../ui/Logo';
 import AIPersona from '../ui/AIPersona';
@@ -1127,62 +1128,97 @@ const Testimonials: React.FC = () => {
 
 const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
     const { t } = useLanguage();
+    const { user, isAuthenticated } = useAuth();
+    const navigate = useNavigate();
     const [showPixModal, setShowPixModal] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+    const [stripeLoading, setStripeLoading] = useState(false);
     
-    // Função para processar compra de plano via Stripe
-    const handlePlanPurchase = async (plan: Plan) => {
-        try {
-            console.log('🚀 LandingPage - Processando pagamento do plano:', plan.name);
-            
-            // Usar instância direta do stripeService
-            const amount = parseFloat(String(plan.price).replace(',', '.'));
-            const appBaseUrl = window.location.origin;
-
-            // Determinar ciclo de cobrança baseado no nome do plano
-            let billingCycle: 'monthly' | 'quarterly' | 'semiannual' | 'annual' = 'monthly';
-            const planName = plan.name.toLowerCase();
-            if (planName.includes('trimestral')) billingCycle = 'quarterly';
-            else if (planName.includes('semestral')) billingCycle = 'semiannual';
-            else if (planName.includes('anual')) billingCycle = 'annual';
-
-            const subscriptionData = {
-                mode: 'subscription',
-                line_items: [{
-                    price_data: {
-                        currency: 'brl',
-                        product_data: {
-                            name: `Assinatura ${plan.name} - ViralizaAI`
-                        },
-                        unit_amount: Math.round(amount * 100),
-                        recurring: {
-                            interval: billingCycle === 'monthly' ? 'month' : 
-                                     billingCycle === 'quarterly' ? 'month' :
-                                     billingCycle === 'semiannual' ? 'month' :
-                                     'year'
-                        }
-                    },
-                    quantity: 1
-                }],
-                success_url: `${appBaseUrl}/#/dashboard/social-tools?payment=success&plan=${encodeURIComponent(plan.name)}`,
-                cancel_url: `${appBaseUrl}/?payment=cancelled`,
-                customer_email: 'usuario@viralizaai.com',
-                metadata: {
-                    productType: 'subscription',
-                    planName: plan.name,
-                    planId: plan.id || plan.name,
-                    source: 'landing_page',
-                    billingCycle: billingCycle
-                }
-            };
-
-            console.log('📋 Dados da assinatura (LandingPage):', subscriptionData);
-            await processSubscriptionPayment(subscriptionData);
-
-        } catch (error) {
-            console.error('❌ Erro ao processar pagamento na LandingPage:', error);
-            alert('Erro ao processar pagamento. Tente novamente.');
+    // Verificar se usuario esta logado antes de qualquer compra
+    const ensureAuthenticated = (plan: Plan, callback: () => void) => {
+        if (!isAuthenticated || !user) {
+            // Salvar plano desejado no sessionStorage para redirecionar apos cadastro
+            sessionStorage.setItem('pending_plan', JSON.stringify({
+                name: plan.name,
+                price: plan.price,
+                id: plan.id
+            }));
+            alert('Voce precisa criar uma conta antes de assinar um plano. Redirecionando para o cadastro...');
+            onRegister();
+            return;
         }
+        callback();
+    };
+
+    // Funcao para processar compra de plano via Stripe
+    const handlePlanPurchase = async (plan: Plan) => {
+        ensureAuthenticated(plan, async () => {
+            setStripeLoading(true);
+            try {
+                console.log('LandingPage - Processando pagamento Stripe:', plan.name);
+                
+                const amount = parseFloat(String(plan.price).replace(',', '.'));
+                const appBaseUrl = window.location.origin;
+
+                let billingCycle: 'monthly' | 'quarterly' | 'semiannual' | 'annual' = 'monthly';
+                const planName = plan.name.toLowerCase();
+                if (planName.includes('trimestral')) billingCycle = 'quarterly';
+                else if (planName.includes('semestral')) billingCycle = 'semiannual';
+                else if (planName.includes('anual')) billingCycle = 'annual';
+
+                const subscriptionData = {
+                    mode: 'subscription',
+                    line_items: [{
+                        price_data: {
+                            currency: 'brl',
+                            product_data: {
+                                name: `Assinatura ${plan.name} - ViralizaAI`
+                            },
+                            unit_amount: Math.round(amount * 100),
+                            recurring: {
+                                interval: billingCycle === 'monthly' ? 'month' : 
+                                         billingCycle === 'quarterly' ? 'month' :
+                                         billingCycle === 'semiannual' ? 'month' :
+                                         'year'
+                            }
+                        },
+                        quantity: 1
+                    }],
+                    success_url: `${appBaseUrl}/dashboard/billing?payment=success&plan=${encodeURIComponent(plan.name)}`,
+                    cancel_url: `${appBaseUrl}/?payment=cancelled`,
+                    customer_email: user?.email || '',
+                    metadata: {
+                        productType: 'subscription',
+                        planName: plan.name,
+                        planId: plan.id || plan.name,
+                        userId: user?.id || '',
+                        source: 'landing_page',
+                        billingCycle: billingCycle
+                    }
+                };
+
+                await processSubscriptionPayment(subscriptionData);
+
+            } catch (error: any) {
+                console.error('Erro ao processar pagamento Stripe:', error);
+                const msg = error?.message || '';
+                if (msg.includes('Expired') || msg.includes('expired') || msg.includes('api_key')) {
+                    alert('Erro: Chave do Stripe expirada. O administrador precisa atualizar a chave STRIPE_SECRET_KEY nas variaveis de ambiente do Vercel.\n\nEnquanto isso, use o pagamento via PIX.');
+                } else {
+                    alert('Erro ao processar pagamento. Tente novamente ou use PIX.');
+                }
+            } finally {
+                setStripeLoading(false);
+            }
+        });
+    };
+
+    // Handler para PIX com verificacao de auth
+    const handlePixPurchase = (plan: Plan) => {
+        ensureAuthenticated(plan, () => {
+            setSelectedPlan(plan);
+            setShowPixModal(true);
+        });
     };
 
     const defaultPlans: Plan[] = [
@@ -1220,55 +1256,57 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
 
     const [plans, setPlans] = useState<Plan[]>(defaultPlans);
     const [plansSource, setPlansSource] = useState<'default' | 'admin'>('default');
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        try {
-            const raw = localStorage.getItem('viraliza_plans');
-            if (!raw) return;
-
-            const stored: Plan[] = JSON.parse(raw);
-
-            const metaById: Record<string, { period?: string; highlight?: boolean }> = {};
-            defaultPlans.forEach((p) => {
-                if (p.id) {
-                    metaById[p.id] = {
-                        period: p.period,
-                        highlight: p.highlight
-                    };
+        const loadPlansFromCentralizedService = async () => {
+            try {
+                setLoading(true);
+                const formattedPlans = await centralizedPricingService.getFormattedPlansForLanding();
+                
+                if (formattedPlans && formattedPlans.length > 0) {
+                    // Mapear para o formato esperado pela LandingPage
+                    const mappedPlans: Plan[] = formattedPlans.map((plan, index) => {
+                        const defaultPlan = defaultPlans[index];
+                        return {
+                            id: plan.id,
+                            name: plan.name,
+                            price: typeof plan.price === 'number' ? plan.price.toFixed(2) : String(plan.price),
+                            period: plan.period || defaultPlan?.period || '',
+                            features: plan.features || defaultPlan?.features || [],
+                            highlight: plan.highlight || false
+                        };
+                    });
+                    
+                    setPlans(mappedPlans);
+                    setPlansSource('admin');
+                    console.log('✅ Preços carregados do serviço centralizado:', mappedPlans);
+                } else {
+                    setPlans(defaultPlans);
+                    setPlansSource('default');
                 }
-            });
-
-            const mapped: Plan[] = stored.map((p, index) => {
-                const def = defaultPlans[index];
-                const meta =
-                    (p.id && metaById[p.id]) || metaById[`p${index + 1}`] || {};
-                const period = meta.period || def?.period || '';
-                const highlight =
-                    typeof p.highlight === 'boolean'
-                        ? p.highlight
-                        : meta.highlight;
-
-                return {
-                    ...p,
-                    price:
-                        typeof p.price === 'number'
-                            ? p.price.toFixed(2)
-                            : p.price,
-                    period,
-                    features: def?.features || p.features,
-                    highlight
-                };
-            });
-
-            if (mapped.length > 0) {
-                setPlans(mapped);
-                setPlansSource('admin');
+            } catch (error) {
+                console.error('Erro ao carregar preços centralizados:', error);
+                setPlans(defaultPlans);
+                setPlansSource('default');
+            } finally {
+                setLoading(false);
             }
-        } catch (err) {
-            console.error('Erro ao carregar planos do admin para a LandingPage:', err);
-            setPlans(defaultPlans);
-            setPlansSource('default');
-        }
+        };
+
+        loadPlansFromCentralizedService();
+
+        // Listener para mudanças em tempo real
+        const handlePricingUpdate = async () => {
+            console.log('🔄 Preços atualizados - recarregando na LandingPage');
+            await loadPlansFromCentralizedService();
+        };
+
+        centralizedPricingService.addListener(handlePricingUpdate);
+
+        return () => {
+            centralizedPricingService.removeListener(handlePricingUpdate);
+        };
     }, [t]);
 
     return (
@@ -1284,8 +1322,16 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
                         Valores atualizados em tempo real pelo painel administrativo.
                     </p>
                 )}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                     {plans.map((plan) => (
+                {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
+                            <p className="text-gray-400">Carregando preços atualizados...</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                         {plans.map((plan) => (
                         <div key={plan.name} className={`bg-secondary p-6 rounded-lg border flex flex-col transition-transform hover:-translate-y-2 ${plan.highlight ? 'border-accent shadow-lg shadow-accent/20' : 'border-gray-700'}`}>
                             {plan.highlight && <div className="bg-accent text-xs text-white px-2 py-1 rounded-full self-start mb-2 font-bold animate-pulse-badge">Recomendado</div>}
                             <h3 className="text-xl font-bold">{plan.name}</h3>
@@ -1306,24 +1352,23 @@ const Pricing: React.FC<{ onRegister: () => void }> = ({ onRegister }) => {
                             </ul>
                             <div className="space-y-2">
                                 <button 
-                                    onClick={() => handlePlanPurchase(plan)} 
-                                    className="w-full bg-accent text-light font-semibold py-3 rounded-full hover:bg-blue-500 transition-colors"
+                                    onClick={() => handlePlanPurchase(plan)}
+                                    disabled={stripeLoading}
+                                    className="w-full bg-accent text-light font-semibold py-3 rounded-full hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    💳 Assinar com Cartão
+                                    {stripeLoading ? '⏳ Processando...' : '💳 Assinar com Cartão'}
                                 </button>
                                 <button 
-                                    onClick={() => {
-                                        setSelectedPlan(plan);
-                                        setShowPixModal(true);
-                                    }} 
+                                    onClick={() => handlePixPurchase(plan)} 
                                     className="w-full bg-green-600 text-white font-semibold py-3 rounded-full hover:bg-green-700 transition-colors"
                                 >
                                     🏦 Pagar com PIX
                                 </button>
                             </div>
                         </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Modal PIX Seguro */}

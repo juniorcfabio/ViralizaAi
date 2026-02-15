@@ -66,6 +66,10 @@ class WorkingCheckoutService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erro na API reconstruída:', errorText);
+        // Detectar chave expirada
+        if (errorText.includes('Expired') || errorText.includes('expired') || errorText.includes('api_key_expired')) {
+          throw new Error('Expired API key: A chave STRIPE_SECRET_KEY no Vercel esta expirada. Atualize nas Environment Variables do Vercel.');
+        }
         throw new Error(`Erro HTTP: ${response.status} - ${errorText}`);
       }
 

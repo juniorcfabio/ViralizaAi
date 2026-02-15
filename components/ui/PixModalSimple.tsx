@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { supabase } from '../../src/lib/supabase';
+import { useAuth } from '../../contexts/AuthContextFixed';
 
 interface PixModalSimpleProps {
   planName: string;
@@ -7,6 +9,8 @@ interface PixModalSimpleProps {
 }
 
 const PixModalSimple: React.FC<PixModalSimpleProps> = ({ planName, amount, onClose }) => {
+  const { user } = useAuth();
+  const [processing, setProcessing] = useState(false);
   const pixKey = 'caccb1b4-6b25-4e5a-98a0-17121d31780e';
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`PIX:${pixKey}:${amount}:${planName}`)}`;
   
@@ -15,6 +19,74 @@ const PixModalSimple: React.FC<PixModalSimpleProps> = ({ planName, amount, onClo
     navigator.clipboard.writeText(pixCode).then(() => {
       alert('✅ Código PIX copiado!');
     });
+  };
+
+  const handlePaymentConfirmation = async () => {
+    if (!user) {
+      alert('❌ Erro: Usuário não autenticado');
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const paymentId = `PIX_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Mapear nome do plano para tipo
+      const planType = planName.toLowerCase().includes('mensal') ? 'mensal' :
+                       planName.toLowerCase().includes('trimestral') ? 'trimestral' :
+                       planName.toLowerCase().includes('semestral') ? 'semestral' :
+                       planName.toLowerCase().includes('anual') ? 'anual' : 'mensal';
+
+      console.log('💾 Salvando pagamento PIX no Supabase:', {
+        user_id: user.id || user.email,
+        plan_type: planType,
+        amount,
+        payment_id: paymentId
+      });
+
+      // 1. Criar registro em subscriptions
+      const { error: subError } = await supabase
+        .from('subscriptions')
+        .insert({
+          user_id: user.id || user.email,
+          plan_type: planType,
+          amount: amount,
+          payment_id: paymentId,
+          payment_provider: 'pix',
+          status: 'pending_payment'
+        });
+
+      if (subError) {
+        console.error('❌ Erro ao criar subscription:', subError);
+        throw subError;
+      }
+
+      // 2. Criar registro em purchases
+      const { error: purchaseError } = await supabase
+        .from('purchases')
+        .insert({
+          user_id: user.id || user.email,
+          payment_id: paymentId,
+          plan_type: planType,
+          amount: amount,
+          status: 'pending'
+        });
+
+      if (purchaseError) {
+        console.error('❌ Erro ao criar purchase:', purchaseError);
+        throw purchaseError;
+      }
+
+      console.log('✅ Pagamento PIX registrado com sucesso!');
+      alert('✅ Pagamento registrado! Aguarde a aprovação do administrador.');
+      onClose();
+      
+    } catch (error) {
+      console.error('❌ Erro ao processar pagamento:', error);
+      alert('❌ Erro ao registrar pagamento. Tente novamente.');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -45,18 +117,17 @@ const PixModalSimple: React.FC<PixModalSimpleProps> = ({ planName, amount, onClo
         <div className="flex gap-3">
           <button 
             onClick={onClose}
-            className="flex-1 py-3 rounded-lg font-semibold text-gray-600 bg-gray-200 hover:bg-gray-300"
+            disabled={processing}
+            className="flex-1 py-3 rounded-lg font-semibold text-gray-600 bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
           >
             Fechar
           </button>
           <button 
-            onClick={() => {
-              alert('✅ Pagamento confirmado! Plano ativado.');
-              onClose();
-            }}
-            className="flex-1 py-3 rounded-lg font-semibold text-white bg-green-600 hover:bg-green-700"
+            onClick={handlePaymentConfirmation}
+            disabled={processing}
+            className="flex-1 py-3 rounded-lg font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
           >
-            ✅ Paguei
+            {processing ? '⏳ Processando...' : '✅ Já Paguei'}
           </button>
         </div>
       </div>

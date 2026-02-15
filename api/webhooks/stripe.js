@@ -170,7 +170,32 @@ async function activateSubscription(userId, planType, paymentId, amount, stripeS
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' });
 
-  // 6. Log
+  // 6. Atualizar user_profiles
+  await supabase
+    .from('user_profiles')
+    .update({
+      plan: planType,
+      plan_status: 'active',
+      updated_at: new Date().toISOString()
+    })
+    .eq('user_id', userId);
+
+  // 7. Atualizar auth.users metadata
+  const { error: metadataError } = await supabase.auth.admin.updateUserById(
+    userId,
+    {
+      user_metadata: {
+        plan: planType,
+        plan_status: 'active'
+      }
+    }
+  );
+
+  if (metadataError) {
+    console.error('❌ Erro ao atualizar metadata:', metadataError);
+  }
+
+  // 8. Log
   await supabase.from('activity_logs').insert({
     user_id: userId,
     action: 'subscription_activated_webhook',
@@ -210,13 +235,76 @@ async function activateToolPurchase(userId, toolName, paymentId, amount) {
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id,tool_name' });
 
+  // Atualizar auth.users metadata com ferramenta comprada
+  const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+  const currentTools = authUser?.user?.user_metadata?.purchased_tools || [];
+  
+  if (!currentTools.includes(toolName)) {
+    await supabase.auth.admin.updateUserById(userId, {
+      user_metadata: {
+        ...authUser?.user?.user_metadata,
+        purchased_tools: [...currentTools, toolName]
+      }
+    });
+  }
+
   await supabase.from('activity_logs').insert({
     user_id: userId,
     action: 'tool_purchased_webhook',
     details: { tool_name: toolName, payment_id: paymentId, amount }
   });
 
-  console.log(`✅ Ferramenta ativada: ${toolName}`);
+  console.log(`✅ Ferramenta avulsa ativada: ${toolName}`);
+}
+
+// ==================== ATIVAÇÃO DE ANÚNCIO PAGO ====================
+async function activateAdvertising(userId, advertisingData, paymentId, amount) {
+  console.log(`📢 Ativando anúncio REAL no Supabase: ${userId}`);
+
+  const { planName, planDays, companyName, cnpj, advertiserId } = advertisingData;
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() + parseInt(planDays || 30));
+
+  // Criar registro de anúncio
+  const { data: created } = await supabase
+    .from('advertising_purchases')
+    .insert({
+      user_id: userId,
+      advertiser_id: advertiserId,
+      plan_name: planName,
+      plan_days: parseInt(planDays || 30),
+      company_name: companyName,
+      cnpj: cnpj,
+      status: 'active',
+      payment_provider: 'stripe',
+      payment_id: paymentId,
+      amount: amount || 0,
+      start_date: new Date().toISOString(),
+      end_date: endDate.toISOString(),
+      confirmed_at: new Date().toISOString()
+    })
+    .select('id')
+    .single();
+
+  // Atualizar auth.users metadata com anúncio ativo
+  const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+  const currentAds = authUser?.user?.user_metadata?.active_ads || [];
+  
+  await supabase.auth.admin.updateUserById(userId, {
+    user_metadata: {
+      ...authUser?.user?.user_metadata,
+      active_ads: [...currentAds, { id: created?.id, plan: planName, end_date: endDate.toISOString() }],
+      has_active_advertising: true
+    }
+  });
+
+  await supabase.from('activity_logs').insert({
+    user_id: userId,
+    action: 'advertising_purchased_webhook',
+    details: { plan_name: planName, payment_id: paymentId, amount, plan_days: planDays, end_date: endDate.toISOString() }
+  });
+
+  console.log(`✅ Anúncio ativado: ${planName} (${planDays} dias)`);
 }
 
 // ==================== CANCELAMENTO ====================
@@ -317,11 +405,17 @@ export default async function handler(req, res) {
       // Fallback: usar planName como planType se necessário
       if (!planType && planName) planType = planName;
 
-      console.log('💳 Checkout completado:', { userId, planType, toolName, amount, email: session.customer_email });
+      const productType = session.metadata?.productType;
+      console.log('💳 Checkout completado:', { userId, planType, toolName, productType, amount, email: session.customer_email });
 
-      if (userId && planType) {
+      if (userId && productType === 'advertising') {
+        // Pagamento de anúncio
+        await activateAdvertising(userId, session.metadata, session.payment_intent || session.id, amount);
+      } else if (userId && planType) {
+        // Assinatura de plano
         await activateSubscription(userId, planType, session.payment_intent || session.id, amount, session.subscription, session.customer);
       } else if (userId && toolName) {
+        // Compra avulsa de ferramenta
         await activateToolPurchase(userId, toolName, session.payment_intent || session.id, amount);
       } else {
         console.warn('⚠️ Checkout sem userId - salvando para revisão manual');

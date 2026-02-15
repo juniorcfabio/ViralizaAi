@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Plan, SystemVersion } from '../../types';
 import { updateSystemVersion } from '../../services/dbService';
 import { useTheme, PRESET_THEMES } from '../../contexts/ThemeContext';
+import { useCentralizedPricing } from '../../services/centralizedPricingService';
 
 // Icons
 const SunIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>;
@@ -27,17 +28,26 @@ const saveToStorage = <T,>(key: string, data: T) => {
 }
 
 
-const initialPlans: Plan[] = [
-    { id: 'p1', name: 'Mensal', price: 59.90, features: 'Crescimento Orgânico,Gestão de Conteúdo,Análises Básicas,Radar de Hashtags de Conversão' },
-    { id: 'p2', name: 'Trimestral', price: 159.90, features: 'Tudo do Mensal,Análises Avançadas,IA de Posts Otimizada,Detector de Áudios de Alta Retenção' },
-    { id: 'p3', name: 'Semestral', price: 259.90, features: 'Tudo do Trimestral,Relatórios Estratégicos,Consultoria Inicial,Espião Tático de Concorrência' },
-    { id: 'p4', name: 'Anual', price: 399.90, features: 'Tudo do Semestral,Gerente de Conta Dedicado,API de Integração,IA Preditiva de Tendências (Futuro)' },
-];
+// 🔥 REMOVIDO: Planos agora vêm do Supabase em tempo real
 
 
 const AdminSettingsPage: React.FC = () => {
+    const { pricing, loading: pricingLoading } = useCentralizedPricing(); // 🔥 PREÇOS EM TEMPO REAL
     const [isMaintenance, setIsMaintenance] = useState<boolean>(() => getFromStorage('viraliza_maintenance', false));
-    const [plans, setPlans] = useState<Plan[]>(() => getFromStorage('viraliza_plans', initialPlans));
+    const [plans, setPlans] = useState<Plan[]>([]);
+    
+    // 🔥 CARREGAR PLANOS DO SUPABASE
+    useEffect(() => {
+        if (pricing?.subscriptionPlans) {
+            const formattedPlans = pricing.subscriptionPlans.map(p => ({
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                features: p.features.join(',')
+            }));
+            setPlans(formattedPlans);
+        }
+    }, [pricing]);
     const [notification, setNotification] = useState('');
     const [versionData, setVersionData] = useState<SystemVersion>({
         version: '1.0.0',

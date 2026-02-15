@@ -54,9 +54,21 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      const err = await response.text();
-      console.error('❌ OpenAI error:', err);
-      return res.status(response.status).json({ error: 'Erro na API OpenAI', details: err });
+      let errorDetails;
+      try {
+        errorDetails = await response.json();
+      } catch {
+        errorDetails = await response.text();
+      }
+      console.error('❌ OpenAI error:', errorDetails);
+      
+      // Retornar erro mais descritivo
+      const errorMessage = errorDetails?.error?.message || errorDetails?.error || errorDetails || 'Erro desconhecido';
+      return res.status(response.status).json({ 
+        error: 'Erro na API OpenAI', 
+        details: errorMessage,
+        status: response.status 
+      });
     }
 
     const data = await response.json();

@@ -4,11 +4,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
-import SecureAPIClient from '../../services/apiClient';
-import SecurityService from '../../services/securityService';
-import StripeService from '../../services/stripeService';
-import PixPaymentSecure from '../ui/PixPaymentSecure';
+import { useCentralizedPricing } from '../../services/centralizedPricingService';
 import openaiService from '../../services/openaiService';
+import { supabase } from '../../src/lib/supabase';
+import PixPaymentSecure from '../ui/PixPaymentSecure';
 
 // Ícones
 const ScheduleIcon = () => (
@@ -112,28 +111,58 @@ const ToolCard: React.FC<ToolCardProps> = ({ title, description, icon, available
 const SocialMediaToolsPage: React.FC = () => {
   const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('automation');
-  const [apiClient] = useState(() => SecureAPIClient.getInstance());
-  const [securityService] = useState(() => SecurityService.getInstance());
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [csrfToken] = useState(() => SecurityService.getInstance().generateCSRFToken());
   const [showPixModal, setShowPixModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<{name: string, price: number, type: string} | null>(null);
 
   const userPlan = user?.plan || 'mensal';
   const isAdmin = window.location.pathname.includes('/admin') || window.location.hash.includes('/admin');
 
+  // Função para salvar resultados no Supabase
+  const saveToSupabase = async (toolAction: string, content: any, success: boolean) => {
+    try {
+      await supabase.from('generated_content').insert({
+        user_id: user?.id,
+        content_type: 'social_tool_result',
+        title: `Resultado: ${toolAction}`,
+        content: {
+          tool_action: toolAction,
+          result: content,
+          generated_at: new Date().toISOString(),
+          success
+        },
+        metadata: {
+          user_plan: userPlan,
+          is_admin: isAdmin,
+          tool_category: activeTab
+        }
+      });
+      console.log('✅ Resultado salvo no Supabase:', toolAction);
+    } catch (error) {
+      console.error('❌ Erro ao salvar no Supabase:', error);
+    }
+  };
+
   // Listener para evento PIX
   useEffect(() => {
-    const handlePixUpgrade = (event: CustomEvent) => {
+    const handlePixUpgrade = async (event: CustomEvent) => {
       const { requiredPlan } = event.detail;
-      const planPrices = {
-        'mensal': { price: 59.90, name: 'Mensal' },
-        'trimestral': { price: 159.90, name: 'Trimestral' },
-        'semestral': { price: 259.90, name: 'Semestral' },
-        'anual': { price: 399.90, name: 'Anual' }
-      };
+      
+      // 🔥 BUSCAR PREÇOS EM TEMPO REAL DO SUPABASE
+      const { data: pricingData } = await supabase
+        .from('pricing_config')
+        .select('*')
+        .eq('category', 'subscription')
+        .eq('is_active', true);
+      
+      const planPrices = Object.fromEntries(
+        (pricingData || []).map(p => [
+          p.plan_id,
+          { price: parseFloat(p.price), name: p.name }
+        ])
+      );
       
       const planInfo = planPrices[requiredPlan];
       if (planInfo) {
@@ -348,13 +377,19 @@ const SocialMediaToolsPage: React.FC = () => {
       
       const appBaseUrl = window.location.origin;
 
-      // Mapear planos para preços
-      const planPrices = {
-        'mensal': { price: 59.90, name: 'Mensal' },
-        'trimestral': { price: 159.90, name: 'Trimestral' },
-        'semestral': { price: 259.90, name: 'Semestral' },
-        'anual': { price: 399.90, name: 'Anual' }
-      };
+      // 🔥 BUSCAR PREÇOS EM TEMPO REAL DO SUPABASE
+      const { data: pricingData } = await supabase
+        .from('pricing_config')
+        .select('*')
+        .eq('category', 'subscription')
+        .eq('is_active', true);
+      
+      const planPrices = Object.fromEntries(
+        (pricingData || []).map(p => [
+          p.plan_id,
+          { price: parseFloat(p.price), name: p.name }
+        ])
+      );
 
       const planInfo = planPrices[requiredPlan];
       if (!planInfo) {
@@ -394,32 +429,33 @@ const SocialMediaToolsPage: React.FC = () => {
         throw new Error(result.error || 'Erro desconhecido');
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao processar checkout do plano:', error);
-      alert('Erro ao processar pagamento. Tente novamente.');
+      const msg = error?.message || '';
+      if (msg.includes('Expired') || msg.includes('expired') || msg.includes('api_key')) {
+        alert('Chave Stripe expirada. O administrador precisa atualizar STRIPE_SECRET_KEY no Vercel.\n\nUse PIX enquanto isso.');
+      } else {
+        alert('Erro ao processar pagamento. Tente novamente ou use PIX.');
+      }
     }
   };
 
   const handleToolAction = useCallback(async (action: string, toolId: string) => {
-    // Validações de segurança
-    if (!securityService.checkRateLimit(`${user?.id}_${action}`)) {
-      alert('Muitas requisições. Aguarde um momento.');
-      return;
-    }
-
     // Encontrar a ferramenta para verificar se está disponível
     const currentCategory = toolCategories[activeTab];
     const tool = currentCategory.tools.find(t => t.action === action);
     
     if (!tool) {
-      securityService.logSecurityEvent('tool_not_found', { action, toolId }, 'medium');
       alert('Ferramenta não encontrada.');
       return;
     }
 
     // Validar acesso ao plano
-    const planValidation = await apiClient.validatePlan(tool.requiredPlan);
-    if (!planValidation.success || !planValidation.data?.hasAccess) {
+    const planHierarchy = { mensal: 1, trimestral: 2, semestral: 3, anual: 4 };
+    const userLevel = planHierarchy[userPlan] || 0;
+    const requiredLevel = planHierarchy[tool.requiredPlan] || 0;
+    
+    if (userLevel < requiredLevel && !isAdmin) {
       const confirmUpgrade = confirm(
         `Esta ferramenta requer o plano ${tool.requiredPlan}.\n\n` +
         `Você será redirecionado para o checkout seguro.\n\n` +
@@ -437,12 +473,7 @@ const SocialMediaToolsPage: React.FC = () => {
 
     try {
       // Log da ação
-      securityService.logSecurityEvent('tool_action_started', { 
-        action, 
-        toolId, 
-        userPlan,
-        isAdmin 
-      }, 'low');
+      console.log('🚀 Iniciando ferramenta:', { action, toolId, userPlan, isAdmin });
 
       let result;
       
@@ -646,26 +677,20 @@ const SocialMediaToolsPage: React.FC = () => {
       
       setResults(result);
       
-      // Log de sucesso
-      securityService.logSecurityEvent('tool_action_completed', { 
-        action, 
-        toolId, 
-        success: result.success 
-      }, 'low');
+      // Salvar resultado no Supabase
+      await saveToSupabase(action, result, result.success);
       
     } catch (error: any) {
-      // Log de erro
-      securityService.logSecurityEvent('tool_action_failed', { 
-        action, 
-        toolId, 
-        error: error.message 
-      }, 'medium');
+      console.error('❌ Erro na ferramenta:', error);
+      const errorResult = { success: false, message: error.message };
+      setResults(errorResult);
       
-      setResults({ success: false, message: error.message });
+      // Salvar erro no Supabase
+      await saveToSupabase(action, errorResult, false);
     } finally {
       setLoading(false);
     }
-  }, [user, activeTab, apiClient, securityService, csrfToken]);
+  }, [user, activeTab, userPlan, isAdmin, saveToSupabase]);
 
   const tabs = Object.keys(toolCategories);
 

@@ -8,7 +8,7 @@ class OpenAIService {
     this.apiUrl = `${window.location.origin}/api/ai-generate`;
   }
 
-  async generate(tool: string, prompt: string, params: Record<string, any> = {}): Promise<string> {
+  async generate(tool: string, prompt: string, params: Record<string, any> = {}, retryCount = 0): Promise<string> {
     try {
       const response = await fetch(this.apiUrl, {
         method: 'POST',
@@ -17,9 +17,32 @@ class OpenAIService {
       });
 
       if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        let err;
+        try {
+          err = await response.json();
+        } catch (parseError) {
+          // Se não conseguir fazer parse do JSON, pegar o texto
+          const textError = await response.text();
+          console.error(`❌ OpenAI ${tool} parse error:`, textError);
+          throw new Error(`Erro de conexão: ${textError.substring(0, 100)}...`);
+        }
+        
+        // Se for rate limit (429) e ainda temos tentativas, aguardar e tentar novamente
+        if (response.status === 429 && retryCount < 2) {
+          const waitTime = (retryCount + 1) * 3000; // 3s, 6s
+          console.log(`⏳ Rate limit atingido. Aguardando ${waitTime/1000}s antes de tentar novamente...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          return this.generate(tool, prompt, params, retryCount + 1);
+        }
+        
         console.error(`❌ OpenAI ${tool} error:`, err);
-        throw new Error(err.error || `HTTP ${response.status}`);
+        
+        // Mensagem mais amigável para rate limit
+        if (response.status === 429) {
+          throw new Error('Limite de requisições atingido. Por favor, aguarde alguns segundos e tente novamente.');
+        }
+        
+        throw new Error(err.details || err.error || `HTTP ${response.status}`);
       }
 
       const data = await response.json();
@@ -175,7 +198,8 @@ Forneça:
     businessType: string,
     style: string,
     colors: string,
-    imageStyle: string = 'logo'
+    imageStyle: string = 'logo',
+    retryCount = 0
   ): Promise<{ imageUrl: string; revisedPrompt: string }> {
     const prompt = `Logo for "${businessName}", a ${businessType} business. Style: ${style}. Colors: ${colors}. Modern, professional, memorable.`;
 
@@ -191,8 +215,31 @@ Forneça:
     });
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-      throw new Error(err.error || `HTTP ${response.status}`);
+      let err;
+      try {
+        err = await response.json();
+      } catch (parseError) {
+        const textError = await response.text();
+        console.error(`❌ DALL-E parse error:`, textError);
+        throw new Error(`Erro de conexão: ${textError.substring(0, 100)}...`);
+      }
+      
+      // Se for rate limit (429) e ainda temos tentativas, aguardar e tentar novamente
+      if (response.status === 429 && retryCount < 2) {
+        const waitTime = (retryCount + 1) * 5000; // 5s, 10s (DALL-E é mais lento)
+        console.log(`⏳ Rate limit atingido. Aguardando ${waitTime/1000}s antes de tentar novamente...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        return this.generateLogo(businessName, businessType, style, colors, imageStyle, retryCount + 1);
+      }
+      
+      console.error(`❌ DALL-E error:`, err);
+      
+      // Mensagem mais amigável para rate limit
+      if (response.status === 429) {
+        throw new Error('Limite de requisições atingido. Por favor, aguarde alguns segundos e tente novamente.');
+      }
+      
+      throw new Error(err.details || err.error || `HTTP ${response.status}`);
     }
 
     const data = await response.json();

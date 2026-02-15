@@ -442,7 +442,32 @@ export async function activateSubscription(
         last_daily_reset: new Date().toISOString()
       }, { onConflict: 'user_id' });
 
-    // 6. Log de atividade
+    // 6. Atualizar user_profiles
+    await supabase
+      .from('user_profiles')
+      .update({
+        plan: planType,
+        plan_status: 'active',
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId);
+
+    // 7. Atualizar auth.users metadata
+    const { error: metadataError } = await supabase.auth.admin.updateUserById(
+      userId,
+      {
+        user_metadata: {
+          plan: planType,
+          plan_status: 'active'
+        }
+      }
+    );
+
+    if (metadataError) {
+      console.error('❌ Erro ao atualizar metadata:', metadataError);
+    }
+
+    // 8. Log de atividade
     await supabase.from('activity_logs').insert({
       user_id: userId,
       action: 'subscription_activated',
@@ -534,7 +559,20 @@ export async function activateToolPurchase(
         is_active: true
       }, { onConflict: 'user_id,tool_name' });
 
-    // 3. Log de atividade
+    // 3. Atualizar auth.users metadata com ferramenta comprada
+    const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+    const currentTools = authUser?.user?.user_metadata?.purchased_tools || [];
+    
+    if (!currentTools.includes(toolName)) {
+      await supabase.auth.admin.updateUserById(userId, {
+        user_metadata: {
+          ...authUser?.user?.user_metadata,
+          purchased_tools: [...currentTools, toolName]
+        }
+      });
+    }
+
+    // 4. Log de atividade
     await supabase.from('activity_logs').insert({
       user_id: userId,
       action: 'tool_purchased',
@@ -551,6 +589,81 @@ export async function activateToolPurchase(
 
   } catch (error) {
     console.error('❌ Erro ao ativar ferramenta:', error);
+    return { success: false, message: `Erro ao ativar: ${error}` };
+  }
+}
+
+/**
+ * Ativar anúncio pago após confirmação de pagamento
+ */
+export async function activateAdvertising(
+  userId: string,
+  advertisingData: any,
+  paymentId: string,
+  provider: 'stripe' | 'pix',
+  amount: number
+): Promise<{ success: boolean; message: string }> {
+  console.log(`📢 Ativando anúncio: ${userId}`);
+
+  try {
+    const { planName, planDays, companyName, cnpj, advertiserId } = advertisingData;
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + parseInt(planDays || 30));
+
+    // 1. Criar registro de anúncio
+    const { data: created, error } = await supabase
+      .from('advertising_purchases')
+      .insert({
+        user_id: userId,
+        advertiser_id: advertiserId,
+        plan_name: planName,
+        plan_days: parseInt(planDays || 30),
+        company_name: companyName,
+        cnpj: cnpj,
+        status: 'active',
+        payment_provider: provider,
+        payment_id: paymentId,
+        amount: amount || 0,
+        start_date: new Date().toISOString(),
+        end_date: endDate.toISOString(),
+        confirmed_at: new Date().toISOString()
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+
+    // 2. Atualizar auth.users metadata com anúncio ativo
+    const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+    const currentAds = authUser?.user?.user_metadata?.active_ads || [];
+    
+    await supabase.auth.admin.updateUserById(userId, {
+      user_metadata: {
+        ...authUser?.user?.user_metadata,
+        active_ads: [...currentAds, { id: created?.id, plan: planName, end_date: endDate.toISOString() }],
+        has_active_advertising: true
+      }
+    });
+
+    // 3. Log de atividade
+    await supabase.from('activity_logs').insert({
+      user_id: userId,
+      action: 'advertising_purchased',
+      details: {
+        plan_name: planName,
+        payment_id: paymentId,
+        provider,
+        amount,
+        plan_days: planDays,
+        end_date: endDate.toISOString()
+      }
+    });
+
+    console.log(`✅ Anúncio ativado: ${planName} (${planDays} dias)`);
+    return { success: true, message: `Anúncio ${planName} ativado por ${planDays} dias` };
+
+  } catch (error) {
+    console.error('❌ Erro ao ativar anúncio:', error);
     return { success: false, message: `Erro ao ativar: ${error}` };
   }
 }
@@ -725,6 +838,7 @@ const paymentConfirmationService = {
   confirmPixPayment,
   activateSubscription,
   activateToolPurchase,
+  activateAdvertising,
   checkAccess,
   getUserActiveTools,
   getActiveSubscription,

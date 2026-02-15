@@ -8,9 +8,52 @@ interface PendingPayment {
   amount: number;
   payment_id: string;
   created_at: string;
-  user_email?: string;
-  user_name?: string;
+  user_email: string;
+  user_name: string;
 }
+
+// Mapeamento de plano → ferramentas (igual ao accessControlService)
+const PLAN_TOOLS: Record<string, string[]> = {
+  mensal: [
+    'Gerador de Scripts IA', 'Criador de Thumbnails', 'Analisador de Trends',
+    'Otimizador de SEO', 'Gerador de Hashtags', 'Criador de Logos'
+  ],
+  trimestral: [
+    'Gerador de Scripts IA', 'Criador de Thumbnails', 'Analisador de Trends',
+    'Otimizador de SEO', 'Gerador de Hashtags', 'Criador de Logos',
+    'Agendamento Multiplataforma', 'IA de Copywriting', 'Tradutor Automático'
+  ],
+  semestral: [
+    'Gerador de Scripts IA', 'Criador de Thumbnails', 'Analisador de Trends',
+    'Otimizador de SEO', 'Gerador de Hashtags', 'Criador de Logos',
+    'Agendamento Multiplataforma', 'IA de Copywriting', 'Tradutor Automático',
+    'Gerador de QR Code', 'Editor de Vídeo Pro', 'Gerador de Ebooks Premium'
+  ],
+  anual: [
+    'Gerador de Scripts IA', 'Criador de Thumbnails', 'Analisador de Trends',
+    'Otimizador de SEO', 'Gerador de Hashtags', 'Criador de Logos',
+    'Agendamento Multiplataforma', 'IA de Copywriting', 'Tradutor Automático',
+    'Gerador de QR Code', 'Editor de Vídeo Pro', 'Gerador de Ebooks Premium',
+    'Gerador de Animações', 'IA Video Generator 8K', 'AI Funil Builder'
+  ]
+};
+
+const getPlanKey = (planType: string): string => {
+  const p = planType.toLowerCase();
+  if (p.includes('anual') || p.includes('annual') || p.includes('yearly')) return 'anual';
+  if (p.includes('semestral') || p.includes('semiannual')) return 'semestral';
+  if (p.includes('trimestral') || p.includes('quarterly')) return 'trimestral';
+  return 'mensal';
+};
+
+const calculateExpiry = (planKey: string): string => {
+  const now = new Date();
+  if (planKey === 'anual') now.setFullYear(now.getFullYear() + 1);
+  else if (planKey === 'semestral') now.setMonth(now.getMonth() + 6);
+  else if (planKey === 'trimestral') now.setMonth(now.getMonth() + 3);
+  else now.setMonth(now.getMonth() + 1);
+  return now.toISOString();
+};
 
 const AdminPixApprovalsPage: React.FC = () => {
   const [payments, setPayments] = useState<PendingPayment[]>([]);
@@ -20,7 +63,7 @@ const AdminPixApprovalsPage: React.FC = () => {
 
   const showNotification = (msg: string) => {
     setNotification(msg);
-    setTimeout(() => setNotification(''), 4000);
+    setTimeout(() => setNotification(''), 5000);
   };
 
   const loadPendingPayments = async () => {
@@ -35,20 +78,42 @@ const AdminPixApprovalsPage: React.FC = () => {
 
       if (error) throw error;
 
-      // Buscar emails dos usuarios
+      // Buscar info dos usuarios em user_profiles (NÃO usar admin API)
       const enriched = await Promise.all(
         (data || []).map(async (sub) => {
-          // Tentar buscar perfil do usuario
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('name, email')
-            .eq('user_id', sub.user_id)
-            .single();
+          let userName = 'Usuario';
+          let userEmail = sub.user_id.substring(0, 10) + '...';
+
+          // 1. Tentar buscar em user_profiles com user_id
+          try {
+            const { data: profile } = await supabase
+              .from('user_profiles')
+              .select('name, email, cpf, preferences')
+              .eq('user_id', sub.user_id)
+              .single();
+
+            if (profile) {
+              userName = profile.name || userName;
+              userEmail = profile.email || userEmail;
+            }
+          } catch { /* silencioso */ }
+
+          // 2. Fallback: buscar em users table
+          if (userEmail.includes('...')) {
+            try {
+              const { data: userRow } = await supabase
+                .from('users')
+                .select('email')
+                .eq('id', sub.user_id)
+                .single();
+              if (userRow?.email) userEmail = userRow.email;
+            } catch { /* silencioso */ }
+          }
 
           return {
             ...sub,
-            user_email: profile?.email || sub.user_id.substring(0, 8) + '...',
-            user_name: profile?.name || 'Usuario'
+            user_email: userEmail,
+            user_name: userName
           };
         })
       );
@@ -64,7 +129,6 @@ const AdminPixApprovalsPage: React.FC = () => {
 
   useEffect(() => {
     loadPendingPayments();
-    // Auto-refresh a cada 30 segundos
     const interval = setInterval(loadPendingPayments, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -72,35 +136,49 @@ const AdminPixApprovalsPage: React.FC = () => {
   const handleApprove = async (payment: PendingPayment) => {
     setProcessing(payment.id);
     try {
+      const planKey = getPlanKey(payment.plan_type);
+      const tools = PLAN_TOOLS[planKey] || PLAN_TOOLS['mensal'];
+      const validUntil = calculateExpiry(planKey);
+      const now = new Date().toISOString();
+
+      console.log(`Aprovando PIX: user=${payment.user_id}, plan=${planKey}, tools=${tools.length}`);
+
       // 1. Ativar subscription
       const { error: subError } = await supabase
         .from('subscriptions')
-        .update({
-          status: 'active',
-          updated_at: new Date().toISOString()
-        })
+        .update({ status: 'active', updated_at: now })
         .eq('id', payment.id);
-
       if (subError) throw subError;
 
-      // 2. Atualizar purchase para completed
+      // 2. Atualizar purchases
       await supabase
         .from('purchases')
         .update({ status: 'completed' })
         .eq('payment_id', payment.payment_id);
 
-      // 3. Atualizar user_profiles
+      // 3. Atualizar user_profiles com o plano
       await supabase
         .from('user_profiles')
         .update({
-          plan: payment.plan_type,
+          plan: planKey,
           plan_status: 'active',
-          updated_at: new Date().toISOString()
+          updated_at: now
         })
         .eq('user_id', payment.user_id);
 
-      // 4. Atualizar metadata do usuario
-      // (O polling no frontend do usuario vai detectar a mudanca)
+      // 4. CRITICO: Inserir acesso a TODAS as ferramentas do plano na tabela user_access
+      for (const toolName of tools) {
+        await supabase
+          .from('user_access')
+          .upsert({
+            user_id: payment.user_id,
+            tool_name: toolName,
+            access_type: 'subscription',
+            is_active: true,
+            valid_until: validUntil,
+            updated_at: now
+          }, { onConflict: 'user_id,tool_name' });
+      }
 
       // 5. Log
       await supabase.from('activity_logs').insert({
@@ -108,16 +186,19 @@ const AdminPixApprovalsPage: React.FC = () => {
         action: 'pix_payment_approved_by_admin',
         details: JSON.stringify({
           subscription_id: payment.id,
-          plan_type: payment.plan_type,
-          amount: payment.amount
+          plan_type: planKey,
+          amount: payment.amount,
+          tools_activated: tools.length,
+          valid_until: validUntil
         })
       });
 
-      showNotification(`Pagamento de ${payment.user_name} aprovado! Plano ${payment.plan_type} ativado.`);
+      console.log(`Plano ${planKey} ativado: ${tools.length} ferramentas liberadas ate ${validUntil}`);
+      showNotification(`Pagamento aprovado! Plano ${planKey.toUpperCase()} ativado para ${payment.user_name} com ${tools.length} ferramentas.`);
       loadPendingPayments();
     } catch (err) {
       console.error('Erro ao aprovar:', err);
-      showNotification('Erro ao aprovar pagamento.');
+      showNotification('Erro ao aprovar pagamento. Verifique o console.');
     } finally {
       setProcessing(null);
     }
@@ -130,22 +211,13 @@ const AdminPixApprovalsPage: React.FC = () => {
     try {
       await supabase
         .from('subscriptions')
-        .update({
-          status: 'cancelled',
-          updated_at: new Date().toISOString()
-        })
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
         .eq('id', payment.id);
 
       await supabase
         .from('purchases')
         .update({ status: 'rejected' })
         .eq('payment_id', payment.payment_id);
-
-      await supabase.from('activity_logs').insert({
-        user_id: payment.user_id,
-        action: 'pix_payment_rejected_by_admin',
-        details: JSON.stringify({ subscription_id: payment.id })
-      });
 
       showNotification(`Pagamento de ${payment.user_name} rejeitado.`);
       loadPendingPayments();
@@ -158,20 +230,23 @@ const AdminPixApprovalsPage: React.FC = () => {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
+    try {
+      return new Date(dateStr).toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    } catch { return dateStr; }
   };
 
   const getPlanLabel = (plan: string) => {
+    const key = getPlanKey(plan);
     const labels: Record<string, string> = {
-      mensal: 'Mensal - R$ 59,90',
-      trimestral: 'Trimestral - R$ 159,90',
-      semestral: 'Semestral - R$ 259,90',
-      anual: 'Anual - R$ 399,90'
+      mensal: 'Mensal',
+      trimestral: 'Trimestral',
+      semestral: 'Semestral',
+      anual: 'Anual'
     };
-    return labels[plan] || plan;
+    return labels[key] || plan;
   };
 
   return (
@@ -185,7 +260,7 @@ const AdminPixApprovalsPage: React.FC = () => {
       </header>
 
       {notification && (
-        <div className="bg-green-500 bg-opacity-20 text-green-300 p-3 rounded-lg mb-6 text-center">
+        <div className="bg-green-500 bg-opacity-20 text-green-300 p-3 rounded-lg mb-6 text-center font-semibold">
           {notification}
         </div>
       )}
@@ -240,6 +315,9 @@ const AdminPixApprovalsPage: React.FC = () => {
                     <p className="text-xs text-gray-dark mt-1">
                       ID: {payment.payment_id}
                     </p>
+                    <p className="text-xs text-blue-400 mt-1">
+                      Ferramentas: {(PLAN_TOOLS[getPlanKey(payment.plan_type)] || []).length} incluidas
+                    </p>
                   </div>
 
                   <div className="flex gap-3">
@@ -248,7 +326,7 @@ const AdminPixApprovalsPage: React.FC = () => {
                       disabled={processing === payment.id}
                       className="px-6 py-2 rounded-full font-semibold bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
                     >
-                      {processing === payment.id ? '...' : '✅ Aprovar'}
+                      {processing === payment.id ? '⏳ Ativando...' : '✅ Aprovar'}
                     </button>
                     <button
                       onClick={() => handleReject(payment)}

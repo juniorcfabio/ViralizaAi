@@ -174,10 +174,6 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
                             <span className="text-lg">🛡️</span>
                             <span className="font-medium">Gerenciar Saques</span>
                         </NavLink>
-                        <NavLink to="/admin/pix-approvals" className={navLinkClasses} onClick={handleNavClick}>
-                            <span className="text-lg">💰</span>
-                            <span className="font-medium">Aprovar PIX</span>
-                        </NavLink>
                         <NavLink to="/admin/affiliates" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🤝</span>
                             <span className="font-medium">Afiliados</span>
@@ -206,10 +202,6 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
                         <NavLink to="/admin/ai-tool-creator" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🤖</span>
                             <span className="font-medium">IA Criadora de Ferramentas</span>
-                        </NavLink>
-                        <NavLink to="/admin/smart-pricing" className={navLinkClasses} onClick={handleNavClick}>
-                            <span className="text-lg">💰</span>
-                            <span className="font-medium">Preços Inteligentes</span>
                         </NavLink>
                         <NavLink to="/admin/ai-support" className={navLinkClasses}>
                             <span className="text-lg mr-3">🎧</span>
@@ -290,6 +282,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
                         <NavLink to="/admin/payments" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">💳</span>
                             <span className="font-medium">Pagamentos</span>
+                        </NavLink>
+                        <NavLink to="/admin/pix-approvals" className={navLinkClasses} onClick={handleNavClick}>
+                            <span className="text-lg">✅</span>
+                            <span className="font-medium">Aprovar PIX</span>
                         </NavLink>
                         <NavLink to="/admin/tools-pricing" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🏷️</span>

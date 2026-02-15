@@ -250,9 +250,14 @@ const AIFunnelBuilderPageComplete: React.FC = () => {
       } else {
         throw new Error(result.error || 'Erro desconhecido');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao processar pagamento Stripe:', error);
-      alert('Erro ao processar pagamento. Tente novamente.');
+      const msg = error?.message || '';
+      if (msg.includes('Expired') || msg.includes('expired') || msg.includes('api_key')) {
+        alert('Chave Stripe expirada. O administrador precisa atualizar STRIPE_SECRET_KEY no Vercel.\n\nUse PIX enquanto isso.');
+      } else {
+        alert('Erro ao processar pagamento. Tente novamente ou use PIX.');
+      }
     }
   };
 

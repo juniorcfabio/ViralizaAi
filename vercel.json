@@ -5,18 +5,36 @@
   "framework": "vite",
   "functions": {
     "api/**/*.js": {
-      "maxDuration": 10
+      "maxDuration": 30
     }
   },
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
     }
   ],
   "env": {
     "NODE_ENV": "production",
     "VITE_API_BASE_URL": "https://viralizaai.vercel.app/api"
-  },
-  "alias": ["viralizaai.vercel.app"]
+  }
 }
