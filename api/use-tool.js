@@ -2,6 +2,12 @@
 import { requireActivePlan, incrementUsage } from "../lib/requirePlan.js";
 import { getPlanRules } from "../lib/planRules.js";
 
+function getBaseUrl() {
+  return process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : process.env.NEXT_PUBLIC_BASE_URL || 'https://viralizaai.vercel.app';
+}
+
 export default async function handler(req, res) {
   // 🛡️ PROTEÇÃO TOTAL - VERIFICAR PLANO E LIMITES
   await new Promise((resolve, reject) => {
@@ -90,24 +96,45 @@ export default async function handler(req, res) {
   }
 }
 
-// 🤖 EXECUTAR GERAÇÃO DE CONTEÚDO
+// 🤖 EXECUTAR GERAÇÃO DE CONTEÚDO REAL VIA MULTI-MODELO
 async function executeContentGeneration(data, userPlan) {
-  console.log(`🤖 Gerando conteúdo para plano: ${userPlan}`);
+  console.log(`🤖 Gerando conteúdo REAL para plano: ${userPlan}`);
   
   const planRules = getPlanRules(userPlan);
-  
-  // ⏱️ SIMULAR TEMPO DE PROCESSAMENTO
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  const tool = data.toolType || 'copywriting';
 
-  return {
-    type: 'content_generation',
-    prompt: data.prompt,
-    result: `Conteúdo gerado para: "${data.prompt}"\n\nEste é um conteúdo de alta qualidade gerado pela IA para o plano ${planRules.name}.\n\nRecursos disponíveis: ${planRules.features.join(", ")}`,
-    wordCount: Math.floor(Math.random() * 500) + 100,
-    planUsed: userPlan,
-    quality: planRules.name.includes('Premium') ? 'premium' : planRules.name.includes('Gold') ? 'advanced' : 'standard',
-    generatedAt: new Date().toISOString()
-  };
+  try {
+    const aiResponse = await fetch(`${getBaseUrl()}/api/ai-generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tool,
+        prompt: data.prompt || 'Gere conteúdo de marketing digital profissional.',
+        params: { maxTokens: 2000 }
+      })
+    });
+
+    if (aiResponse.ok) {
+      const aiData = await aiResponse.json();
+      return {
+        type: 'content_generation',
+        prompt: data.prompt,
+        result: aiData.content,
+        provider: aiData.provider,
+        model: aiData.model,
+        department: aiData.department,
+        wordCount: aiData.content.split(/\s+/).length,
+        planUsed: userPlan,
+        quality: planRules.name.includes('Premium') ? 'premium' : planRules.name.includes('Gold') ? 'advanced' : 'standard',
+        generatedAt: new Date().toISOString(),
+        realGeneration: true
+      };
+    }
+    throw new Error(`AI API retornou ${aiResponse.status}`);
+  } catch (error) {
+    console.error('❌ Geração de conteúdo real falhou:', error.message);
+    throw error;
+  }
 }
 
 // 🎬 EXECUTAR GERAÇÃO DE VÍDEO REAL
@@ -131,7 +158,7 @@ async function executeVideoGeneration(data, userPlan) {
     
     Formato: Texto corrido para síntese de voz.`;
 
-    const scriptResponse = await fetch('/api/ai-generate', {
+    const scriptResponse = await fetch(`${getBaseUrl()}/api/ai-generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -229,7 +256,7 @@ async function executeEbookGeneration(data, userPlan) {
       
       Mínimo 800 palavras. Tom profissional mas acessível.`;
 
-      const chapterResponse = await fetch('/api/ai-generate', {
+      const chapterResponse = await fetch(`${getBaseUrl()}/api/ai-generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -301,23 +328,45 @@ async function executeEbookGeneration(data, userPlan) {
   }
 }
 
-// 💬 EXECUTAR CHAT IA
+// 💬 EXECUTAR CHAT IA REAL VIA MULTI-MODELO
 async function executeAIChat(data, userPlan) {
-  console.log(`💬 Processando chat IA para plano: ${userPlan}`);
+  console.log(`💬 Processando chat IA REAL para plano: ${userPlan}`);
   
   const planRules = getPlanRules(userPlan);
-  
-  // ⏱️ SIMULAR TEMPO DE PROCESSAMENTO
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  const startTime = Date.now();
 
-  return {
-    type: 'ai_chat',
-    message: data.message,
-    response: `Resposta da IA para: "${data.message}"\n\nComo usuário do ${planRules.name}, você tem acesso a respostas ${planRules.support === 'vip' ? 'premium com suporte VIP' : planRules.support === 'priority' ? 'avançadas com suporte prioritário' : 'padrão'}.`,
-    planUsed: userPlan,
-    responseTime: '1.5s',
-    generatedAt: new Date().toISOString()
-  };
+  try {
+    const aiResponse = await fetch(`${getBaseUrl()}/api/ai-generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tool: 'general',
+        prompt: data.message || 'Olá, como posso ajudar?',
+        params: { maxTokens: 1500 }
+      })
+    });
+
+    if (aiResponse.ok) {
+      const aiData = await aiResponse.json();
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      return {
+        type: 'ai_chat',
+        message: data.message,
+        response: aiData.content,
+        provider: aiData.provider,
+        model: aiData.model,
+        department: aiData.department,
+        planUsed: userPlan,
+        responseTime: `${elapsed}s`,
+        generatedAt: new Date().toISOString(),
+        realGeneration: true
+      };
+    }
+    throw new Error(`AI API retornou ${aiResponse.status}`);
+  } catch (error) {
+    console.error('❌ Chat IA real falhou:', error.message);
+    throw error;
+  }
 }
 
 // ⏰ FUNÇÃO AUXILIAR PARA PRÓXIMO RESET

@@ -1,5 +1,12 @@
-// 🤖 SERVIÇO OPENAI - CLIENTE FRONTEND
-// Todas as ferramentas usam este serviço para chamar a API centralizada
+// � SERVIÇO MULTI-MODELO DE IA - CLIENTE FRONTEND
+// =============================================================
+// Roteamento Inteligente por Departamento:
+// Claude Opus   → Estratégia (funnel, seo, trends, analytics)
+// Sonnet        → Copywriting (scripts, copy, ebook, hashtags)
+// Codex Medium  → Automação (code, technical, automation)
+// Kimi K2.5     → Criativo (avatar, visual, branding, campaign)
+// SWE-1.5       → Prototipagem (template, prototype, quick, general)
+// =============================================================
 
 class OpenAIService {
   private apiUrl: string;
@@ -21,35 +28,34 @@ class OpenAIService {
         try {
           err = await response.json();
         } catch (parseError) {
-          // Se não conseguir fazer parse do JSON, pegar o texto
           const textError = await response.text();
-          console.error(`❌ OpenAI ${tool} parse error:`, textError);
+          console.error(`❌ AI ${tool} parse error:`, textError);
           throw new Error(`Erro de conexão: ${textError.substring(0, 100)}...`);
         }
         
-        // Se for rate limit (429) e ainda temos tentativas, aguardar e tentar novamente
         if (response.status === 429 && retryCount < 2) {
-          const waitTime = (retryCount + 1) * 3000; // 3s, 6s
-          console.log(`⏳ Rate limit atingido. Aguardando ${waitTime/1000}s antes de tentar novamente...`);
+          const waitTime = (retryCount + 1) * 3000;
+          console.log(`⏳ Rate limit. Aguardando ${waitTime/1000}s...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
           return this.generate(tool, prompt, params, retryCount + 1);
         }
         
-        console.error(`❌ OpenAI ${tool} error:`, err);
+        console.error(`❌ AI ${tool} error:`, err);
         
-        // Mensagem mais amigável para rate limit
         if (response.status === 429) {
-          throw new Error('Limite de requisições atingido. Por favor, aguarde alguns segundos e tente novamente.');
+          throw new Error('Limite de requisições atingido. Aguarde alguns segundos e tente novamente.');
         }
         
         throw new Error(err.details || err.error || `HTTP ${response.status}`);
       }
 
       const data = await response.json();
-      console.log(`✅ AI ${tool}: ${data.tokens_used} tokens usados`);
+      const providerInfo = data.provider ? ` [${data.provider}/${data.model}]` : '';
+      const deptInfo = data.department ? ` dept=${data.department}` : '';
+      console.log(`✅ AI ${tool}${providerInfo}${deptInfo}: ${data.tokens_used} tokens`);
       return data.content;
     } catch (error) {
-      console.error(`❌ OpenAI ${tool} falhou:`, error);
+      console.error(`❌ AI ${tool} falhou:`, error);
       throw error;
     }
   }
@@ -260,6 +266,136 @@ Regras:
 - Inclua nota de localização se necessário`;
 
     return this.generate('translate', prompt, { language: targetLanguage });
+  }
+
+  // ==================== KIMI K2.5 - CRIATIVIDADE MULTIMODAL ====================
+
+  async generateCreativeCampaign(businessName: string, niche: string, objective: string, platforms: string[]): Promise<string> {
+    const prompt = `Crie um conceito criativo completo de campanha para ${businessName}.
+Nicho: ${niche}
+Objetivo: ${objective}
+Plataformas: ${platforms.join(', ')}
+
+Inclua:
+- Conceito central e moodboard descritivo
+- Paleta de cores (hex codes) e tipografia
+- 5 peças visuais detalhadas (composição, elementos, texto)
+- Adaptações para cada plataforma (feed, stories, reels, tiktok)
+- Cronograma de 30 dias com frequência de posts
+- KPIs esperados por plataforma`;
+
+    return this.generate('campaign', prompt, { maxTokens: 3000 });
+  }
+
+  async generateAvatarConcept(businessName: string, brandPersonality: string, targetAudience: string): Promise<string> {
+    const prompt = `Crie um avatar/personagem de marca para ${businessName}.
+Personalidade da marca: ${brandPersonality}
+Público-alvo: ${targetAudience}
+
+Descreva detalhadamente:
+- Aparência visual (rosto, corpo, roupas, acessórios, cores)
+- Personalidade e tom de voz (3 exemplos de falas)
+- Expressões e poses para diferentes situações (feliz, pensativo, animado)
+- Cenários ideais para cada plataforma
+- Nome e backstory do personagem
+- Aplicações: stories, thumbnails, posts, vídeos`;
+
+    return this.generate('avatar', prompt, { maxTokens: 2000 });
+  }
+
+  async generateVisualBriefing(businessName: string, contentType: string, platform: string, objective: string): Promise<string> {
+    const prompt = `Crie um briefing visual completo para ${contentType} de ${businessName} no ${platform}.
+Objetivo: ${objective}
+
+Inclua:
+- Conceito visual e referências de estilo
+- Layout e composição detalhada
+- Paleta de cores com códigos hex
+- Tipografia (fontes, tamanhos, hierarquia)
+- Elementos gráficos e ícones necessários
+- Texto para cada elemento (headline, body, CTA)
+- Adaptações de tamanho (1080x1080, 1080x1920, 1920x1080)
+- Checklist de produção`;
+
+    return this.generate('visual', prompt, { maxTokens: 2000 });
+  }
+
+  async generateBrandIdentity(businessName: string, businessType: string, values: string[], targetAudience: string): Promise<string> {
+    const prompt = `Desenvolva uma identidade de marca completa para ${businessName}.
+Tipo de negócio: ${businessType}
+Valores: ${values.join(', ')}
+Público-alvo: ${targetAudience}
+
+Inclua:
+- Posicionamento de marca (statement)
+- Proposta de valor única
+- Tom de voz (com 5 exemplos práticos)
+- Paleta de cores primária e secundária (hex codes)
+- Tipografia (fontes para título, corpo, destaque)
+- Elementos visuais (ícones, patterns, texturas)
+- Guia de aplicação para redes sociais
+- Do's and Don'ts de comunicação`;
+
+    return this.generate('branding', prompt, { maxTokens: 2500 });
+  }
+
+  // ==================== CODEX MEDIUM - AUTOMACAO ====================
+
+  async generateAutomation(businessName: string, workflow: string, tools: string[]): Promise<string> {
+    const prompt = `Crie um fluxo de automação completo para ${businessName}.
+Workflow: ${workflow}
+Ferramentas disponíveis: ${tools.join(', ')}
+
+Inclua:
+- Diagrama do fluxo (em texto estruturado)
+- Triggers (eventos que iniciam o fluxo)
+- Condições e ramificações
+- Ações em cada etapa
+- Integrações necessárias (APIs, webhooks)
+- Código/pseudocódigo para implementação
+- Métricas de monitoramento
+- Tratamento de erros e fallbacks`;
+
+    return this.generate('automation', prompt, { maxTokens: 2500 });
+  }
+
+  // ==================== CLAUDE OPUS - ESTRATEGIA ====================
+
+  async analyzeStrategy(businessName: string, niche: string, currentMetrics: string, goals: string): Promise<string> {
+    const prompt = `Análise estratégica profunda para ${businessName}.
+Nicho: ${niche}
+Métricas atuais: ${currentMetrics}
+Objetivos: ${goals}
+
+Forneça:
+1. Diagnóstico atual (SWOT detalhado)
+2. Análise competitiva do nicho
+3. 5 oportunidades estratégicas com ROI estimado
+4. Plano de ação 90 dias com marcos semanais
+5. KPIs prioritários com metas numéricas
+6. Riscos e planos de contingência
+7. Budget recomendado por canal
+8. Projeções de crescimento (3, 6, 12 meses)`;
+
+    return this.generate('strategy', prompt, { maxTokens: 3000 });
+  }
+
+  async analyzeBusinessMetrics(data: string, period: string, businessType: string): Promise<string> {
+    const prompt = `Analise os seguintes dados de negócio e forneça insights acionáveis.
+Tipo de negócio: ${businessType}
+Período: ${period}
+Dados: ${data}
+
+Forneça:
+1. Resumo executivo dos dados
+2. Tendências identificadas (crescimento, queda, estagnação)
+3. Métricas mais críticas e por quê
+4. 5 ações imediatas baseadas nos dados
+5. Previsões para próximo período
+6. Benchmarks do setor para comparação
+7. Alertas e anomalias detectadas`;
+
+    return this.generate('analytics', prompt, { maxTokens: 2500 });
   }
 }
 
