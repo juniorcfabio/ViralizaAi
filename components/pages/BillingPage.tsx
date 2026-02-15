@@ -40,9 +40,8 @@ const BillingPage: React.FC = () => {
     const [pixModalOpen, setPixModalOpen] = useState(false);
     const [pixSelectedPlan, setPixSelectedPlan] = useState<Plan | null>(null);
 
-    // Supabase Edge Function URL
-    const SUPABASE_URL = 'https://ymmswnmietxoupeazmok.supabase.co';
-    const EDGE_FN_URL = `${SUPABASE_URL}/functions/v1/create-checkout-session`;
+    // Usar API Vercel (tem a chave Stripe atualizada)
+    const STRIPE_API_URL = '/api/stripe-test';
 
     // 🔥 USAR PREÇOS REAIS DO SUPABASE - ATUALIZAÇÃO AUTOMÁTICA
     const plans: Plan[] = pricing?.subscriptionPlans.map(plan => ({
@@ -84,46 +83,35 @@ const BillingPage: React.FC = () => {
         setSubscribingPlan(plan.name);
 
         try {
-            // Mapear nome do plano para slug
-            const planSlug = plan.id || plan.name.toLowerCase()
-                .replace('mensal', 'mensal')
-                .replace('trimestral', 'trimestral')
-                .replace('semestral', 'semestral')
-                .replace('anual', 'anual');
-
+            const amount = parseFloat(String(plan.price).replace(',', '.'));
             const appBaseUrl = buildAppBaseUrl();
 
-            // Obter JWT do Supabase para autenticação
-            const { data: sessionData } = await supabase.auth.getSession();
-            const jwt = sessionData?.session?.access_token;
-
-            if (!jwt) {
-                showNotification('Erro: Sessão não encontrada. Faça login novamente.');
-                return;
-            }
-
-            console.log('💳 Criando checkout via Supabase Edge Function:', planSlug);
+            console.log('💳 Criando checkout via Vercel API:', plan.name, amount);
             showNotification('Redirecionando para o pagamento seguro...');
             
-            const response = await fetch(EDGE_FN_URL, {
+            const response = await fetch(STRIPE_API_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${jwt}`,
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    plan_slug: planSlug,
-                    payment_method_types: ['card'],
-                    success_url: `${appBaseUrl}/dashboard?checkout=success&plan=${encodeURIComponent(planSlug)}`,
-                    cancel_url: `${appBaseUrl}/dashboard/billing?checkout=cancel`,
+                    planName: `Assinatura ${plan.name} - ViralizaAI`,
+                    amount: Math.round(amount * 100),
+                    successUrl: `${appBaseUrl}/dashboard/billing?payment=success&plan=${encodeURIComponent(plan.name)}`,
+                    cancelUrl: `${appBaseUrl}/dashboard/billing?payment=cancelled`,
+                    userId: user?.id || '',
+                    planType: plan.id || plan.name.toLowerCase(),
+                    customerEmail: user?.email || ''
                 })
             });
 
-            const result = await response.json();
-
             if (!response.ok) {
-                throw new Error(result.error || `Erro: ${response.status}`);
+                const errorText = await response.text();
+                if (errorText.includes('Expired') || errorText.includes('expired')) {
+                    throw new Error('Expired API key');
+                }
+                throw new Error(`Erro: ${response.status} - ${errorText}`);
             }
+
+            const result = await response.json();
             
             if (result.success && result.url) {
                 console.log('🔄 Redirecionando para Stripe Checkout:', result.url);
@@ -171,32 +159,26 @@ const BillingPage: React.FC = () => {
             console.log('🚀 BillingPage - Processando compra Motor de Crescimento:', label, price);
             
             const appBaseUrl = buildAppBaseUrl();
-
-            // Obter JWT
-            const { data: sessionData } = await supabase.auth.getSession();
-            const jwt = sessionData?.session?.access_token;
-
-            if (!jwt) {
-                showNotification('Erro: Sessão não encontrada. Faça login novamente.');
-                return;
-            }
-
             showNotification('Redirecionando para pagamento...');
             
-            // Usar Edge Function com plano especial growth-engine
-            const response = await fetch(EDGE_FN_URL, {
+            const response = await fetch(STRIPE_API_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${jwt}`,
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    plan_slug: 'growth-engine',
-                    payment_method_types: ['card'],
-                    success_url: `${appBaseUrl}/dashboard/growth-engine?checkout=success&addon=${encodeURIComponent(label)}`,
-                    cancel_url: `${appBaseUrl}/dashboard/billing?checkout=cancel`,
+                    planName: `Motor de Crescimento ${label} - ViralizaAI`,
+                    amount: Math.round(price * 100),
+                    successUrl: `${appBaseUrl}/dashboard/growth-engine?payment=success&addon=${encodeURIComponent(label)}`,
+                    cancelUrl: `${appBaseUrl}/dashboard/billing?payment=cancelled`,
+                    userId: user?.id || '',
+                    planType: 'growth-engine',
+                    customerEmail: user?.email || ''
                 })
             });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Erro: ${response.status} - ${errorText}`);
+            }
 
             const result = await response.json();
             
@@ -207,9 +189,14 @@ const BillingPage: React.FC = () => {
                 throw new Error(result.error || 'Erro desconhecido');
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ Erro ao processar compra Motor de Crescimento:', error);
-            showNotification('Erro ao processar compra. Tente novamente.');
+            const msg = error?.message || '';
+            if (msg.includes('Expired') || msg.includes('expired')) {
+                showNotification('Chave Stripe expirada. Use PIX enquanto isso.');
+            } else {
+                showNotification('Erro ao processar compra. Tente novamente ou use PIX.');
+            }
         } finally {
             setBuyingGrowthEngine(null);
         }

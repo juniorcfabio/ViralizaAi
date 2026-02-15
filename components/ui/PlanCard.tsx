@@ -35,54 +35,41 @@ const PlanCard: React.FC<PlanCardProps> = ({
     }
 
     try {
-      console.log('💳 Iniciando pagamento Stripe:', {
-        planType,
-        planName,
-        price,
-        userEmail: user?.email
-      });
+      console.log('💳 Iniciando pagamento Stripe via Vercel API:', planName, price);
 
-      // Criar checkout session via Supabase Edge Function
-      const { data: sessionData } = await (window as any).supabase.auth.getSession();
-      const jwt = sessionData?.session?.access_token;
-
-      if (!jwt) {
-        throw new Error('Sessão não encontrada');
-      }
-
-      const SUPABASE_URL = 'https://ymmswnmietxoupeazmok.supabase.co';
-      const EDGE_FN_URL = `${SUPABASE_URL}/functions/v1/create-checkout-session`;
-
-      const response = await fetch(EDGE_FN_URL, {
+      const response = await fetch('/api/stripe-test', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwt}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          plan_slug: planType,
-          payment_method_types: ['card'],
-          success_url: `${window.location.origin}/dashboard?checkout=success&plan=${planType}`,
-          cancel_url: `${window.location.origin}/pricing?checkout=cancel`,
+          planName: `Assinatura ${planName} - ViralizaAI`,
+          amount: Math.round(price * 100),
+          successUrl: `${window.location.origin}/dashboard?payment=success&plan=${planType}`,
+          cancelUrl: `${window.location.origin}/pricing?payment=cancelled`,
+          userId: user?.id || '',
+          planType: planType,
+          customerEmail: user?.email || ''
         })
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || `Erro: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`Erro: ${response.status} - ${errorText}`);
       }
+
+      const result = await response.json();
       
       if (result.success && result.url) {
-        console.log('🔄 Redirecionando para Stripe:', result.url);
         window.location.href = result.url;
       } else {
         throw new Error(result.error || 'URL de checkout não retornada');
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro no pagamento Stripe:', error);
-      console.log('🔄 Abrindo modal PIX como alternativa');
+      const msg = error?.message || '';
+      if (msg.includes('Expired') || msg.includes('expired')) {
+        alert('Chave Stripe expirada. Use PIX enquanto isso.');
+      }
       setShowPixModal(true);
     }
   };
