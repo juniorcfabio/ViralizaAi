@@ -126,8 +126,8 @@ const BillingPage: React.FC = () => {
                 body: JSON.stringify({
                     planName: `Assinatura ${plan.name} - ViralizaAI`,
                     amount: Math.round(amount * 100),
-                    successUrl: `${appBaseUrl}/dashboard/billing?payment=success&plan=${encodeURIComponent(plan.name)}`,
-                    cancelUrl: `${appBaseUrl}/dashboard/billing?payment=cancelled`,
+                    successUrl: `${appBaseUrl}/dashboard/billing?checkout=success&plan=${encodeURIComponent(plan.id || plan.name.toLowerCase())}`,
+                    cancelUrl: `${appBaseUrl}/dashboard/billing?checkout=cancelled`,
                     userId: user?.id || '',
                     planType: plan.id || plan.name.toLowerCase(),
                     customerEmail: user?.email || ''

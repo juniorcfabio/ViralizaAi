@@ -160,7 +160,7 @@ const PixPaymentSecure: React.FC<PixPaymentSecureProps> = ({
         if (data?.status === 'active') {
           setApproved(true);
           if (user && updateUser) {
-            await updateUser(user.id, { plan: planSlug });
+            await updateUser(user.id, { plan: getNormalizedPlanType() });
           }
           if (pollingRef.current) clearInterval(pollingRef.current);
         }

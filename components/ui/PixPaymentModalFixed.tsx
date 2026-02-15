@@ -213,44 +213,26 @@ const PixPaymentModalFixed: React.FC<PixPaymentModalFixedProps> = ({
                   else if (planLower.includes('trimestral') || planLower.includes('quarterly')) planType = 'trimestral';
                   else if (planLower.includes('mensal') || planLower.includes('monthly')) planType = 'mensal';
 
-                  // Calcular data de expiração
-                  const now = new Date();
-                  const endDate = new Date(now);
-                  switch (planType) {
-                    case 'mensal': endDate.setMonth(endDate.getMonth() + 1); break;
-                    case 'trimestral': endDate.setMonth(endDate.getMonth() + 3); break;
-                    case 'semestral': endDate.setMonth(endDate.getMonth() + 6); break;
-                    case 'anual': endDate.setFullYear(endDate.getFullYear() + 1); break;
-                    default: endDate.setMonth(endDate.getMonth() + 1);
-                  }
-
                   const paymentId = `pix_${Date.now()}`;
-
-                  // 1. Salvar no Supabase: subscription + purchase + user_profiles
                   const { supabase } = await import('../../src/lib/supabase');
 
-                  // Cancelar subscriptions ativas anteriores
-                  await supabase
-                    .from('subscriptions')
-                    .update({ status: 'cancelled', updated_at: now.toISOString() })
-                    .eq('user_id', user.id)
-                    .eq('status', 'active');
-
-                  // Criar nova subscription
-                  await supabase
+                  // Criar subscription como PENDING_PAYMENT (admin precisa aprovar)
+                  const { error: subError } = await supabase
                     .from('subscriptions')
                     .insert({
                       user_id: user.id,
                       plan_type: planType,
-                      status: 'active',
+                      status: 'pending_payment',
                       payment_provider: 'pix',
                       payment_id: paymentId,
                       amount: amount,
-                      start_date: now.toISOString(),
-                      end_date: endDate.toISOString()
                     });
 
-                  // Registrar compra
+                  if (subError) {
+                    console.error('Erro ao salvar subscription:', subError);
+                  }
+
+                  // Registrar compra como pendente
                   await supabase
                     .from('purchases')
                     .insert({
@@ -260,46 +242,19 @@ const PixPaymentModalFixed: React.FC<PixPaymentModalFixedProps> = ({
                       amount: amount,
                       payment_method: 'pix',
                       payment_id: paymentId,
-                      status: 'completed',
-                      created_at: now.toISOString()
+                      status: 'pending',
+                      created_at: new Date().toISOString()
                     });
 
-                  // Atualizar user_profiles com plano ativo
-                  await supabase
-                    .from('user_profiles')
-                    .update({
-                      plan: planType,
-                      plan_status: 'active',
-                      plan_expires_at: endDate.toISOString(),
-                      updated_at: now.toISOString()
-                    })
-                    .eq('user_id', user.id);
+                  console.log('PIX pendente salvo:', planType, paymentId);
 
-                  // 2. Atualizar usuário no frontend
-                  await updateUser(user.id, {
-                    plan: planType,
-                    subscriptionEndDate: endDate.toISOString()
-                  });
-
-                  // Log de atividade
-                  await supabase.from('activity_logs').insert({
-                    user_id: user.id,
-                    action: 'pix_plan_activated',
-                    details: JSON.stringify({ plan_type: planType, amount, payment_id: paymentId })
-                  });
-
-                  console.log('✅ Plano ativado via PIX:', planType);
-
-                  alert(`✅ Pagamento confirmado!\n\nSeu plano ${planType.charAt(0).toUpperCase() + planType.slice(1)} foi ativado com sucesso.\n\n🔄 A página será recarregada...`);
+                  alert(`Pagamento PIX registrado!\n\nSeu plano ${planType.charAt(0).toUpperCase() + planType.slice(1)} será ativado após a confirmação do pagamento pelo administrador.\n\nAguarde a aprovação (até 15 minutos).`);
                   onClose();
                   if (onPaymentSuccess) onPaymentSuccess();
-                  
-                  // Recarregar para refletir novo plano
-                  setTimeout(() => window.location.reload(), 1000);
 
                 } catch (error) {
-                  console.error('Erro ao ativar plano:', error);
-                  alert('Erro ao ativar plano. Tente novamente ou entre em contato com o suporte.');
+                  console.error('Erro ao registrar pagamento:', error);
+                  alert('Erro ao registrar pagamento. Tente novamente.');
                 } finally {
                   setIsProcessing(false);
                 }
@@ -311,7 +266,7 @@ const PixPaymentModalFixed: React.FC<PixPaymentModalFixedProps> = ({
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
             >
-              {isProcessing ? '⏳ Processando...' : '✅ Confirmar Pagamento'}
+              {isProcessing ? '⏳ Processando...' : '✅ Já Paguei'}
             </button>
           </div>
         </div>

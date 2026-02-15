@@ -143,21 +143,16 @@ const AdminPixApprovalsPage: React.FC = () => {
 
       console.log(`Aprovando PIX: user=${payment.user_id}, plan=${planKey}, tools=${tools.length}`);
 
-      // 1. Ativar subscription no banco
-      const { error: subError } = await supabase
-        .from('subscriptions')
-        .update({ status: 'active', updated_at: now })
-        .eq('id', payment.id);
-      if (subError) throw subError;
+      // Atualizar purchases (best-effort, não bloqueia)
+      try {
+        await supabase
+          .from('purchases')
+          .update({ status: 'completed' })
+          .eq('payment_id', payment.payment_id);
+      } catch { /* silencioso */ }
 
-      // 2. Atualizar purchases
-      await supabase
-        .from('purchases')
-        .update({ status: 'completed' })
-        .eq('payment_id', payment.payment_id);
-
-      // 3. CHAMAR API SERVER-SIDE para ativar plano COMPLETO
-      // (atualiza user_profiles, user_access, E auth.users metadata via SERVICE_ROLE_KEY)
+      // CHAMAR API SERVER-SIDE para ativar plano COMPLETO
+      // (atualiza subscription, user_profiles, user_access, E auth.users metadata via SERVICE_ROLE_KEY)
       const activateRes = await fetch('/api/activate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
