@@ -53,10 +53,33 @@ const MODEL_ROUTING = {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // GET → Status dos modelos de IA
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      success: true,
+      system: 'ViralizaAI Multi-Model AI Engine',
+      version: '2.0',
+      models: {
+        claude_opus:   { name: 'Claude Opus 4', dept: 'strategy',   tools: ['funnel','seo','trends','analytics','strategy'], configured: !!process.env.ANTHROPIC_API_KEY },
+        sonnet:        { name: 'Claude Sonnet 4', dept: 'copywriting', tools: ['copywriting','scripts','ebook','hashtags','translate'], configured: !!process.env.ANTHROPIC_API_KEY },
+        codex_medium:  { name: 'GPT-4o', dept: 'automation', tools: ['automation','code','technical','integration'], configured: !!(process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('your-')) },
+        kimi_k25:      { name: 'Kimi K2.5', dept: 'creative', tools: ['creative','avatar','visual','branding','campaign'], configured: !!(process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY) },
+        swe_15:        { name: 'GPT-4o-mini', dept: 'prototype', tools: ['prototype','template','quick','general'], configured: !!(process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('your-')) }
+      },
+      environment: {
+        openai: !!(process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('your-')),
+        anthropic: !!process.env.ANTHROPIC_API_KEY,
+        kimi: !!(process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY),
+        supabase: !!process.env.SUPABASE_URL
+      }
+    });
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   // Verificar se pelo menos OpenAI está configurada (fallback obrigatório)
