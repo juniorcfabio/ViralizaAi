@@ -192,7 +192,28 @@ class AccessControlService {
       console.warn('⚠️ Erro ao verificar acesso no Supabase, usando fallback:', error);
     }
 
-    // 2. FALLBACK: Verificar no Supabase via autoSupabase (query diferente)
+    // 2. FALLBACK: Verificar plano ativo via API (se tem plano, tem acesso às ferramentas do plano)
+    try {
+      const planRes = await fetch(`/api/activate-plan?userId=${userId}`);
+      if (planRes.ok) {
+        const planData = await planRes.json();
+        if (planData.success && planData.planStatus === 'active' && planData.tools) {
+          // Normalizar para comparação sem acento
+          const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+          const toolNorm = normalize(toolName);
+          const hasToolInPlan = planData.tools.some((t: string) => normalize(t) === toolNorm);
+          if (hasToolInPlan) {
+            console.log('✅ Acesso concedido via plano ativo:', planData.plan, '→', toolName);
+            this.accessCache.set(cacheKey, { result: true, timestamp: Date.now() });
+            return true;
+          }
+        }
+      }
+    } catch {
+      // silencioso
+    }
+
+    // 3. FALLBACK: Verificar no Supabase via autoSupabase (query diferente)
     try {
       const hasSupabaseAccess = await autoSupabase.checkToolAccess(userId, toolName);
       if (hasSupabaseAccess) {
@@ -203,7 +224,7 @@ class AccessControlService {
       // silencioso
     }
 
-    // 3. FALLBACK: localStorage
+    // 4. FALLBACK: localStorage
     const accesses = this.getAllAccesses();
     const access = accesses.find(a => 
       a.toolName === toolName || 

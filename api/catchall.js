@@ -10,9 +10,9 @@ const supabase = createClient(
 
 var PLAN_TOOLS = {
   mensal: ['Gerador de Scripts IA','Criador de Thumbnails','Analisador de Trends','Otimizador de SEO','Gerador de Hashtags','Criador de Logos'],
-  trimestral: ['Gerador de Scripts IA','Criador de Thumbnails','Analisador de Trends','Otimizador de SEO','Gerador de Hashtags','Criador de Logos','Agendamento Multiplataforma','IA de Copywriting','Tradutor Automatico'],
-  semestral: ['Gerador de Scripts IA','Criador de Thumbnails','Analisador de Trends','Otimizador de SEO','Gerador de Hashtags','Criador de Logos','Agendamento Multiplataforma','IA de Copywriting','Tradutor Automatico','Gerador de QR Code','Editor de Video Pro','Gerador de Ebooks Premium'],
-  anual: ['Gerador de Scripts IA','Criador de Thumbnails','Analisador de Trends','Otimizador de SEO','Gerador de Hashtags','Criador de Logos','Agendamento Multiplataforma','IA de Copywriting','Tradutor Automatico','Gerador de QR Code','Editor de Video Pro','Gerador de Ebooks Premium','Gerador de Animacoes','IA Video Generator 8K','AI Funil Builder']
+  trimestral: ['Gerador de Scripts IA','Criador de Thumbnails','Analisador de Trends','Otimizador de SEO','Gerador de Hashtags','Criador de Logos','Agendamento Multiplataforma','IA de Copywriting','Tradutor Automático'],
+  semestral: ['Gerador de Scripts IA','Criador de Thumbnails','Analisador de Trends','Otimizador de SEO','Gerador de Hashtags','Criador de Logos','Agendamento Multiplataforma','IA de Copywriting','Tradutor Automático','Gerador de QR Code','Editor de Vídeo Pro','Gerador de Ebooks Premium'],
+  anual: ['Gerador de Scripts IA','Criador de Thumbnails','Analisador de Trends','Otimizador de SEO','Gerador de Hashtags','Criador de Logos','Agendamento Multiplataforma','IA de Copywriting','Tradutor Automático','Gerador de QR Code','Editor de Vídeo Pro','Gerador de Ebooks Premium','Gerador de Animações','IA Video Generator 8K','AI Funil Builder']
 };
 
 function getPlanKey(pt) {
