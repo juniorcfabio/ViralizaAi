@@ -9,6 +9,7 @@
     }
   },
   "rewrites": [
+    { "source": "/api/activate-plan", "destination": "/api/catchall?route=activate-plan" },
     { "source": "/api/auth/:action", "destination": "/api/auth-handler?action=:action" },
     { "source": "/api/admin/:action", "destination": "/api/admin-handler?action=:action" },
     { "source": "/api/health/:path*", "destination": "/api/catchall?route=health/:path*" },

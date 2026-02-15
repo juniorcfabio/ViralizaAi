@@ -58,7 +58,38 @@ const BillingPage: React.FC = () => {
         anual: 799.90
     };
 
-    const currentPlan = plans.find(p => p.id === user?.plan);
+    const [activePlanFromDB, setActivePlanFromDB] = useState<string | null>(null);
+    const [activeToolsFromDB, setActiveToolsFromDB] = useState<string[]>([]);
+    const [planExpiresAt, setPlanExpiresAt] = useState<string | null>(null);
+
+    // Buscar plano ativo REAL do banco de dados
+    useEffect(() => {
+        const fetchActivePlan = async () => {
+            if (!user?.id) return;
+            try {
+                const res = await fetch(`/api/activate-plan?userId=${user.id}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.plan && data.planStatus === 'active') {
+                        setActivePlanFromDB(data.plan);
+                        setActiveToolsFromDB(data.tools || []);
+                        setPlanExpiresAt(data.expiresAt);
+                        console.log('📋 Plano ativo do banco:', data.plan, `(${data.toolsCount} ferramentas)`);
+                    }
+                }
+            } catch (e) {
+                console.warn('Erro ao buscar plano:', e);
+            }
+        };
+        fetchActivePlan();
+        // Refresh a cada 30s para capturar aprovações do admin em tempo real
+        const interval = setInterval(fetchActivePlan, 30000);
+        return () => clearInterval(interval);
+    }, [user?.id]);
+
+    // Usar plano do banco OU do auth context
+    const effectivePlan = activePlanFromDB || user?.plan || null;
+    const currentPlan = plans.find(p => p.id === effectivePlan) || (effectivePlan ? { id: effectivePlan, name: effectivePlan.charAt(0).toUpperCase() + effectivePlan.slice(1), price: '', period: '', features: [] } : null);
     const hasGrowthEngine = user?.addOns?.includes('growthEngine');
 
     const showNotification = (message: string) => {
@@ -252,8 +283,18 @@ const BillingPage: React.FC = () => {
                                     {currentPlan.name}
                                 </p>
                                 <p className="text-lg text-gray-dark">
-                                    R$ {currentPlan.price}{currentPlan.period}
+                                    {currentPlan.price ? `R$ ${currentPlan.price}${currentPlan.period}` : ''}
                                 </p>
+                                {activeToolsFromDB.length > 0 && (
+                                    <p className="text-sm text-green-400 mt-2">
+                                        ✅ {activeToolsFromDB.length} ferramentas ativas
+                                    </p>
+                                )}
+                                {planExpiresAt && (
+                                    <p className="text-xs text-gray-dark mt-1">
+                                        Válido até: {new Date(planExpiresAt).toLocaleDateString('pt-BR')}
+                                    </p>
+                                )}
                                 <div className="mt-6 flex space-x-2">
                                     <button
                                         onClick={handlePlansScroll}

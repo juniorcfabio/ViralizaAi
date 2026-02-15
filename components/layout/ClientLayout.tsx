@@ -8,11 +8,31 @@ import { supabase } from '../../src/lib/supabase';
 
 const ClientLayout: React.FC = () => {
     const { user, updateUser } = useAuth();
-    const userPlan = user?.plan?.toLowerCase();
-    const hasPlan = !!userPlan && user?.type !== 'admin';
+    const [dbPlan, setDbPlan] = useState<string | null>(null);
+    const userPlan = dbPlan || user?.plan?.toLowerCase();
+    const hasPlan = (!!userPlan && user?.type !== 'admin') || user?.type === 'admin';
     const location = useLocation();
     const navigate = useNavigate();
     const [checkoutProcessed, setCheckoutProcessed] = useState(false);
+
+    // Buscar plano real do banco a cada 15s para refletir aprovações do admin
+    useEffect(() => {
+        const fetchPlan = async () => {
+            if (!user?.id || user.type === 'admin') return;
+            try {
+                const res = await fetch(`/api/activate-plan?userId=${user.id}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.plan && data.planStatus === 'active') {
+                        setDbPlan(data.plan);
+                    }
+                }
+            } catch { /* silencioso */ }
+        };
+        fetchPlan();
+        const interval = setInterval(fetchPlan, 15000);
+        return () => clearInterval(interval);
+    }, [user?.id]);
 
     // Rotas que NÃO precisam de assinatura (billing, affiliate, settings)
     const freeRoutes = ['/dashboard/billing', '/dashboard/affiliate', '/dashboard/settings', '/dashboard/targeting-areas'];
@@ -29,66 +49,48 @@ const ClientLayout: React.FC = () => {
             setCheckoutProcessed(true);
             console.log('✅ Checkout success detectado, plano:', planSlug);
 
-            // Buscar subscription ativa do usuário no Supabase
+            // Ativar plano via API server-side após checkout Stripe
             const activateFromCheckout = async () => {
                 try {
                     const { data: session } = await supabase.auth.getSession();
                     const userId = session?.session?.user?.id;
+                    if (!userId) return;
 
-                    if (userId) {
-                        // Buscar subscription ativa
-                        const { data: subs } = await supabase
-                            .from('subscriptions')
-                            .select('*, subscription_plans(*)')
-                            .eq('user_id', userId)
-                            .eq('status', 'active')
-                            .order('created_at', { ascending: false })
-                            .limit(1);
+                    const planToActivate = planSlug || 'mensal';
+                    console.log('🔐 Ativando plano via API após Stripe checkout:', planToActivate);
 
-                        if (subs?.length) {
-                            const activePlan = subs[0].plan_type || planSlug || 'mensal';
-                            console.log('✅ Plano ativo encontrado:', activePlan);
-
-                            // Atualizar usuário no contexto
-                            if (user && updateUser) {
-                                await updateUser(user.id, { plan: activePlan });
+                    // Chamar API server-side para ativar plano completo (user_profiles + user_access + auth metadata)
+                    const activateRes = await fetch('/api/activate-plan', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId,
+                            planType: planToActivate,
+                            paymentMethod: 'stripe',
+                            amount: 0
+                        })
+                    });
+                    const activateData = await activateRes.json();
+                    if (activateData.success) {
+                        console.log('✅ Plano ativado via API:', activateData);
+                        setDbPlan(activateData.plan);
+                        navigate('/dashboard/ultra-tools', { replace: true });
+                    } else {
+                        console.error('Erro na ativação:', activateData);
+                        // Fallback: tentar novamente em 3s (webhook pode estar processando)
+                        setTimeout(async () => {
+                            const res2 = await fetch('/api/activate-plan', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId, planType: planToActivate, paymentMethod: 'stripe', amount: 0 })
+                            });
+                            const data2 = await res2.json();
+                            if (data2.success) {
+                                setDbPlan(data2.plan);
+                                navigate('/dashboard/ultra-tools', { replace: true });
                             }
-
-                            // Redirecionar para ferramentas
-                            navigate('/dashboard/ultra-tools', { replace: true });
-                            return;
-                        }
+                        }, 3000);
                     }
-
-                    // Se não encontrou subscription ainda (webhook pode demorar)
-                    // Tentar novamente após 3 segundos
-                    setTimeout(async () => {
-                        const { data: session2 } = await supabase.auth.getSession();
-                        const uid2 = session2?.session?.user?.id;
-                        if (uid2) {
-                            const { data: subs2 } = await supabase
-                                .from('subscriptions')
-                                .select('*')
-                                .eq('user_id', uid2)
-                                .eq('status', 'active')
-                                .limit(1);
-
-                            if (subs2?.length) {
-                                const plan = subs2[0].plan_type || planSlug || 'mensal';
-                                if (user && updateUser) {
-                                    await updateUser(user.id, { plan });
-                                }
-                                navigate('/dashboard/ultra-tools', { replace: true });
-                            } else if (planSlug) {
-                                // Fallback: ativar com planSlug da URL
-                                if (user && updateUser) {
-                                    await updateUser(user.id, { plan: planSlug });
-                                }
-                                navigate('/dashboard/ultra-tools', { replace: true });
-                            }
-                        }
-                    }, 3000);
-
                 } catch (err) {
                     console.error('Erro ao processar checkout success:', err);
                 }

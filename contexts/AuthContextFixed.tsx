@@ -119,13 +119,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (session?.user) {
             console.log('✅ Sessão Supabase encontrada:', session.user.email);
             
+            // Buscar plano REAL do banco de dados via API (não confiar só em auth metadata)
+            let activePlan: string | undefined = session.user.user_metadata?.plan || undefined;
+            try {
+              const planRes = await fetch(`/api/activate-plan?userId=${session.user.id}`);
+              if (planRes.ok) {
+                const planData = await planRes.json();
+                if (planData.success && planData.plan && planData.planStatus === 'active') {
+                  activePlan = planData.plan;
+                  console.log('📋 Plano ativo encontrado no banco:', activePlan, `(${planData.toolsCount} ferramentas)`);
+                }
+              }
+            } catch (e) {
+              console.warn('⚠️ Erro ao buscar plano do banco:', e);
+            }
+            
             const userData: User = {
               id: session.user.id,
               name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
               email: session.user.email || '',
               type: 'client',
               status: 'Ativo',
-              plan: session.user.user_metadata?.plan || undefined,
+              plan: activePlan,
               joinedDate: new Date().toISOString().split('T')[0],
               socialAccounts: [],
               paymentMethods: [],
@@ -141,7 +156,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
           
           // Listener para mudanças de autenticação - APENAS para clientes
-          const { data: { subscription } } = onAuthStateChange((event, session) => {
+          const { data: { subscription } } = onAuthStateChange(async (event, session) => {
             console.log('🔄 Auth state changed:', event, session?.user?.email);
             
             // Ignorar mudanças se estiver em rota admin
@@ -151,13 +166,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
             
             if (event === 'SIGNED_IN' && session?.user) {
+              // Buscar plano real do banco
+              let activePlan: string | undefined = session.user.user_metadata?.plan || undefined;
+              try {
+                const planRes = await fetch(`/api/activate-plan?userId=${session.user.id}`);
+                if (planRes.ok) {
+                  const planData = await planRes.json();
+                  if (planData.success && planData.plan && planData.planStatus === 'active') {
+                    activePlan = planData.plan;
+                  }
+                }
+              } catch (e) { /* silencioso */ }
+
               const userData: User = {
                 id: session.user.id,
                 name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
                 email: session.user.email || '',
                 type: 'client',
                 status: 'Ativo',
-                plan: session.user.user_metadata?.plan || undefined,
+                plan: activePlan,
                 joinedDate: new Date().toISOString().split('T')[0],
                 socialAccounts: [],
                 paymentMethods: [],

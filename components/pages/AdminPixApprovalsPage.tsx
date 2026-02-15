@@ -143,7 +143,7 @@ const AdminPixApprovalsPage: React.FC = () => {
 
       console.log(`Aprovando PIX: user=${payment.user_id}, plan=${planKey}, tools=${tools.length}`);
 
-      // 1. Ativar subscription
+      // 1. Ativar subscription no banco
       const { error: subError } = await supabase
         .from('subscriptions')
         .update({ status: 'active', updated_at: now })
@@ -156,42 +156,26 @@ const AdminPixApprovalsPage: React.FC = () => {
         .update({ status: 'completed' })
         .eq('payment_id', payment.payment_id);
 
-      // 3. Atualizar user_profiles com o plano
-      await supabase
-        .from('user_profiles')
-        .update({
-          plan: planKey,
-          plan_status: 'active',
-          updated_at: now
-        })
-        .eq('user_id', payment.user_id);
-
-      // 4. CRITICO: Inserir acesso a TODAS as ferramentas do plano na tabela user_access
-      for (const toolName of tools) {
-        await supabase
-          .from('user_access')
-          .upsert({
-            user_id: payment.user_id,
-            tool_name: toolName,
-            access_type: 'subscription',
-            is_active: true,
-            valid_until: validUntil,
-            updated_at: now
-          }, { onConflict: 'user_id,tool_name' });
-      }
-
-      // 5. Log
-      await supabase.from('activity_logs').insert({
-        user_id: payment.user_id,
-        action: 'pix_payment_approved_by_admin',
-        details: JSON.stringify({
-          subscription_id: payment.id,
-          plan_type: planKey,
+      // 3. CHAMAR API SERVER-SIDE para ativar plano COMPLETO
+      // (atualiza user_profiles, user_access, E auth.users metadata via SERVICE_ROLE_KEY)
+      const activateRes = await fetch('/api/activate-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: payment.user_id,
+          planType: planKey,
           amount: payment.amount,
-          tools_activated: tools.length,
-          valid_until: validUntil
+          paymentMethod: 'pix',
+          paymentId: payment.payment_id,
+          subscriptionId: payment.id
         })
       });
+      const activateData = await activateRes.json();
+      if (!activateData.success) {
+        console.error('Erro ao ativar plano via API:', activateData);
+        throw new Error(activateData.error || 'Falha na ativação do plano');
+      }
+      console.log('API activate-plan respondeu:', activateData);
 
       console.log(`Plano ${planKey} ativado: ${tools.length} ferramentas liberadas ate ${validUntil}`);
       showNotification(`Pagamento aprovado! Plano ${planKey.toUpperCase()} ativado para ${payment.user_name} com ${tools.length} ferramentas.`);
