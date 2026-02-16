@@ -107,17 +107,17 @@ class RealAffiliateService {
   async getSettings(): Promise<AffiliateSettings> {
     if (this.settingsCache) return this.settingsCache;
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('system_settings')
         .select('value')
         .eq('key', 'affiliate_settings')
-        .single();
-      if (data?.value) {
+        .maybeSingle();
+      if (!error && data?.value) {
         this.settingsCache = { ...DEFAULT_SETTINGS, ...data.value } as AffiliateSettings;
         return this.settingsCache;
       }
     } catch (e) {
-      console.warn('⚠️ Erro ao carregar settings de afiliados:', e);
+      console.warn('⚠️ Settings de afiliados não encontradas, usando padrão');
     }
     this.settingsCache = DEFAULT_SETTINGS;
     return DEFAULT_SETTINGS;
@@ -151,7 +151,7 @@ class RealAffiliateService {
       // Verificar se já existe
       const existing = await this.getAffiliateByUserId(userId);
       if (existing) {
-        console.log('✅ Afiliado já existe:', existing.referral_code);
+        console.log('✅ Afiliado já existe:', existing.referral_code || existing.referral_code || (existing as any).code);
         return existing;
       }
 
@@ -159,89 +159,110 @@ class RealAffiliateService {
       const referralCode = `VIR${userId.slice(-6).toUpperCase()}${Date.now().toString().slice(-4)}`;
       const now = new Date().toISOString();
 
-      // Tentar insert com todas as colunas
-      const fullData: Record<string, any> = {
-        user_id: userId,
-        name,
-        email,
-        referral_code: referralCode,
-        status: 'active',
-        commission_rate: settings.commission_rate,
-        total_earnings: 0,
-        pending_balance: 0,
-        available_balance: 0,
-        total_referrals: 0,
-        total_clicks: 0,
-        payment_method: null,
-        created_at: now,
-        updated_at: now
-      };
+      // Estratégia: tentar vários conjuntos de colunas do maior ao menor
+      const attempts: Record<string, any>[] = [
+        // Tentativa 1: Todas as colunas
+        {
+          user_id: userId, name, email, referral_code: referralCode,
+          status: 'active', commission_rate: settings.commission_rate,
+          total_earnings: 0, pending_balance: 0, available_balance: 0,
+          total_referrals: 0, total_clicks: 0,
+          created_at: now, updated_at: now
+        },
+        // Tentativa 2: Sem colunas financeiras
+        {
+          user_id: userId, name, email, referral_code: referralCode,
+          status: 'active', commission_rate: settings.commission_rate,
+          created_at: now, updated_at: now
+        },
+        // Tentativa 3: Usando 'code' em vez de 'referral_code' (esquema alternativo)
+        {
+          user_id: userId, code: referralCode, status: 'active',
+          name, email, commission_rate: settings.commission_rate,
+          created_at: now
+        },
+        // Tentativa 4: Esquema mínimo com 'code'
+        {
+          user_id: userId, code: referralCode, status: 'active'
+        },
+        // Tentativa 5: Absoluto mínimo
+        {
+          user_id: userId, status: 'active'
+        }
+      ];
 
-      let { data, error } = await supabase
-        .from('affiliates')
-        .insert(fullData)
-        .select()
-        .single();
+      let data: any = null;
+      let lastError: any = null;
 
-      // Se erro de coluna inexistente, tentar com colunas mínimas
-      if (error && (error.message?.includes('column') || error.message?.includes('schema cache') || error.code === '42703' || error.code === 'PGRST204')) {
-        console.warn('⚠️ Colunas extras não existem na tabela affiliates, tentando com colunas mínimas...');
-        const minimalData: Record<string, any> = {
-          user_id: userId,
-          name,
-          email,
-          referral_code: referralCode,
-          status: 'active',
-          commission_rate: settings.commission_rate,
-          created_at: now,
-          updated_at: now
-        };
-
-        const retry = await supabase
+      for (let i = 0; i < attempts.length; i++) {
+        const attemptData = attempts[i];
+        console.log(`🔄 Tentativa ${i + 1} de ativação de afiliado com ${Object.keys(attemptData).length} colunas...`);
+        
+        const result = await supabase
           .from('affiliates')
-          .insert(minimalData)
+          .insert(attemptData)
           .select()
-          .single();
-        data = retry.data;
-        error = retry.error;
-      }
+          .maybeSingle();
 
-      if (error) {
-        // Se já existe (duplicate key), buscar
-        if (error.code === '23505') {
+        if (!result.error) {
+          data = result.data;
+          lastError = null;
+          console.log(`✅ Afiliado ativado na tentativa ${i + 1}`);
+          break;
+        }
+
+        lastError = result.error;
+
+        // Se já existe (duplicate key), buscar o existente
+        if (result.error.code === '23505') {
+          console.log('ℹ️ Afiliado já existe (duplicate key), buscando...');
           return await this.getAffiliateByUserId(userId);
         }
-        throw error;
+
+        // Se não é erro de coluna/schema, parar
+        const isColumnError = result.error.message?.includes('column') || 
+          result.error.message?.includes('schema cache') || 
+          result.error.code === '42703' || 
+          result.error.code === 'PGRST204';
+        
+        if (!isColumnError) {
+          console.error(`❌ Erro não relacionado a colunas: ${result.error.message}`);
+          break;
+        }
+
+        console.warn(`⚠️ Tentativa ${i + 1} falhou (coluna inexistente): ${result.error.message}`);
       }
 
-      console.log('✅ Afiliado ativado:', referralCode);
+      if (lastError && !data) {
+        console.error('❌ Todas as tentativas falharam:', lastError);
+        return null;
+      }
 
       // Garantir que o objeto retornado tenha todos os campos esperados
       const result: AffiliateAccount = {
-        id: data?.id,
+        id: data?.id || '',
         user_id: userId,
-        name,
-        email,
-        referral_code: referralCode,
+        name: data?.name || name,
+        email: data?.email || email,
+        referral_code: data?.referral_code || data?.code || referralCode,
         status: 'active',
-        commission_rate: settings.commission_rate,
+        commission_rate: data?.commission_rate ?? settings.commission_rate,
         total_earnings: data?.total_earnings ?? 0,
         pending_balance: data?.pending_balance ?? 0,
         available_balance: data?.available_balance ?? 0,
         total_referrals: data?.total_referrals ?? 0,
         total_clicks: data?.total_clicks ?? 0,
-        bank_name: null,
-        bank_agency: null,
-        bank_account: null,
-        bank_account_type: null,
-        pix_key: null,
-        pix_key_type: null,
-        account_holder_name: null,
-        account_holder_cpf: null,
-        payment_method: null,
-        created_at: now,
-        updated_at: now,
-        ...data
+        bank_name: data?.bank_name || null,
+        bank_agency: data?.bank_agency || null,
+        bank_account: data?.bank_account || null,
+        bank_account_type: data?.bank_account_type || null,
+        pix_key: data?.pix_key || null,
+        pix_key_type: data?.pix_key_type || null,
+        account_holder_name: data?.account_holder_name || null,
+        account_holder_cpf: data?.account_holder_cpf || null,
+        payment_method: data?.payment_method || null,
+        created_at: data?.created_at || now,
+        updated_at: data?.updated_at || now
       };
 
       return result;
@@ -267,12 +288,30 @@ class RealAffiliateService {
 
   async getAffiliateByCode(referralCode: string): Promise<AffiliateAccount | null> {
     try {
-      const { data, error } = await supabase
+      // Tentar com referral_code primeiro
+      let { data, error } = await supabase
         .from('affiliates')
         .select('*')
         .eq('referral_code', referralCode)
         .maybeSingle();
-      if (error) throw error;
+      
+      // Se falhar (coluna não existe), tentar com 'code'
+      if (error || !data) {
+        const retry = await supabase
+          .from('affiliates')
+          .select('*')
+          .eq('code', referralCode)
+          .maybeSingle();
+        if (!retry.error && retry.data) {
+          data = retry.data;
+        }
+      }
+      
+      if (!data) return null;
+      // Normalizar: garantir referral_code no objeto
+      if (!(data as any).referral_code && (data as any).code) {
+        (data as any).referral_code = (data as any).code;
+      }
       return data as AffiliateAccount | null;
     } catch {
       return null;

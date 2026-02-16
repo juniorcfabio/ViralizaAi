@@ -7,11 +7,12 @@ interface UserProfile {
   email: string;
   user_type: 'admin' | 'client';
   status: 'active' | 'inactive' | 'suspended';
-  joined_date: string;
+  joined_date?: string;
+  created_at?: string;
   avatar_url?: string;
   phone?: string;
   company?: string;
-  preferences: Record<string, any>;
+  preferences?: Record<string, any>;
 }
 
 interface DashboardData {
@@ -46,16 +47,42 @@ class SupabaseStorageService {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error('Usuário não autenticado');
 
-      const { data, error } = await supabase
+      // Montar dados apenas com colunas seguras (sem joined_date que pode não existir)
+      const safeProfile: Record<string, any> = {
+        id: user.user.id,
+        user_id: user.user.id,
+        name: profile.name,
+        email: profile.email,
+        user_type: profile.user_type || 'client',
+        status: profile.status || 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      let { data, error } = await supabase
         .from('user_profiles')
-        .insert({
-          id: user.user.id,
-          ...profile
-        })
+        .upsert(safeProfile, { onConflict: 'user_id' })
         .select()
         .single();
 
-      if (error) throw error;
+      // Se falhar por coluna, tentar com menos campos
+      if (error) {
+        console.warn('⚠️ Perfil com campos mínimos:', error.message);
+        const minProfile: Record<string, any> = {
+          user_id: user.user.id,
+          email: profile.email,
+          plan: 'free',
+          plan_status: 'inactive'
+        };
+        const retry = await supabase.from('user_profiles').upsert(minProfile, { onConflict: 'user_id' }).select().maybeSingle();
+        data = retry.data;
+        error = retry.error;
+      }
+
+      if (error) {
+        console.warn('⚠️ Não foi possível criar perfil, continuando:', error.message);
+        return null;
+      }
       console.log('✅ Perfil criado no Supabase:', data);
       return data;
     } catch (error) {
@@ -277,10 +304,14 @@ class SupabaseStorageService {
           ...activity
         });
 
-      if (error) throw error;
+      if (error) {
+        // Não falhar por RLS ou tabela inexistente - log é secundário
+        console.warn('⚠️ Log de atividade não registrado (RLS/permissão):', error.message);
+        return false;
+      }
       return true;
-    } catch (error) {
-      console.error('❌ Erro ao registrar atividade:', error);
+    } catch (error: any) {
+      console.warn('⚠️ Log de atividade ignorado:', error?.message || error);
       return false;
     }
   }

@@ -230,8 +230,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           email: data.email,
           user_type: 'client',
           status: 'active',
-          joined_date: new Date().toISOString(),
-          preferences: {}
+          created_at: new Date().toISOString()
         });
 
         const userData: User = {
