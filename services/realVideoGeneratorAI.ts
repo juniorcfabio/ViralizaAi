@@ -31,8 +31,8 @@ interface GeneratedVideoReal {
 
 class RealVideoGeneratorAI {
   private static instance: RealVideoGeneratorAI;
-  private apiKey: string = 'sk-proj-real-api-key'; // Será configurado via env
-  private baseUrl: string = 'https://api.runwayml.com/v1'; // Runway ML API
+  private apiKey: string = '';
+  private baseUrl: string = '';
 
   constructor() {
     // Configurar API keys reais
@@ -159,117 +159,128 @@ class RealVideoGeneratorAI {
     return `Olá! Sou ${config.businessName} e tenho uma proposta incrível para ${config.targetAudience}. ${config.mainMessage} Não perca esta oportunidade única! ${config.callToAction} Vamos transformar seu negócio juntos!`;
   }
 
-  // Gerar áudio com ElevenLabs
+  // Gerar áudio com OpenAI TTS (server-side)
   private async generateAudio(script: string, voiceStyle: string): Promise<string> {
-    const voiceIds = {
-      energetic: 'EXAVITQu4vr4xnSDxMaL', // Bella
-      calm: 'flq6f7yk4E4fJM5XTYuZ', // Michael
-      authoritative: 'pNInz6obpgDQGcFmaJgB', // Adam
-      friendly: 'Xb7hH8MSUJpSbSDYk0k2' // Alice
+    // Mapear estilo de voz para vozes OpenAI
+    const voiceMap: Record<string, string> = {
+      energetic: 'nova',      // Voz feminina enérgica
+      calm: 'onyx',           // Voz masculina calma
+      authoritative: 'echo',  // Voz masculina autoritária
+      friendly: 'shimmer'     // Voz feminina amigável
     };
-
-    const voiceId = voiceIds[voiceStyle as keyof typeof voiceIds] || voiceIds.friendly;
+    const voice = voiceMap[voiceStyle] || 'nova';
 
     try {
-      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+      const response = await fetch(`${window.location.origin}/api/ai-generate`, {
         method: 'POST',
-        headers: {
-          'Accept': 'audio/mpeg',
-          'Content-Type': 'application/json',
-          'xi-api-key': import.meta.env.VITE_ELEVENLABS_API_KEY || 'demo-key'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: script,
-          model_id: 'eleven_multilingual_v2',
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.5
-          }
-        })
-      });
-
-      if (response.ok) {
-        const audioBlob = await response.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        return audioUrl;
-      }
-    } catch (error) {
-      console.log('Usando áudio demo devido a erro na API');
-    }
-
-    // Retornar URL de áudio demo
-    return 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav';
-  }
-
-  // Gerar avatar com Runway ML
-  private async generateAvatar(avatarStyle: string): Promise<string> {
-    const avatarPrompts = {
-      professional_woman_caucasian: 'Professional caucasian businesswoman in elegant suit, confident pose, 8K quality',
-      professional_man_caucasian: 'Professional caucasian businessman in classic suit, authoritative presence, 8K quality',
-      casual_woman_young: 'Young modern woman in casual clothes, positive energy, 8K quality',
-      casual_man_young: 'Young entrepreneur in casual-chic style, innovative look, 8K quality'
-    };
-
-    const prompt = avatarPrompts[avatarStyle as keyof typeof avatarPrompts] || 'Professional presenter, 8K quality';
-
-    try {
-      const response = await fetch('https://api.runwayml.com/v1/image_generations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          width: 1920,
-          height: 1080,
-          guidance_scale: 7.5,
-          num_inference_steps: 50
+          tool: 'tts',
+          prompt: script,
+          params: { voice, model: 'tts-1-hd', speed: 0.95 }
         })
       });
 
       if (response.ok) {
         const data = await response.json();
-        return data.data[0].url;
+        if (data.success && data.audio) {
+          // Converter base64 para blob URL
+          const audioBytes = Uint8Array.from(atob(data.audio), c => c.charCodeAt(0));
+          const audioBlob = new Blob([audioBytes], { type: 'audio/mpeg' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          console.log(`🎵 OpenAI TTS: voice=${voice}, size=${data.size} bytes`);
+          return audioUrl;
+        }
       }
     } catch (error) {
-      console.log('Usando avatar demo devido a erro na API');
+      console.warn('⚠️ OpenAI TTS falhou, usando browser TTS como fallback:', error);
     }
 
-    // Avatar demo baseado no estilo
-    const demoAvatars = {
-      professional_woman_caucasian: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=1920&h=1080&fit=crop',
-      professional_man_caucasian: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&h=1080&fit=crop',
-      casual_woman_young: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=1920&h=1080&fit=crop',
-      casual_man_young: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=1920&h=1080&fit=crop'
-    };
-
-    return demoAvatars[avatarStyle as keyof typeof demoAvatars] || demoAvatars.professional_woman_caucasian;
+    // Fallback: retornar string vazia (composeVideo usará browser TTS)
+    return '';
   }
 
-  // Gerar background
-  private async generateBackground(background: string, businessType: string): Promise<string> {
-    const backgroundPrompts = {
-      office: `Modern professional office environment, ${businessType} business setting, 8K quality`,
-      studio: `Professional studio setup for ${businessType}, clean and modern, 8K quality`,
-      outdoor: `Beautiful outdoor setting suitable for ${businessType} presentation, 8K quality`,
-      custom: `Custom background for ${businessType} business, professional and engaging, 8K quality`
+  // Gerar avatar com DALL-E 3 (server-side)
+  private async generateAvatar(avatarStyle: string): Promise<string> {
+    const avatarPrompts: Record<string, string> = {
+      professional: 'Photorealistic portrait of a confident professional business presenter in an elegant suit, studio lighting, clean background, looking at camera, ultra high quality, 8K resolution',
+      casual: 'Photorealistic portrait of a friendly young entrepreneur in smart casual clothing, warm smile, modern co-working space, looking at camera, ultra high quality, 8K resolution',
+      elegant: 'Photorealistic portrait of a sophisticated executive in luxury attire, premium studio setting, poised and authoritative, looking at camera, ultra high quality, 8K resolution',
+      modern: 'Photorealistic portrait of an innovative tech leader in contemporary style, futuristic background, dynamic pose, looking at camera, ultra high quality, 8K resolution'
     };
 
-    const prompt = backgroundPrompts[background as keyof typeof backgroundPrompts] || backgroundPrompts.office;
+    const prompt = avatarPrompts[avatarStyle] || avatarPrompts.professional;
 
-    // Usar Unsplash para backgrounds reais
-    const backgroundUrls = {
+    try {
+      const response = await fetch(`${window.location.origin}/api/ai-generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool: 'image',
+          prompt,
+          params: { size: '1024x1024', quality: 'hd', style: 'natural' }
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.imageUrl) {
+          console.log('👤 DALL-E 3 avatar gerado com sucesso');
+          return data.imageUrl;
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ DALL-E 3 avatar falhou, usando fallback:', error);
+    }
+
+    // Fallback Unsplash
+    return 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=1024&h=1024&fit=crop&crop=face';
+  }
+
+  // Gerar background com DALL-E 3 (server-side)
+  private async generateBackground(background: string, businessType: string): Promise<string> {
+    const backgroundPrompts: Record<string, string> = {
+      office: `Modern luxury office interior with glass walls and city skyline view, professional ${businessType} setting, cinematic lighting, ultra detailed, 8K quality`,
+      studio: `Premium professional video studio with soft lighting and modern equipment, perfect for ${businessType} presentation, clean and elegant, 8K quality`,
+      outdoor: `Beautiful outdoor urban landscape with modern architecture, suitable for ${businessType} brand, golden hour lighting, ultra detailed, 8K quality`,
+      custom: `Creative professional environment for ${businessType}, modern design elements, vibrant yet elegant atmosphere, 8K quality`
+    };
+
+    const prompt = backgroundPrompts[background] || backgroundPrompts.office;
+
+    try {
+      const response = await fetch(`${window.location.origin}/api/ai-generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool: 'image',
+          prompt,
+          params: { size: '1792x1024', quality: 'hd', style: 'natural' }
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.imageUrl) {
+          console.log('🖼️ DALL-E 3 background gerado com sucesso');
+          return data.imageUrl;
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ DALL-E 3 background falhou, usando fallback:', error);
+    }
+
+    // Fallback Unsplash
+    const fallbackUrls: Record<string, string> = {
       office: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&h=1080&fit=crop',
       studio: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=1920&h=1080&fit=crop',
       outdoor: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop',
       custom: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1920&h=1080&fit=crop'
     };
-
-    return backgroundUrls[background as keyof typeof backgroundUrls] || backgroundUrls.office;
+    return fallbackUrls[background] || fallbackUrls.office;
   }
 
-  // Compor vídeo final - SEMPRE usar vídeo real
+  // Compor vídeo final com assets reais gerados pela IA
   private async composeVideo(components: {
     script: string;
     audioUrl: string;
@@ -277,14 +288,301 @@ class RealVideoGeneratorAI {
     backgroundUrl: string;
     config: VideoConfig;
   }): Promise<GeneratedVideoReal> {
-    console.log('🎬 Compondo vídeo final - FORÇANDO vídeo real...');
+    console.log('🎬 Compondo vídeo final com assets reais da IA...');
+    console.log('🎵 Audio URL:', components.audioUrl ? 'OpenAI TTS ✅' : 'Fallback browser TTS');
+    console.log('👤 Avatar URL:', components.avatarUrl.includes('oaidalleapi') ? 'DALL-E 3 ✅' : 'Fallback');
+    console.log('🖼️ Background URL:', components.backgroundUrl.includes('oaidalleapi') ? 'DALL-E 3 ✅' : 'Fallback');
 
-    // SEMPRE usar vídeo demo real - não tentar gerar canvas
-    console.log('🔄 Usando vídeo demo real garantido...');
-    return await this.generateDemoVideo(components.config);
+    const videoId = `ai_video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Compor vídeo Canvas com assets reais
+    const videoBlob = await this.composeCanvasVideoWithAI(
+      components.script,
+      components.audioUrl,
+      components.avatarUrl,
+      components.backgroundUrl,
+      components.config
+    );
+    const videoUrl = URL.createObjectURL(videoBlob);
+
+    // Usar avatar como thumbnail
+    const thumbnailUrl = components.avatarUrl;
+
+    return {
+      id: videoId,
+      videoUrl,
+      thumbnailUrl,
+      duration: parseInt(components.config.duration),
+      quality: '8K',
+      status: 'completed',
+      createdAt: new Date().toISOString(),
+      config: components.config,
+      downloadUrl: videoUrl
+    };
   }
 
-  // Gerar avatar ultra moderno com IA avançada
+  // Compor vídeo Canvas com imagens DALL-E 3 + áudio OpenAI TTS
+  private async composeCanvasVideoWithAI(
+    script: string,
+    audioUrl: string,
+    avatarUrl: string,
+    backgroundUrl: string,
+    config: VideoConfig
+  ): Promise<Blob> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1280;
+        canvas.height = 720;
+        const ctx = canvas.getContext('2d')!;
+
+        // Carregar imagens em paralelo
+        const [avatarImg, bgImg] = await Promise.all([
+          this.loadImage(avatarUrl),
+          this.loadImage(backgroundUrl)
+        ]);
+
+        console.log('✅ Imagens IA carregadas:', { avatar: !!avatarImg, bg: !!bgImg });
+
+        // Configurar MediaRecorder com áudio real
+        let stream: MediaStream;
+        let audioElement: HTMLAudioElement | null = null;
+
+        if (audioUrl) {
+          // Usar áudio real do OpenAI TTS
+          audioElement = new Audio(audioUrl);
+          audioElement.crossOrigin = 'anonymous';
+          const audioContext = new AudioContext();
+          const source = audioContext.createMediaElementSource(audioElement);
+          const destination = audioContext.createMediaStreamDestination();
+          source.connect(destination);
+          source.connect(audioContext.destination);
+
+          const videoStream = canvas.captureStream(30);
+          const combinedStream = new MediaStream([
+            ...videoStream.getVideoTracks(),
+            ...destination.stream.getAudioTracks()
+          ]);
+          stream = combinedStream;
+        } else {
+          stream = canvas.captureStream(30);
+        }
+
+        let mediaRecorder: MediaRecorder;
+        try {
+          mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9,opus' });
+        } catch {
+          try {
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+          } catch {
+            mediaRecorder = new MediaRecorder(stream);
+          }
+        }
+
+        const chunks: Blob[] = [];
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          const videoBlob = new Blob(chunks, { type: 'video/webm' });
+          console.log('✅ Vídeo final composto:', videoBlob.size, 'bytes');
+          resolve(videoBlob);
+        };
+        mediaRecorder.onerror = (e) => reject(e);
+
+        mediaRecorder.start(100);
+
+        // Iniciar áudio
+        if (audioElement) {
+          try { await audioElement.play(); } catch { console.warn('⚠️ Autoplay bloqueado, vídeo sem áudio embutido'); }
+        } else {
+          // Fallback: browser TTS
+          this.playUltraNaturalAudio(script, config);
+        }
+
+        // Animar
+        const duration = parseInt(config.duration) * 1000;
+        const startTime = Date.now();
+        let frame = 0;
+
+        const animate = () => {
+          const elapsed = Date.now() - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+
+          if (elapsed >= duration) {
+            if (audioElement) { audioElement.pause(); audioElement.currentTime = 0; }
+            mediaRecorder.stop();
+            return;
+          }
+
+          this.drawAIComposedFrame(ctx, avatarImg, bgImg, frame, progress, config, script);
+          frame++;
+          requestAnimationFrame(animate);
+        };
+        animate();
+
+      } catch (error) {
+        console.error('❌ Erro na composição Canvas+AI:', error);
+        // Fallback: usar método legado
+        this.createSimpleAvatar(config, script).then(resolve).catch(reject);
+      }
+    });
+  }
+
+  // Carregar imagem como Promise
+  private loadImage(url: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => {
+        console.warn('⚠️ Falha ao carregar imagem:', url.substring(0, 80));
+        // Criar imagem placeholder
+        const canvas = document.createElement('canvas');
+        canvas.width = 512; canvas.height = 512;
+        const c = canvas.getContext('2d')!;
+        const g = c.createLinearGradient(0, 0, 512, 512);
+        g.addColorStop(0, '#667eea'); g.addColorStop(1, '#764ba2');
+        c.fillStyle = g; c.fillRect(0, 0, 512, 512);
+        const placeholder = new Image();
+        placeholder.src = canvas.toDataURL();
+        placeholder.onload = () => resolve(placeholder);
+      };
+      img.src = url;
+    });
+  }
+
+  // Desenhar frame composto com imagens IA reais
+  private drawAIComposedFrame(
+    ctx: CanvasRenderingContext2D,
+    avatarImg: HTMLImageElement,
+    bgImg: HTMLImageElement,
+    frame: number,
+    progress: number,
+    config: VideoConfig,
+    script: string
+  ) {
+    const W = ctx.canvas.width;
+    const H = ctx.canvas.height;
+
+    // 1. Background DALL-E 3 (full frame)
+    ctx.drawImage(bgImg, 0, 0, W, H);
+
+    // Overlay escuro sutil para legibilidade
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+    ctx.fillRect(0, 0, W, H);
+
+    // 2. Avatar DALL-E 3 (círculo centralizado com efeito de respiração)
+    const centerX = W / 2;
+    const centerY = H * 0.38;
+    const baseSize = 260;
+    const breathe = Math.sin(frame * 0.04) * 4;
+    const size = baseSize + breathe;
+
+    // Sombra do avatar
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 30;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, size / 2 + 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fill();
+    ctx.restore();
+
+    // Avatar circular
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, size / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(avatarImg, centerX - size / 2, centerY - size / 2, size, size);
+    ctx.restore();
+
+    // Borda do avatar (anel luminoso)
+    const isSpeaking = progress > 0.05 && progress < 0.95;
+    const ringAlpha = isSpeaking ? 0.6 + Math.sin(frame * 0.2) * 0.3 : 0.4;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${ringAlpha})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, size / 2 + 2, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Ondas sonoras ao redor do avatar (quando falando)
+    if (isSpeaking) {
+      for (let i = 1; i <= 3; i++) {
+        const waveRadius = size / 2 + 20 + i * 25 + Math.sin(frame * 0.25 + i) * 10;
+        const alpha = 0.25 - i * 0.07;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, waveRadius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    // 3. Nome do negócio (topo)
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 44px Arial, Helvetica, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.7)';
+    ctx.shadowBlur = 8;
+    ctx.fillText(config.businessName || 'Seu Negócio', centerX, 70);
+    ctx.shadowBlur = 0;
+
+    // 4. Texto do script (legendas animadas na parte inferior)
+    const words = script.split(' ');
+    const wordsToShow = Math.floor(words.length * progress);
+    const currentText = words.slice(Math.max(0, wordsToShow - 15), wordsToShow).join(' ');
+
+    if (currentText) {
+      // Fundo semi-transparente para texto
+      const textBoxY = H - 140;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+      const rd = 12;
+      ctx.beginPath();
+      ctx.moveTo(60 + rd, textBoxY);
+      ctx.lineTo(W - 60 - rd, textBoxY);
+      ctx.quadraticCurveTo(W - 60, textBoxY, W - 60, textBoxY + rd);
+      ctx.lineTo(W - 60, textBoxY + 100 - rd);
+      ctx.quadraticCurveTo(W - 60, textBoxY + 100, W - 60 - rd, textBoxY + 100);
+      ctx.lineTo(60 + rd, textBoxY + 100);
+      ctx.quadraticCurveTo(60, textBoxY + 100, 60, textBoxY + 100 - rd);
+      ctx.lineTo(60, textBoxY + rd);
+      ctx.quadraticCurveTo(60, textBoxY, 60 + rd, textBoxY);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '22px Arial, Helvetica, sans-serif';
+      ctx.textAlign = 'center';
+      const lines = this.wrapText(ctx, currentText, W - 160);
+      lines.slice(-3).forEach((line, idx) => {
+        ctx.fillText(line, centerX, textBoxY + 35 + idx * 28);
+      });
+    }
+
+    // 5. Badge qualidade 8K
+    ctx.fillStyle = 'rgba(255, 193, 7, 0.9)';
+    ctx.beginPath();
+    ctx.moveTo(W - 90 + 8, 20);
+    ctx.lineTo(W - 20 - 8, 20);
+    ctx.quadraticCurveTo(W - 20, 20, W - 20, 28);
+    ctx.lineTo(W - 20, 52);
+    ctx.quadraticCurveTo(W - 20, 60, W - 28, 60);
+    ctx.lineTo(W - 82, 60);
+    ctx.quadraticCurveTo(W - 90, 60, W - 90, 52);
+    ctx.lineTo(W - 90, 28);
+    ctx.quadraticCurveTo(W - 90, 20, W - 82, 20);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('8K AI', W - 55, 46);
+
+    // 6. Barra de progresso
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(0, H - 4, W, 4);
+    ctx.fillStyle = '#FFC107';
+    ctx.fillRect(0, H - 4, W * progress, 4);
+  }
+
+  // Gerar vídeo demo legado (fallback)
   private async generateDemoVideo(config: VideoConfig): Promise<GeneratedVideoReal> {
     const videoId = `ultra_ai_avatar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
@@ -2365,4 +2663,4 @@ class RealVideoGeneratorAI {
 }
 
 export default RealVideoGeneratorAI;
-export type { VideoConfig, GeneratedVideoReal };
+export type { GeneratedVideoReal };

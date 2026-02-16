@@ -16,6 +16,7 @@ const syncUserToSupabase = async (user: User) => {
     await supabase.from('user_profiles').upsert({
       user_id: user.id,
       name: user.name,
+      email: user.email || `${user.id}@viralizaai.com`,
       cpf: (user as any).cpf || '',
       user_type: user.type || 'client',
       status: user.status || 'active',
@@ -27,7 +28,7 @@ const syncUserToSupabase = async (user: User) => {
         billingHistory: user.billingHistory || []
       },
       updated_at: new Date().toISOString()
-    });
+    }, { onConflict: 'user_id' });
     console.log('✅ Usuário sincronizado com Supabase:', user.email);
   } catch (error) {
     console.warn('⚠️ Falha ao sincronizar usuário com Supabase:', error);

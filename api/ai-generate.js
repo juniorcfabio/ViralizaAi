@@ -95,6 +95,89 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Campos obrigatórios: tool, prompt' });
     }
 
+    // ==================== TTS (Text-to-Speech) via OpenAI ====================
+    if (tool === 'tts') {
+      const voice = params.voice || 'nova'; // alloy, echo, fable, onyx, nova, shimmer
+      const model = params.model || 'tts-1-hd';
+      const speed = params.speed || 1.0;
+
+      const ttsRes = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          input: prompt,
+          voice,
+          speed,
+          response_format: 'mp3'
+        })
+      });
+
+      if (!ttsRes.ok) {
+        const errText = await ttsRes.text();
+        console.error('TTS error:', ttsRes.status, errText);
+        return res.status(ttsRes.status).json({ error: 'TTS failed', details: errText.substring(0, 200) });
+      }
+
+      const audioBuffer = Buffer.from(await ttsRes.arrayBuffer());
+      const audioBase64 = audioBuffer.toString('base64');
+      console.log(`✅ TTS: voice=${voice}, model=${model}, size=${audioBuffer.length} bytes`);
+
+      return res.status(200).json({
+        success: true,
+        audio: audioBase64,
+        format: 'mp3',
+        voice,
+        model,
+        size: audioBuffer.length
+      });
+    }
+
+    // ==================== Image Generation via DALL-E 3 ====================
+    if (tool === 'image') {
+      const size = params.size || '1792x1024';
+      const quality = params.quality || 'hd';
+      const style = params.style || 'natural';
+
+      const imgRes = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiKey}`
+        },
+        body: JSON.stringify({
+          model: 'dall-e-3',
+          prompt,
+          n: 1,
+          size,
+          quality,
+          style
+        })
+      });
+
+      if (!imgRes.ok) {
+        const errText = await imgRes.text();
+        console.error('DALL-E error:', imgRes.status, errText);
+        return res.status(imgRes.status).json({ error: 'Image generation failed', details: errText.substring(0, 200) });
+      }
+
+      const imgData = await imgRes.json();
+      const imageUrl = imgData.data?.[0]?.url;
+      const revisedPrompt = imgData.data?.[0]?.revised_prompt;
+      console.log(`✅ DALL-E 3: size=${size}, quality=${quality}`);
+
+      return res.status(200).json({
+        success: true,
+        imageUrl,
+        revisedPrompt,
+        size,
+        quality
+      });
+    }
+
     const routing = MODEL_ROUTING[tool] || MODEL_ROUTING['general'];
     const maxTokens = params.maxTokens || getDefaultTokens(tool);
     const temperature = params.temperature || getDefaultTemperature(tool);

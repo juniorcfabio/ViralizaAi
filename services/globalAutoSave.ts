@@ -112,10 +112,11 @@ class GlobalAutoSave {
       if (data.key.includes('user') || data.key.includes('viraliza_ai_active_user')) {
         tableName = 'user_profiles';
         const userData = this.parseValue(data.value);
+        if (!userData || !userData.id) return; // Skip invalid user data
         recordData = {
           user_id: userData.id,
-          name: userData.name,
-          email: userData.email,
+          name: userData.name || '',
+          email: userData.email || `${userData.id}@viralizaai.com`,
           user_type: userData.type || 'client',
           status: userData.status || 'active',
           preferences: userData,
@@ -153,12 +154,18 @@ class GlobalAutoSave {
         };
       }
 
+      // Determinar coluna de conflito por tabela
+      const conflictMap: Record<string, string> = {
+        system_settings: 'key',
+        user_profiles: 'user_id',
+        user_access: 'user_id,tool_name'
+      };
+      const onConflict = conflictMap[tableName];
+
       // Salvar no Supabase usando upsert para evitar duplicatas
       const { error } = await supabase
         .from(tableName)
-        .upsert(recordData, { 
-          onConflict: tableName === 'system_settings' ? 'key' : undefined 
-        });
+        .upsert(recordData, onConflict ? { onConflict } : {});
 
       if (error) {
         console.warn(`⚠️ Erro ao salvar em ${tableName}:`, error.message);
