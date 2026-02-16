@@ -163,12 +163,12 @@ class RealVideoGeneratorAI {
   private async generateAudio(script: string, voiceStyle: string): Promise<string> {
     // Mapear estilo de voz para vozes OpenAI
     const voiceMap: Record<string, string> = {
-      energetic: 'nova',      // Voz feminina enérgica
+      energetic: 'alloy',     // Voz neutra enérgica e natural
       calm: 'onyx',           // Voz masculina calma
-      authoritative: 'echo',  // Voz masculina autoritária
-      friendly: 'shimmer'     // Voz feminina amigável
+      authoritative: 'fable', // Voz expressiva e envolvente
+      friendly: 'shimmer'     // Voz feminina amigável e quente
     };
-    const voice = voiceMap[voiceStyle] || 'nova';
+    const voice = voiceMap[voiceStyle] || 'shimmer';
 
     try {
       const response = await fetch(`${window.location.origin}/api/ai-generate`, {
@@ -177,7 +177,7 @@ class RealVideoGeneratorAI {
         body: JSON.stringify({
           tool: 'tts',
           prompt: script,
-          params: { voice, model: 'tts-1-hd', speed: 0.95 }
+          params: { voice, model: 'tts-1-hd', speed: 1.0 }
         })
       });
 
@@ -364,7 +364,7 @@ class RealVideoGeneratorAI {
         if (audioUrl) {
           // Usar áudio real do OpenAI TTS
           audioElement = new Audio(audioUrl);
-          audioElement.crossOrigin = 'anonymous';
+          // crossOrigin não necessário para blob URLs (causa problemas)
           const audioContext = new AudioContext();
           const source = audioContext.createMediaElementSource(audioElement);
           const destination = audioContext.createMediaStreamDestination();
@@ -500,52 +500,121 @@ class RealVideoGeneratorAI {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    // ====== 2. Influencer DALL-E 3 (metade direita, grande, com animação de fala) ======
+    // ====== 2. Influencer DALL-E 3 — animação dinâmica humanizada ======
     const isSpeaking = progress > 0.03 && progress < 0.97;
-    const breathe = Math.sin(frame * 0.04) * 3;
-    const sway = Math.sin(frame * 0.02) * 2;
-
-    // Tamanho grande do avatar (metade da tela)
     const avW = avatarImg.naturalWidth || avatarImg.width;
     const avH = avatarImg.naturalHeight || avatarImg.height;
-    const targetH = H * 0.88 + breathe;
-    const targetW = targetH * (avW / avH);
-    const avX = W - targetW * 0.72 + sway;
-    const avY = H - targetH + 4;
 
-    // Sombra suave atrás da influencer
+    // Base size — influencer grande na metade direita
+    const baseH = H * 0.88;
+    const baseW = baseH * (avW / avH);
+    const baseX = W - baseW * 0.72;
+    const baseY = H - baseH + 4;
+
+    // Tempo contínuo em segundos (~30fps)
+    const t = frame / 30;
+
+    // Respiração (expansão vertical suave)
+    const breatheScale = 1 + Math.sin(t * 1.8) * 0.008;
+
+    // Balanço do corpo (sway horizontal multi-frequência)
+    const bodySway = Math.sin(t * 0.7) * 6 + Math.sin(t * 1.3) * 3;
+
+    // Inclinação da cabeça (tilt)
+    const headTilt = Math.sin(t * 0.5) * 0.018 + Math.sin(t * 1.1) * 0.009;
+
+    // Aceno vertical (nod)
+    const headNod = Math.sin(t * 0.9) * 4 + Math.sin(t * 2.1) * 2;
+
+    // Movimento de mandíbula — simula fala com múltiplas frequências
+    const jawOpen = isSpeaking
+      ? Math.abs(Math.sin(t * 5.5)) * 0.028
+        + Math.abs(Math.sin(t * 8.3)) * 0.018
+        + Math.abs(Math.sin(t * 3.2)) * 0.012
+      : 0;
+
+    // Gesto de ênfase (~a cada 3s, leve impulso lateral)
+    const gesturePhase = (t % 3.0) / 3.0;
+    const gestureImpulse = gesturePhase < 0.15
+      ? Math.sin(gesturePhase / 0.15 * Math.PI) * 6 : 0;
+
+    // Posição final composta
+    const finalX = baseX + bodySway + gestureImpulse;
+    const finalY = baseY + headNod;
+    const finalW = baseW;
+    const finalH = baseH * breatheScale;
+
+    // Ponto de divisão da imagem (~38% do topo ≈ linha do queixo)
+    const splitRatio = 0.38;
+    const upperSrcH = avH * splitRatio;
+    const lowerSrcH = avH * (1 - splitRatio);
+    const upperDestH = finalH * splitRatio;
+    const lowerDestH = finalH * (1 - splitRatio);
+    const jawPx = jawOpen * finalH;
+
+    // Sombra suave + rotação (head tilt) ao redor do pescoço
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.5)';
     ctx.shadowBlur = 40;
     ctx.shadowOffsetX = -10;
     ctx.shadowOffsetY = 5;
-    ctx.drawImage(avatarImg, avX, avY, targetW, targetH);
+    const pivotX = finalX + finalW * 0.5;
+    const pivotY = finalY + finalH * 0.3;
+    ctx.translate(pivotX, pivotY);
+    ctx.rotate(headTilt);
+    ctx.translate(-pivotX, -pivotY);
+
+    // Parte superior do avatar (cabeça + tronco)
+    ctx.drawImage(
+      avatarImg,
+      0, 0, avW, upperSrcH,
+      finalX, finalY, finalW, upperDestH
+    );
+
+    // Parte inferior (mandíbula + corpo) — desloca para baixo ao falar
+    ctx.drawImage(
+      avatarImg,
+      0, upperSrcH, avW, lowerSrcH,
+      finalX, finalY + upperDestH + jawPx, finalW, lowerDestH + jawPx * 0.3
+    );
     ctx.restore();
 
-    // Glow sutil ao redor quando falando
+    // Glow pulsante quando falando
     if (isSpeaking) {
       ctx.save();
-      ctx.globalAlpha = 0.08 + Math.sin(frame * 0.15) * 0.04;
+      ctx.globalAlpha = 0.06 + Math.sin(t * 3) * 0.03;
       ctx.shadowColor = '#ffffff';
-      ctx.shadowBlur = 25;
-      ctx.drawImage(avatarImg, avX, avY, targetW, targetH);
+      ctx.shadowBlur = 30;
+      ctx.drawImage(avatarImg, finalX, finalY, finalW, finalH);
       ctx.restore();
     }
 
-    // ====== 3. Indicador de fala (ondas ao lado da influencer) ======
+    // Simulação de piscar (~a cada 4s)
+    const blinkCycle = t % 4.0;
+    if (blinkCycle < 0.15) {
+      const blinkAlpha = Math.sin(blinkCycle / 0.15 * Math.PI);
+      ctx.save();
+      ctx.fillStyle = `rgba(0,0,0,${blinkAlpha * 0.35})`;
+      const eyeY = finalY + finalH * 0.15;
+      const eyeH = finalH * 0.055;
+      ctx.fillRect(finalX + finalW * 0.2, eyeY, finalW * 0.6, eyeH);
+      ctx.restore();
+    }
+
+    // ====== 3. Indicador de fala (waveform ao lado da influencer) ======
     if (isSpeaking) {
-      const waveX = avX + 20;
-      const waveY = avY + targetH * 0.25;
-      for (let i = 0; i < 4; i++) {
-        const amp = 8 + i * 4;
-        const barH = 18 + Math.sin(frame * 0.3 + i * 1.2) * amp;
-        const alpha = 0.6 - i * 0.12;
+      const waveX = finalX + 20;
+      const waveY = finalY + finalH * 0.25;
+      for (let i = 0; i < 5; i++) {
+        const amp = 10 + i * 5;
+        const barH = 20 + Math.sin(t * 6 + i * 1.5) * amp;
+        const alpha = 0.7 - i * 0.12;
         ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
         ctx.beginPath();
-        const bx = waveX - i * 12;
+        const bx = waveX - i * 14;
         const by = waveY - barH / 2;
-        const bw = 4;
-        const br = 2;
+        const bw = 5;
+        const br = 2.5;
         ctx.moveTo(bx + br, by);
         ctx.lineTo(bx + bw - br, by);
         ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + br);
