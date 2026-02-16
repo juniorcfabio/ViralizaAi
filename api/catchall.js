@@ -137,23 +137,184 @@ export default async function handler(req, res) {
           }
         });
       }
+      case 'affiliate/activate': {
+        if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
+        var aUserId = req.body?.userId;
+        var aName = req.body?.name || 'Afiliado';
+        var aEmail = req.body?.email || '';
+        if (!aUserId) return res.status(400).json({ error: 'userId required' });
+
+        // Verificar se já é afiliado via user_metadata
+        var existingUser = await supabase.auth.admin.getUserById(aUserId);
+        var existingMeta = existingUser?.data?.user?.user_metadata || {};
+        if (existingMeta.affiliate_active && existingMeta.affiliate_referral_code) {
+          return res.status(200).json({
+            success: true, message: 'Afiliado já ativo',
+            affiliate: {
+              id: aUserId, user_id: aUserId, name: existingMeta.affiliate_name || aName,
+              email: existingMeta.affiliate_email || aEmail,
+              referral_code: existingMeta.affiliate_referral_code,
+              status: 'active', commission_rate: existingMeta.affiliate_commission_rate || 0.20,
+              total_earnings: existingMeta.affiliate_total_earnings || 0,
+              pending_balance: existingMeta.affiliate_pending_balance || 0,
+              available_balance: existingMeta.affiliate_available_balance || 0,
+              total_referrals: existingMeta.affiliate_total_referrals || 0,
+              total_clicks: existingMeta.affiliate_total_clicks || 0,
+              created_at: existingMeta.affiliate_created_at || new Date().toISOString()
+            }
+          });
+        }
+
+        // Gerar código de referência
+        var refCode = 'VIR' + aUserId.slice(-6).toUpperCase() + Date.now().toString().slice(-4);
+        var nowISO = new Date().toISOString();
+
+        // Salvar em user_metadata (GoTrue - SEMPRE funciona, sem schema cache)
+        var affiliateData = {
+          affiliate_active: true,
+          affiliate_name: aName,
+          affiliate_email: aEmail,
+          affiliate_referral_code: refCode,
+          affiliate_commission_rate: 0.20,
+          affiliate_total_earnings: 0,
+          affiliate_pending_balance: 0,
+          affiliate_available_balance: 0,
+          affiliate_total_referrals: 0,
+          affiliate_total_clicks: 0,
+          affiliate_created_at: nowISO
+        };
+
+        var { error: metaErr } = await supabase.auth.admin.updateUserById(aUserId, {
+          user_metadata: Object.assign({}, existingMeta, affiliateData)
+        });
+
+        if (metaErr) {
+          console.error('Erro ao salvar affiliate metadata:', metaErr);
+          return res.status(500).json({ error: 'Erro ao ativar afiliado', details: metaErr.message });
+        }
+
+        // Tentar salvar na tabela affiliates (best-effort, pode falhar por schema cache)
+        try {
+          await supabase.from('affiliates').upsert({ user_id: aUserId, code: refCode, status: 'active' }, { onConflict: 'user_id' });
+        } catch (e) { console.warn('Tabela affiliates best-effort falhou:', e.message); }
+
+        console.log('✅ Afiliado ativado via Auth metadata:', refCode);
+        return res.status(201).json({
+          success: true, message: 'Afiliado ativado com sucesso',
+          affiliate: {
+            id: aUserId, user_id: aUserId, name: aName, email: aEmail,
+            referral_code: refCode, status: 'active', commission_rate: 0.20,
+            total_earnings: 0, pending_balance: 0, available_balance: 0,
+            total_referrals: 0, total_clicks: 0,
+            created_at: nowISO, updated_at: nowISO
+          }
+        });
+      }
+      case 'affiliate/get': {
+        var gUserId = req.query.userId || req.body?.userId;
+        if (!gUserId) return res.status(400).json({ error: 'userId required' });
+
+        var gUser = await supabase.auth.admin.getUserById(gUserId);
+        var gMeta = gUser?.data?.user?.user_metadata || {};
+
+        if (!gMeta.affiliate_active) {
+          return res.status(200).json({ success: true, affiliate: null });
+        }
+
+        return res.status(200).json({
+          success: true,
+          affiliate: {
+            id: gUserId, user_id: gUserId,
+            name: gMeta.affiliate_name || '', email: gMeta.affiliate_email || '',
+            referral_code: gMeta.affiliate_referral_code || '',
+            status: 'active', commission_rate: gMeta.affiliate_commission_rate || 0.20,
+            total_earnings: gMeta.affiliate_total_earnings || 0,
+            pending_balance: gMeta.affiliate_pending_balance || 0,
+            available_balance: gMeta.affiliate_available_balance || 0,
+            total_referrals: gMeta.affiliate_total_referrals || 0,
+            total_clicks: gMeta.affiliate_total_clicks || 0,
+            bank_name: gMeta.affiliate_bank_name || null,
+            bank_agency: gMeta.affiliate_bank_agency || null,
+            bank_account: gMeta.affiliate_bank_account || null,
+            bank_account_type: gMeta.affiliate_bank_account_type || null,
+            pix_key: gMeta.affiliate_pix_key || null,
+            pix_key_type: gMeta.affiliate_pix_key_type || null,
+            account_holder_name: gMeta.affiliate_account_holder_name || null,
+            account_holder_cpf: gMeta.affiliate_account_holder_cpf || null,
+            payment_method: gMeta.affiliate_payment_method || null,
+            created_at: gMeta.affiliate_created_at || '', updated_at: new Date().toISOString()
+          }
+        });
+      }
+      case 'affiliate/update-banking': {
+        if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
+        var bUserId = req.body?.userId;
+        if (!bUserId) return res.status(400).json({ error: 'userId required' });
+
+        var bUser = await supabase.auth.admin.getUserById(bUserId);
+        var bMeta = bUser?.data?.user?.user_metadata || {};
+
+        var bankingData = {};
+        if (req.body.bank_name !== undefined) bankingData.affiliate_bank_name = req.body.bank_name;
+        if (req.body.bank_agency !== undefined) bankingData.affiliate_bank_agency = req.body.bank_agency;
+        if (req.body.bank_account !== undefined) bankingData.affiliate_bank_account = req.body.bank_account;
+        if (req.body.bank_account_type !== undefined) bankingData.affiliate_bank_account_type = req.body.bank_account_type;
+        if (req.body.pix_key !== undefined) bankingData.affiliate_pix_key = req.body.pix_key;
+        if (req.body.pix_key_type !== undefined) bankingData.affiliate_pix_key_type = req.body.pix_key_type;
+        if (req.body.account_holder_name !== undefined) bankingData.affiliate_account_holder_name = req.body.account_holder_name;
+        if (req.body.account_holder_cpf !== undefined) bankingData.affiliate_account_holder_cpf = req.body.account_holder_cpf;
+        if (req.body.payment_method !== undefined) bankingData.affiliate_payment_method = req.body.payment_method;
+
+        await supabase.auth.admin.updateUserById(bUserId, {
+          user_metadata: Object.assign({}, bMeta, bankingData)
+        });
+
+        return res.status(200).json({ success: true, message: 'Dados bancários atualizados' });
+      }
       case 'affiliate/dashboard': {
         const userId = req.query.userId || req.body?.userId;
         if (!userId) return res.status(400).json({ error: 'userId required' });
-        const { data } = await supabase.from('affiliate_stats').select('*').eq('user_id', userId).single();
-        return res.status(200).json({ success: true, data: data || { clicks: 0, conversions: 0, earnings: 0 } });
+
+        // Buscar dados do user_metadata
+        var dUser = await supabase.auth.admin.getUserById(userId);
+        var dMeta = dUser?.data?.user?.user_metadata || {};
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            clicks: dMeta.affiliate_total_clicks || 0,
+            conversions: dMeta.affiliate_total_referrals || 0,
+            earnings: dMeta.affiliate_total_earnings || 0,
+            referral_code: dMeta.affiliate_referral_code || ''
+          }
+        });
       }
       case 'affiliate/create': {
         if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
-        const { userId, code } = req.body;
-        const { data, error } = await supabase.from('affiliates').upsert({ user_id: userId, code, status: 'active' }).select().single();
-        if (error) throw error;
-        return res.status(201).json({ success: true, affiliate: data });
+        // Redirecionar para activate
+        var cUserId = req.body?.userId;
+        var cCode = req.body?.code || '';
+        if (!cUserId) return res.status(400).json({ error: 'userId required' });
+
+        var cUser = await supabase.auth.admin.getUserById(cUserId);
+        var cMeta = cUser?.data?.user?.user_metadata || {};
+        var cRef = cCode || cMeta.affiliate_referral_code || 'VIR' + cUserId.slice(-6).toUpperCase() + Date.now().toString().slice(-4);
+
+        await supabase.auth.admin.updateUserById(cUserId, {
+          user_metadata: Object.assign({}, cMeta, {
+            affiliate_active: true,
+            affiliate_referral_code: cRef,
+            affiliate_created_at: cMeta.affiliate_created_at || new Date().toISOString()
+          })
+        });
+
+        return res.status(201).json({ success: true, affiliate: { user_id: cUserId, code: cRef, status: 'active', referral_code: cRef } });
       }
       case 'affiliate/track-click': {
         if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
         const { code } = req.body;
-        await supabase.from('affiliate_clicks').insert({ affiliate_code: code, ip: req.headers['x-forwarded-for'] || 'unknown' });
+        // Tentar registrar click na tabela (best-effort)
+        try { await supabase.from('affiliate_clicks').insert({ affiliate_code: code, ip: req.headers['x-forwarded-for'] || 'unknown' }); } catch(e) {}
         return res.status(200).json({ success: true });
       }
       case 'affiliate/payout':

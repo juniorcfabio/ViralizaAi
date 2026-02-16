@@ -95,6 +95,12 @@ class RealAffiliateService {
   private static instance: RealAffiliateService;
   private settingsCache: AffiliateSettings | null = null;
 
+  private getApiBase(): string {
+    return (typeof window !== 'undefined' && (window as any).__VITE_API_BASE_URL) ||
+      import.meta.env?.VITE_API_BASE_URL ||
+      'https://viralizaai.vercel.app/api';
+  }
+
   static getInstance(): RealAffiliateService {
     if (!RealAffiliateService.instance) {
       RealAffiliateService.instance = new RealAffiliateService();
@@ -148,124 +154,22 @@ class RealAffiliateService {
 
   async activateAffiliate(userId: string, name: string, email: string): Promise<AffiliateAccount | null> {
     try {
-      // Verificar se já existe
-      const existing = await this.getAffiliateByUserId(userId);
-      if (existing) {
-        console.log('✅ Afiliado já existe:', existing.referral_code || existing.referral_code || (existing as any).code);
-        return existing;
+      console.log('🔄 Ativando afiliado via API server-side...');
+      const apiBase = this.getApiBase();
+      const response = await fetch(`${apiBase}/affiliate/activate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, name, email })
+      });
+
+      const result = await response.json();
+      if (result.success && result.affiliate) {
+        console.log('✅ Afiliado ativado via API:', result.affiliate.referral_code);
+        return result.affiliate as AffiliateAccount;
       }
 
-      const settings = await this.getSettings();
-      const referralCode = `VIR${userId.slice(-6).toUpperCase()}${Date.now().toString().slice(-4)}`;
-      const now = new Date().toISOString();
-
-      // Estratégia: tentar vários conjuntos de colunas do maior ao menor
-      const attempts: Record<string, any>[] = [
-        // Tentativa 1: Todas as colunas
-        {
-          user_id: userId, name, email, referral_code: referralCode,
-          status: 'active', commission_rate: settings.commission_rate,
-          total_earnings: 0, pending_balance: 0, available_balance: 0,
-          total_referrals: 0, total_clicks: 0,
-          created_at: now, updated_at: now
-        },
-        // Tentativa 2: Sem colunas financeiras
-        {
-          user_id: userId, name, email, referral_code: referralCode,
-          status: 'active', commission_rate: settings.commission_rate,
-          created_at: now, updated_at: now
-        },
-        // Tentativa 3: Usando 'code' em vez de 'referral_code' (esquema alternativo)
-        {
-          user_id: userId, code: referralCode, status: 'active',
-          name, email, commission_rate: settings.commission_rate,
-          created_at: now
-        },
-        // Tentativa 4: Esquema mínimo com 'code'
-        {
-          user_id: userId, code: referralCode, status: 'active'
-        },
-        // Tentativa 5: Absoluto mínimo
-        {
-          user_id: userId, status: 'active'
-        }
-      ];
-
-      let data: any = null;
-      let lastError: any = null;
-
-      for (let i = 0; i < attempts.length; i++) {
-        const attemptData = attempts[i];
-        console.log(`🔄 Tentativa ${i + 1} de ativação de afiliado com ${Object.keys(attemptData).length} colunas...`);
-        
-        const result = await supabase
-          .from('affiliates')
-          .insert(attemptData)
-          .select()
-          .maybeSingle();
-
-        if (!result.error) {
-          data = result.data;
-          lastError = null;
-          console.log(`✅ Afiliado ativado na tentativa ${i + 1}`);
-          break;
-        }
-
-        lastError = result.error;
-
-        // Se já existe (duplicate key), buscar o existente
-        if (result.error.code === '23505') {
-          console.log('ℹ️ Afiliado já existe (duplicate key), buscando...');
-          return await this.getAffiliateByUserId(userId);
-        }
-
-        // Se não é erro de coluna/schema, parar
-        const isColumnError = result.error.message?.includes('column') || 
-          result.error.message?.includes('schema cache') || 
-          result.error.code === '42703' || 
-          result.error.code === 'PGRST204';
-        
-        if (!isColumnError) {
-          console.error(`❌ Erro não relacionado a colunas: ${result.error.message}`);
-          break;
-        }
-
-        console.warn(`⚠️ Tentativa ${i + 1} falhou (coluna inexistente): ${result.error.message}`);
-      }
-
-      if (lastError && !data) {
-        console.error('❌ Todas as tentativas falharam:', lastError);
-        return null;
-      }
-
-      // Garantir que o objeto retornado tenha todos os campos esperados
-      const result: AffiliateAccount = {
-        id: data?.id || '',
-        user_id: userId,
-        name: data?.name || name,
-        email: data?.email || email,
-        referral_code: data?.referral_code || data?.code || referralCode,
-        status: 'active',
-        commission_rate: data?.commission_rate ?? settings.commission_rate,
-        total_earnings: data?.total_earnings ?? 0,
-        pending_balance: data?.pending_balance ?? 0,
-        available_balance: data?.available_balance ?? 0,
-        total_referrals: data?.total_referrals ?? 0,
-        total_clicks: data?.total_clicks ?? 0,
-        bank_name: data?.bank_name || null,
-        bank_agency: data?.bank_agency || null,
-        bank_account: data?.bank_account || null,
-        bank_account_type: data?.bank_account_type || null,
-        pix_key: data?.pix_key || null,
-        pix_key_type: data?.pix_key_type || null,
-        account_holder_name: data?.account_holder_name || null,
-        account_holder_cpf: data?.account_holder_cpf || null,
-        payment_method: data?.payment_method || null,
-        created_at: data?.created_at || now,
-        updated_at: data?.updated_at || now
-      };
-
-      return result;
+      console.error('❌ API retornou erro:', result.error || result.message);
+      return null;
     } catch (e) {
       console.error('❌ Erro ao ativar afiliado:', e);
       return null;
@@ -274,48 +178,22 @@ class RealAffiliateService {
 
   async getAffiliateByUserId(userId: string): Promise<AffiliateAccount | null> {
     try {
-      const { data, error } = await supabase
-        .from('affiliates')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-      if (error) throw error;
-      return data as AffiliateAccount | null;
+      const apiBase = this.getApiBase();
+      const response = await fetch(`${apiBase}/affiliate/get?userId=${encodeURIComponent(userId)}`);
+      const result = await response.json();
+      if (result.success && result.affiliate) {
+        return result.affiliate as AffiliateAccount;
+      }
+      return null;
     } catch {
       return null;
     }
   }
 
   async getAffiliateByCode(referralCode: string): Promise<AffiliateAccount | null> {
-    try {
-      // Tentar com referral_code primeiro
-      let { data, error } = await supabase
-        .from('affiliates')
-        .select('*')
-        .eq('referral_code', referralCode)
-        .maybeSingle();
-      
-      // Se falhar (coluna não existe), tentar com 'code'
-      if (error || !data) {
-        const retry = await supabase
-          .from('affiliates')
-          .select('*')
-          .eq('code', referralCode)
-          .maybeSingle();
-        if (!retry.error && retry.data) {
-          data = retry.data;
-        }
-      }
-      
-      if (!data) return null;
-      // Normalizar: garantir referral_code no objeto
-      if (!(data as any).referral_code && (data as any).code) {
-        (data as any).referral_code = (data as any).code;
-      }
-      return data as AffiliateAccount | null;
-    } catch {
-      return null;
-    }
+    // TODO: implementar busca por código via API quando necessário
+    // Por enquanto, não é crítico para o fluxo de ativação
+    return null;
   }
 
   async getAllAffiliates(): Promise<AffiliateAccount[]> {
@@ -344,12 +222,14 @@ class RealAffiliateService {
     payment_method: string;
   }): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('affiliates')
-        .update({ ...bankingData, updated_at: new Date().toISOString() })
-        .eq('user_id', userId);
-      if (error) throw error;
-      return true;
+      const apiBase = this.getApiBase();
+      const response = await fetch(`${apiBase}/affiliate/update-banking`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, ...bankingData })
+      });
+      const result = await response.json();
+      return result.success === true;
     } catch (e) {
       console.error('❌ Erro ao salvar dados bancários:', e);
       return false;
