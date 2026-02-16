@@ -438,6 +438,124 @@ export default async function handler(req, res) {
           return res.status(500).json({ error: 'Erro ao listar usuarios', details: e.message });
         }
       }
+      case 'admin/dashboard-stats': {
+        try {
+          // 1. Listar todos os users
+          var dsPage = 1; var dsUsers = []; var dsMore = true;
+          while (dsMore && dsPage <= 10) {
+            var { data: dsData, error: dsErr } = await supabase.auth.admin.listUsers({ page: dsPage, perPage: 100 });
+            if (dsErr || !dsData?.users?.length) { dsMore = false; break; }
+            dsUsers = dsUsers.concat(dsData.users);
+            dsMore = dsData.users.length === 100;
+            dsPage++;
+          }
+          var totalUsers = dsUsers.length;
+          var activeUsers = dsUsers.filter(u => u.email_confirmed_at).length;
+          var affiliateUsers = dsUsers.filter(u => u.user_metadata?.affiliate_active).length;
+
+          // 2. Buscar assinaturas ativas do banco
+          var { data: subs } = await supabase.from('subscriptions').select('*').eq('status', 'active');
+          var activeSubscriptions = (subs || []).length;
+
+          // Calcular receita por plano
+          var planPrices = { 'Anual': 399.90, 'anual': 399.90, 'Semestral': 259.90, 'semestral': 259.90, 'Trimestral': 159.90, 'trimestral': 159.90, 'Mensal': 59.90, 'mensal': 59.90 };
+          var mrr = 0;
+          var planDistribution = {};
+          (subs || []).forEach(function(s) {
+            var plan = s.plan_name || s.plan || 'mensal';
+            var price = planPrices[plan] || 59.90;
+            mrr += price;
+            planDistribution[plan] = (planDistribution[plan] || 0) + 1;
+          });
+
+          // Also count plans from user_metadata for users without subscriptions table entries
+          dsUsers.forEach(function(u) {
+            var um = u.user_metadata || {};
+            if (um.plan && !subs?.find(s => s.user_id === u.id)) {
+              var price = planPrices[um.plan] || 0;
+              mrr += price;
+              planDistribution[um.plan] = (planDistribution[um.plan] || 0) + 1;
+            }
+          });
+
+          // 3. Buscar pagamentos PIX pendentes
+          var { data: pixPending } = await supabase.from('subscriptions').select('id').eq('status', 'pending_payment');
+          var pendingPayments = (pixPending || []).length;
+
+          // 4. Últimos 5 users cadastrados
+          var recentUsers = dsUsers
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 5)
+            .map(u => ({
+              id: u.id,
+              name: u.user_metadata?.name || u.email?.split('@')[0] || '',
+              email: u.email || '',
+              plan: u.user_metadata?.plan || null,
+              created_at: u.created_at,
+              is_affiliate: !!u.user_metadata?.affiliate_active
+            }));
+
+          return res.status(200).json({
+            success: true,
+            stats: {
+              totalUsers, activeUsers, affiliateUsers, activeSubscriptions, pendingPayments,
+              mrr, arr: mrr * 12, ltv: mrr > 0 ? (mrr * 12 / Math.max(activeSubscriptions, 1)) : 0,
+              planDistribution
+            },
+            recentUsers
+          });
+        } catch (e) {
+          console.error('Erro dashboard-stats:', e);
+          return res.status(500).json({ error: 'Erro ao buscar stats', details: e.message });
+        }
+      }
+      case 'admin/financial': {
+        try {
+          // Buscar todas as subscriptions
+          var { data: allSubs } = await supabase.from('subscriptions').select('*').order('created_at', { ascending: false });
+          var transactions = (allSubs || []).map(function(s) {
+            var fPlanPrices = { 'Anual': 399.90, 'anual': 399.90, 'Semestral': 259.90, 'semestral': 259.90, 'Trimestral': 159.90, 'trimestral': 159.90, 'Mensal': 59.90, 'mensal': 59.90 };
+            return {
+              id: s.id,
+              userId: s.user_id,
+              amount: s.amount || fPlanPrices[s.plan_name || s.plan || 'mensal'] || 0,
+              plan: s.plan_name || s.plan || 'N/A',
+              status: s.status || 'pending',
+              date: s.created_at || s.updated_at || '',
+              paymentMethod: s.payment_method || 'pix',
+              description: 'Assinatura ' + (s.plan_name || s.plan || '')
+            };
+          });
+
+          var totalRevenue = transactions.filter(t => t.status === 'active' || t.status === 'completed').reduce((sum, t) => sum + t.amount, 0);
+          var pendingRevenue = transactions.filter(t => t.status === 'pending' || t.status === 'pending_payment').reduce((sum, t) => sum + t.amount, 0);
+
+          return res.status(200).json({
+            success: true,
+            transactions,
+            totalRevenue,
+            pendingRevenue,
+            totalTransactions: transactions.length
+          });
+        } catch (e) {
+          console.error('Erro financial:', e);
+          return res.status(500).json({ error: 'Erro ao buscar dados financeiros', details: e.message });
+        }
+      }
+      case 'admin/payment-configs': {
+        // Buscar configs de pagamento do banco
+        try {
+          var { data: payConfigs } = await supabase.from('system_settings').select('*').in('key', ['payment_stripe', 'payment_paypal', 'payment_pix', 'payment_crypto']);
+          var configMap = {};
+          (payConfigs || []).forEach(function(c) {
+            var k = c.key.replace('payment_', '');
+            configMap[k] = c.value || {};
+          });
+          return res.status(200).json(configMap);
+        } catch (e) {
+          return res.status(200).json({ stripe: null, paypal: null, pix: null, crypto: null });
+        }
+      }
       case 'affiliate/payout':
         return res.status(200).json({ success: true, message: 'Payout endpoint active' });
       case 'create-pix-checkout': {

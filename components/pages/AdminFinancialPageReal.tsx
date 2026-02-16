@@ -48,143 +48,49 @@ const UsersIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300'];
 
 const AdminFinancialPageReal: React.FC = () => {
-    const { platformUsers } = useAuth();
+    const { user } = useAuth();
     const [realFinancialData, setRealFinancialData] = useState<any>(null);
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [transactions, setTransactions] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<TransactionStatus | 'all'>('all');
-
-    // Função para calcular dados financeiros reais
-    const calculateRealFinancialData = () => {
-        try {
-            // Usuários ativos com planos
-            const activeUsers = platformUsers.filter(u => u.status === 'Ativo' && u.type === 'client');
-            
-            // Preços dos planos reais
-            const planPrices: { [key: string]: number } = { 
-                'Anual': 399.90, 
-                'Semestral': 259.90, 
-                'Trimestral': 159.90, 
-                'Mensal': 59.90 
-            };
-            
-            // Calcular MRR real
-            const mrr = activeUsers.reduce((total, user) => {
-                const planPrice = planPrices[user.plan || 'Mensal'] || 0;
-                return total + planPrice;
-            }, 0);
-
-            // Calcular LTV baseado no plano
-            const ltv = activeUsers.reduce((total, user) => {
-                const planPrice = planPrices[user.plan || 'Mensal'] || 0;
-                // LTV = preço do plano * 12 (assumindo retenção de 1 ano)
-                return total + (planPrice * 12);
-            }, 0);
-
-            // Taxa de churn real (0% se não temos dados históricos)
-            const churnRate = 0; // Seria necessário implementar tracking histórico
-
-            // ARR baseado no MRR
-            const arr = mrr * 12;
-
-            // Carregar transações reais do localStorage
-            let allTransactions: Transaction[] = [];
-            let totalRevenue = 0;
-            let totalCommissions = 0;
-
-            platformUsers.forEach(user => {
-                try {
-                    const userTransactions = localStorage.getItem(`transactions_${user.id}`);
-                    if (userTransactions) {
-                        const transactions = JSON.parse(userTransactions);
-                        if (Array.isArray(transactions)) {
-                            transactions.forEach((t: any) => {
-                                const transaction: Transaction = {
-                                    id: t.id || `tx_${Date.now()}_${Math.random()}`,
-                                    userId: user.id,
-                                    userName: user.name,
-                                    userEmail: user.email,
-                                    amount: parseFloat(t.amount) || 0,
-                                    plan: t.plan || user.plan || 'Mensal',
-                                    status: t.status || 'pending',
-                                    date: new Date(t.date || Date.now()).toISOString(),
-                                    paymentMethod: t.paymentMethod || 'credit_card',
-                                    description: t.description || `Assinatura ${t.plan || user.plan || 'Mensal'}`
-                                };
-                                allTransactions.push(transaction);
-                                
-                                if (transaction.status === 'completed') {
-                                    totalRevenue += transaction.amount;
-                                }
-                            });
-                        }
-                    }
-
-                    // Carregar comissões de afiliados
-                    const userCommissions = localStorage.getItem(`commissions_${user.id}`);
-                    if (userCommissions) {
-                        const commissions = JSON.parse(userCommissions);
-                        if (Array.isArray(commissions)) {
-                            commissions.forEach((c: any) => {
-                                if (c.status === 'paid' && c.amount) {
-                                    totalCommissions += parseFloat(c.amount) || 0;
-                                }
-                            });
-                        }
-                    }
-                } catch (error) {
-                    console.log(`Erro ao processar dados do usuário ${user.id}:`, error);
-                }
-            });
-
-            // Distribuição por planos
-            const planDistribution = activeUsers.reduce((acc: any, user) => {
-                const plan = user.plan || 'Mensal';
-                acc[plan] = (acc[plan] || 0) + 1;
-                return acc;
-            }, {});
-
-            return {
-                mrr,
-                ltv,
-                churnRate,
-                arr,
-                totalRevenue,
-                totalCommissions,
-                transactions: allTransactions,
-                planDistribution,
-                activeUsers: activeUsers.length
-            };
-        } catch (error) {
-            console.error('Erro ao calcular dados financeiros:', error);
-            return {
-                mrr: 0,
-                ltv: 0,
-                churnRate: 0,
-                arr: 0,
-                totalRevenue: 0,
-                totalCommissions: 0,
-                transactions: [],
-                planDistribution: {},
-                activeUsers: 0
-            };
-        }
-    };
+    const [statusFilter, setStatusFilter] = useState<string>('all');
 
     useEffect(() => {
-        const data = calculateRealFinancialData();
-        setRealFinancialData(data);
-        setTransactions(data.transactions);
+        const fetchFinancialData = async () => {
+            try {
+                const [statsRes, finRes] = await Promise.all([
+                    fetch('/api/admin/dashboard-stats'),
+                    fetch('/api/admin/financial')
+                ]);
+                const statsData = await statsRes.json();
+                const finData = await finRes.json();
 
-        // Atualizar dados a cada 30 segundos
-        const interval = setInterval(() => {
-            const updatedData = calculateRealFinancialData();
-            setRealFinancialData(updatedData);
-            setTransactions(updatedData.transactions);
-        }, 30000);
-
+                if (statsData.success) {
+                    const s = statsData.stats;
+                    setRealFinancialData({
+                        mrr: s.mrr || 0,
+                        ltv: s.ltv || 0,
+                        churnRate: 0,
+                        arr: s.arr || 0,
+                        totalRevenue: finData.totalRevenue || 0,
+                        totalCommissions: 0,
+                        planDistribution: s.planDistribution || {},
+                        activeUsers: s.activeUsers || 0,
+                        pendingRevenue: finData.pendingRevenue || 0
+                    });
+                    console.log('✅ Dados financeiros carregados do Supabase');
+                }
+                if (finData.success) {
+                    setTransactions(finData.transactions || []);
+                }
+            } catch (e) {
+                console.error('❌ Erro ao buscar dados financeiros:', e);
+                setRealFinancialData({ mrr: 0, ltv: 0, churnRate: 0, arr: 0, totalRevenue: 0, totalCommissions: 0, planDistribution: {}, activeUsers: 0, pendingRevenue: 0 });
+            }
+        };
+        fetchFinancialData();
+        const interval = setInterval(fetchFinancialData, 60000);
         return () => clearInterval(interval);
-    }, [platformUsers]);
+    }, []);
 
     // Dados para gráficos baseados em dados reais
     const revenueProjectionData = useMemo(() => {
@@ -238,10 +144,10 @@ const AdminFinancialPageReal: React.FC = () => {
     }, [realFinancialData]);
 
     const filteredTransactions = useMemo(() => {
-        return transactions.filter(transaction => {
-            const matchesSearch = transaction.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                transaction.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                transaction.id.toLowerCase().includes(searchTerm.toLowerCase());
+        return transactions.filter((transaction: any) => {
+            const matchesSearch = (transaction.userId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                (transaction.plan || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                (transaction.id || '').toString().toLowerCase().includes(searchTerm.toLowerCase());
             const matchesStatus = statusFilter === 'all' || transaction.status === statusFilter;
             return matchesSearch && matchesStatus;
         });
@@ -254,21 +160,23 @@ const AdminFinancialPageReal: React.FC = () => {
         }).format(value);
     };
 
-    const getStatusColor = (status: TransactionStatus) => {
+    const getStatusColor = (status: string) => {
         switch (status) {
-            case 'completed': return 'bg-green-500/20 text-green-400';
-            case 'pending': return 'bg-yellow-500/20 text-yellow-400';
-            case 'failed': return 'bg-red-500/20 text-red-400';
+            case 'completed': case 'active': return 'bg-green-500/20 text-green-400';
+            case 'pending': case 'pending_payment': return 'bg-yellow-500/20 text-yellow-400';
+            case 'failed': case 'cancelled': return 'bg-red-500/20 text-red-400';
             case 'refunded': return 'bg-gray-500/20 text-gray-400';
             default: return 'bg-gray-500/20 text-gray-400';
         }
     };
 
-    const getStatusText = (status: TransactionStatus) => {
+    const getStatusText = (status: string) => {
         switch (status) {
             case 'completed': return 'Concluído';
-            case 'pending': return 'Pendente';
+            case 'active': return 'Ativo';
+            case 'pending': case 'pending_payment': return 'Pendente';
             case 'failed': return 'Falhou';
+            case 'cancelled': return 'Cancelado';
             case 'refunded': return 'Reembolsado';
             default: return status;
         }
@@ -446,21 +354,21 @@ const AdminFinancialPageReal: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredTransactions.map((transaction) => (
+                                {filteredTransactions.map((transaction: any) => (
                                     <tr key={transaction.id} className="border-b border-gray-700 hover:bg-primary/50">
-                                        <td className="py-4 px-4 font-mono text-xs">{transaction.id}</td>
+                                        <td className="py-4 px-4 font-mono text-xs">{String(transaction.id).slice(0, 12)}...</td>
                                         <td className="py-4 px-4">
                                             <div>
-                                                <p className="font-medium">{transaction.userName}</p>
-                                                <p className="text-gray-400 text-xs">{transaction.userEmail}</p>
+                                                <p className="font-medium text-xs">{transaction.userId?.slice(0, 8)}...</p>
+                                                <p className="text-gray-400 text-xs">{transaction.description || ''}</p>
                                             </div>
                                         </td>
                                         <td className="py-4 px-4">{transaction.plan}</td>
                                         <td className="py-4 px-4 font-bold text-green-400">
-                                            {formatCurrency(transaction.amount)}
+                                            {formatCurrency(transaction.amount || 0)}
                                         </td>
                                         <td className="py-4 px-4 text-xs text-gray-400">
-                                            {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                                            {transaction.date ? new Date(transaction.date).toLocaleDateString('pt-BR') : '-'}
                                         </td>
                                         <td className="py-4 px-4">
                                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(transaction.status)}`}>

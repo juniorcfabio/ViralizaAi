@@ -2,10 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContextFixed';
-import { SUBSCRIPTION_PLANS } from '../../data/plansConfig';
-import { StatCardData, User } from '../../types';
-import RealDataService from '../../services/realDataService';
-import { useCentralizedPricing } from '../../services/centralizedPricingService';
+import { StatCardData } from '../../types';
 
 // Icons
 const UsersIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -38,75 +35,41 @@ const StatCard: React.FC<{ data: StatCardData }> = ({ data }) => {
 };
 
 const AdminDashboardPage: React.FC = () => {
-    const { platformUsers } = useAuth();
-    const [realMetrics, setRealMetrics] = useState<any>(null);
-    const [revenueData, setRevenueData] = useState<any[]>([]);
+    const { user } = useAuth();
+    const [dashboardData, setDashboardData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const realDataService = RealDataService.getInstance();
-        
-        // Inicializa dados reais
-        const metrics = realDataService.getRealMetrics();
-        setRealMetrics(metrics);
-        
-        // Dados do gráfico de receita
-        const chartData = realDataService.getChartData('monthly');
-        setRevenueData(chartData.map(item => ({
-            name: new Date(item.date).toLocaleDateString('pt-BR', { month: 'short' }),
-            revenue: item.revenue
-        })));
-
-        // Atualiza métricas a cada 30 segundos
-        const interval = setInterval(() => {
-            const updatedMetrics = realDataService.getRealMetrics();
-            setRealMetrics(updatedMetrics);
-            
-            const updatedChartData = realDataService.getChartData('monthly');
-            setRevenueData(updatedChartData.map(item => ({
-                name: new Date(item.date).toLocaleDateString('pt-BR', { month: 'short' }),
-                revenue: item.revenue
-            })));
-        }, 30000);
-        
+        const fetchStats = async () => {
+            try {
+                const res = await fetch('/api/admin/dashboard-stats');
+                const data = await res.json();
+                if (data.success) {
+                    setDashboardData(data);
+                    console.log('✅ Dashboard stats carregados do Supabase:', data.stats);
+                }
+            } catch (e) {
+                console.error('❌ Erro ao buscar dashboard stats:', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
+        const interval = setInterval(fetchStats, 60000);
         return () => clearInterval(interval);
     }, []);
 
-    const { pricing } = useCentralizedPricing(); // 🔥 PREÇOS EM TEMPO REAL
-    
-    const dashboardStats = useMemo(() => {
-        const activeUsers = platformUsers.filter(u => u.status === 'Ativo' && u.type === 'client');
-        
-        // 🔥 BUSCAR PREÇOS DO SUPABASE EM TEMPO REAL
-        const planPrices: { [key: string]: number } = Object.fromEntries(
-            (pricing?.subscriptionPlans || []).map(p => [p.name, p.price])
-        );
-        
-        const mrr = activeUsers.reduce((total, user) => total + (planPrices[user.plan || 'Mensal'] || 0), 0);
-        
-        return {
-            mrr,
-            activeUserCount: activeUsers.length,
-        };
-    }, [platformUsers]);
+    const s = dashboardData?.stats || {};
 
-    const stats: StatCardData[] = realMetrics ? [
-        { title: 'Receita Mensal (MRR)', value: `R$ ${(realMetrics.revenue.monthly / 1000).toFixed(1)}k`, change: `+${realMetrics.users.growth}% vs. mês anterior`, changeType: 'increase', icon: DollarSignIcon },
-        { title: 'Usuários Ativos', value: realMetrics.users.active.toLocaleString(), change: `+${realMetrics.users.new} novos este mês`, changeType: 'increase', icon: UsersIcon },
-        { title: 'Estratégias Geradas', value: Math.floor(realMetrics.engagement.conversions * 1.5).toString(), icon: BrainCircuitIcon },
-        { title: 'Funis de Venda Criados', value: Math.floor(realMetrics.engagement.conversions * 0.6).toString(), icon: FilterIcon },
-        { title: 'Taxa de Engajamento (IA)', value: `${realMetrics.engagement.ctr.toFixed(1)}%`, icon: ZapIcon },
-    ] : [];
+    const stats: StatCardData[] = [
+        { title: 'Receita Mensal (MRR)', value: `R$ ${(s.mrr || 0).toFixed(2)}`, change: s.activeSubscriptions ? `${s.activeSubscriptions} assinaturas ativas` : 'Nenhuma assinatura', changeType: 'increase', icon: DollarSignIcon },
+        { title: 'Total de Usuários', value: (s.totalUsers || 0).toString(), change: `${s.activeUsers || 0} ativos`, changeType: 'increase', icon: UsersIcon },
+        { title: 'Afiliados Ativos', value: (s.affiliateUsers || 0).toString(), icon: BrainCircuitIcon },
+        { title: 'Assinaturas Ativas', value: (s.activeSubscriptions || 0).toString(), icon: FilterIcon },
+        { title: 'Pagamentos Pendentes', value: (s.pendingPayments || 0).toString(), icon: ZapIcon },
+    ];
 
-    const recentUsers = useMemo(() => {
-        return [...platformUsers]
-            .filter(u => u.type === 'client')
-            .sort((a,b) => new Date(b.joinedDate).getTime() - new Date(a.joinedDate).getTime())
-            .slice(0, 5)
-            .map(u => ({
-                ...u,
-                churnRisk: 'Baixo' as const
-            }));
-    }, [platformUsers]);
+    const recentUsers = dashboardData?.recentUsers || [];
 
     const getChurnRiskChip = (risk: 'Baixo' | 'Médio' | 'Alto' | undefined) => {
         switch (risk) {
@@ -130,16 +93,16 @@ const AdminDashboardPage: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mt-8">
                 <div className="lg:col-span-3 bg-secondary p-6 rounded-lg">
-                    <h3 className="text-xl font-bold mb-4">Crescimento da Receita</h3>
+                    <h3 className="text-xl font-bold mb-4">Distribuição por Plano</h3>
                     <div style={{ width: '100%', height: 300 }}>
                         <ResponsiveContainer>
-                            <BarChart data={revenueData}>
+                            <BarChart data={Object.entries(s.planDistribution || {}).map(([name, count]) => ({ name, assinantes: count }))}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#0B1747"/>
                                 <XAxis dataKey="name" stroke="#94A3B8" />
                                 <YAxis stroke="#94A3B8" />
                                 <Tooltip contentStyle={{ backgroundColor: '#02042B', border: '1px solid #0B1747' }}/>
                                 <Legend />
-                                <Bar dataKey="revenue" fill="#4F46E5" name="Receita (R$)"/>
+                                <Bar dataKey="assinantes" fill="#4F46E5" name="Assinantes"/>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -153,18 +116,23 @@ const AdminDashboardPage: React.FC = () => {
                                 <tr>
                                     <th scope="col" className="py-3 pr-3">Nome</th>
                                     <th scope="col" className="py-3 px-3">Plano</th>
-                                    <th scope="col" className="py-3 pl-3">Risco de Churn (IA)</th>
+                                    <th scope="col" className="py-3 pl-3">Cadastro</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {recentUsers.map(user => (
+                                {loading ? (
+                                    <tr><td colSpan={3} className="py-3 text-center text-gray-400">Carregando...</td></tr>
+                                ) : recentUsers.length === 0 ? (
+                                    <tr><td colSpan={3} className="py-3 text-center text-gray-400">Nenhum usuário</td></tr>
+                                ) : recentUsers.map((user: any) => (
                                     <tr key={user.id} className="border-t border-primary">
-                                        <td className="py-3 pr-3 font-medium">{user.name}</td>
-                                        <td className="py-3 px-3">{user.plan}</td>
-                                         <td className="py-3 pl-3">
-                                            <span className={`px-2 py-1 text-xs rounded-full ${getChurnRiskChip(user.churnRisk)}`}>
-                                                {user.churnRisk}
-                                            </span>
+                                        <td className="py-3 pr-3 font-medium">
+                                            {user.name}
+                                            {user.is_affiliate && <span className="ml-1 text-xs">🤝</span>}
+                                        </td>
+                                        <td className="py-3 px-3">{user.plan || <span className="text-gray-500">-</span>}</td>
+                                        <td className="py-3 pl-3 text-xs text-gray-400">
+                                            {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '-'}
                                         </td>
                                     </tr>
                                 ))}

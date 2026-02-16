@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
-import RealDataService from '../../services/realDataService';
 
 interface TaskMetric {
   id: string;
@@ -107,21 +106,35 @@ const AdminTaskMonitoringPage: React.FC = () => {
       activeProcesses: 156
     });
 
-    // Carregar métricas reais
-    const dataService = RealDataService.getInstance();
-    setRealMetrics(dataService.getRealMetrics());
+    // Carregar métricas reais do Supabase
+    fetchRealMetrics();
 
     addLog('🚀 Monitor Ultra-Avançado inicializado com sucesso');
     addLog('🔍 Monitoramento em tempo real ativado');
-    addLog('📊 Métricas reais carregadas');
+    addLog('📊 Métricas reais carregadas do Supabase');
+  };
+
+  const fetchRealMetrics = async () => {
+    try {
+      const res = await fetch('/api/admin/dashboard-stats');
+      const data = await res.json();
+      if (data.success) {
+        const s = data.stats;
+        setRealMetrics({
+          users: { total: s.totalUsers, active: s.activeUsers, new: s.totalUsers },
+          revenue: { daily: s.mrr / 30, weekly: (s.mrr / 30) * 7, monthly: s.mrr },
+          affiliates: { total: s.affiliateUsers, active: s.affiliateUsers, commissions: 0 },
+          engagement: { views: 0, clicks: 0, ctr: 0, conversions: s.activeSubscriptions }
+        });
+      }
+    } catch (e) {
+      console.error('Erro ao buscar métricas:', e);
+    }
   };
 
   const updateMetrics = () => {
     if (!isMonitoringActive) return;
-
-    // Atualizar métricas reais do serviço de dados
-    const dataService = RealDataService.getInstance();
-    setRealMetrics(dataService.getRealMetrics());
+    fetchRealMetrics();
   };
 
   const addLog = (message: string) => {
