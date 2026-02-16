@@ -310,6 +310,14 @@ class CentralizedPricingService {
         }
         return plan;
       });
+    } else if (category === 'tool') {
+      pricing.toolPrices = (pricing.toolPrices || []).map(tool => {
+        if (tool.id === planId) {
+          tool.price = newPrice;
+          updated = true;
+        }
+        return tool;
+      });
     }
 
     if (updated) {

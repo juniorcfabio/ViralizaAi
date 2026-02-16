@@ -556,6 +556,47 @@ export default async function handler(req, res) {
           return res.status(200).json({ stripe: null, paypal: null, pix: null, crypto: null });
         }
       }
+      case 'admin/tool-pricing': {
+        if (req.method === 'POST') {
+          // SAVE tool pricing
+          try {
+            var toolBody = req.body || {};
+            if (!toolBody.tools || !Array.isArray(toolBody.tools)) {
+              return res.status(400).json({ error: 'tools array required' });
+            }
+            for (var ti = 0; ti < toolBody.tools.length; ti++) {
+              var t = toolBody.tools[ti];
+              await supabase.from('tool_pricing').upsert({
+                tool_id: t.tool_id || t.id,
+                name: t.name,
+                price: parseFloat(t.price) || 0,
+                category: t.category || 'tool',
+                description: t.description || '',
+                plan_tier: t.planTier || t.plan_tier || 1,
+                icon: t.icon || '',
+                popular: t.popular || false,
+                is_active: t.is_active !== false,
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'tool_id' });
+            }
+            return res.status(200).json({ success: true, message: 'Tool pricing saved', count: toolBody.tools.length });
+          } catch (e) {
+            console.error('Erro ao salvar tool pricing:', e);
+            return res.status(500).json({ error: e.message });
+          }
+        }
+        // GET tool pricing
+        try {
+          var { data: toolRows, error: toolErr } = await supabase.from('tool_pricing').select('*').order('tool_id', { ascending: true });
+          if (toolErr) {
+            console.error('Erro tool_pricing:', toolErr);
+            return res.status(200).json({ success: true, tools: [] });
+          }
+          return res.status(200).json({ success: true, tools: toolRows || [] });
+        } catch (e) {
+          return res.status(200).json({ success: true, tools: [] });
+        }
+      }
       case 'admin/marketing/load': {
         try {
           var { data: mktData } = await supabase.from('system_settings').select('key, value').in('key', ['viraliza_campaigns', 'viraliza_coupons', 'viraliza_posts']);

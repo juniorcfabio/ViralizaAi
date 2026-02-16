@@ -71,7 +71,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ title, description, icon, available
         {icon}
       </div>
       <div className="ml-4">
-        <h3 className={`text-lg font-semibold ${available ? 'text-gray-900' : 'text-gray-700'}`}>
+        <h3 className={`text-lg font-bold ${available ? 'text-gray-900' : 'text-gray-800'}`}>
           {title}
         </h3>
         {!available && (

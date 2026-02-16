@@ -13,6 +13,7 @@ const UserDashboard = () => {
   const [showPixModal, setShowPixModal] = useState(false);
   const [selectedTool, setSelectedTool] = useState(null);
   const [userAccess, setUserAccess] = useState([]);
+  const [toolPricesFromApi, setToolPricesFromApi] = useState(null);
 
   // 📊 MAPEAMENTO DE PLANOS → FERRAMENTAS
   const PLAN_TIERS = { mensal: 1, trimestral: 2, semestral: 3, anual: 4 };
@@ -74,7 +75,7 @@ const UserDashboard = () => {
       const purchasedStandalone = userAccess.some(a => a.toolName === tool.name);
 
       if (!includedInPlan && !purchasedStandalone) {
-        alert(`🔒 Acesso Negado!\n\nEsta ferramenta requer o Plano ${PLAN_NAMES_BY_TIER[toolTier] || 'Superior'} ou compra avulsa.\n\nFerramenta: ${tool.name}\nPreço avulso: ${tool.price}`);
+        alert(`🔒 Acesso Negado!\n\nEsta ferramenta requer o Plano ${PLAN_NAMES_BY_TIER[toolTier] || 'Superior'} ou compra avulsa.\n\nFerramenta: ${tool.name}\nPreço avulso: ${tool.priceFormatted}`);
         return;
       }
     }
@@ -550,13 +551,13 @@ const UserDashboard = () => {
   };
 
   const handlePurchaseTool = async (tool) => {
-    const confirmed = confirm(`💰 Comprar ${tool.name}\n\nPreço: ${tool.price}\n\nDeseja prosseguir com a compra?`);
+    const confirmed = confirm(`💰 Comprar ${tool.name}\n\nPreço: ${tool.priceFormatted}\n\nDeseja prosseguir com a compra?`);
     if (confirmed) {
       try {
         console.log('🛠️ Iniciando compra ferramenta:', tool);
 
         // Registrar pagamento no sistema de controle
-        const priceValue = parseFloat(tool.price.replace('R$', '').replace(',', '.').trim());
+        const priceValue = tool.price;
         const payment = AccessControlService.registerPayment({
           userId: authUser?.id || 'guest',
           type: 'tool',
@@ -608,7 +609,7 @@ const UserDashboard = () => {
   // 🏦 FUNÇÃO PIX PARA FERRAMENTAS
   const handlePixPurchase = (tool) => {
     // Registrar pagamento PIX no sistema de controle
-    const priceValue = parseFloat(tool.price.replace('R$', '').replace(',', '.').trim());
+    const priceValue = tool.price;
     const payment = AccessControlService.registerPayment({
       userId: authUser?.id || 'guest',
       type: 'tool',
@@ -624,24 +625,82 @@ const UserDashboard = () => {
     setShowPixModal(true);
   };
 
-  // 🛠️ TODAS AS 15 FERRAMENTAS COM MAPEAMENTO DE PLANO
-  const ALL_TOOLS = [
-    { id: 1,  name: 'Gerador de Scripts IA',        description: 'Crie scripts virais para seus vídeos usando inteligência artificial',  price: 'R$ 29,90', category: 'IA',        icon: '🤖', popular: true,  planTier: 1 },
-    { id: 2,  name: 'Criador de Thumbnails',         description: 'Gere thumbnails com DALL-E 3 para seus vídeos',                       price: 'R$ 19,90', category: 'Design',    icon: '🎨', popular: false, planTier: 1 },
-    { id: 3,  name: 'Analisador de Trends',          description: 'Descubra as tendências mais quentes do momento com IA',               price: 'R$ 39,90', category: 'Analytics', icon: '📈', popular: true,  planTier: 1 },
-    { id: 4,  name: 'Otimizador de SEO',             description: 'Otimize seu conteúdo para os mecanismos de busca',                    price: 'R$ 24,90', category: 'SEO',       icon: '🔍', popular: false, planTier: 1 },
-    { id: 5,  name: 'Gerador de Hashtags',           description: 'Encontre as hashtags perfeitas para seu conteúdo',                    price: 'R$ 14,90', category: 'Social',    icon: '#️⃣', popular: true,  planTier: 1 },
-    { id: 6,  name: 'Criador de Logos',              description: 'Crie logos profissionais com DALL-E 3',                               price: 'R$ 49,90', category: 'Design',    icon: '🎯', popular: false, planTier: 1 },
-    { id: 7,  name: 'Agendamento Multiplataforma',   description: 'Agende posts em todas as redes sociais simultaneamente',              price: 'R$ 39,90', category: 'Social',    icon: '📅', popular: true,  planTier: 2 },
-    { id: 8,  name: 'IA de Copywriting',             description: 'Copys persuasivas geradas por IA para suas campanhas',                price: 'R$ 34,90', category: 'IA',        icon: '✍️', popular: false, planTier: 2 },
-    { id: 9,  name: 'Tradutor Automático',           description: 'Traduza conteúdo para múltiplos idiomas automaticamente',             price: 'R$ 29,90', category: 'IA',        icon: '🌍', popular: false, planTier: 2 },
-    { id: 10, name: 'Gerador de QR Code',            description: 'QR Codes personalizados + estratégias de marketing com IA',           price: 'R$ 19,90', category: 'Marketing', icon: '📱', popular: false, planTier: 3 },
-    { id: 11, name: 'Editor de Vídeo Pro',           description: 'Editor de vídeo completo com roteiros gerados por IA',                price: 'R$ 97,00', category: 'Vídeo',     icon: '🎬', popular: true,  planTier: 3 },
-    { id: 12, name: 'Gerador de Ebooks Premium',     description: 'Ebooks profissionais com capítulos gerados por IA',                   price: 'R$ 49,90', category: 'Conteúdo',  icon: '📚', popular: true,  planTier: 3 },
-    { id: 13, name: 'Gerador de Animações',          description: 'Animações profissionais com briefings gerados por IA',                price: 'R$ 67,00', category: 'Design',    icon: '🎭', popular: false, planTier: 4 },
-    { id: 14, name: 'IA Video Generator 8K',         description: 'Geração de vídeos em alta qualidade com IA avançada',                 price: 'R$ 79,90', category: 'Vídeo',     icon: '🎥', popular: true,  planTier: 4 },
-    { id: 15, name: 'AI Funil Builder',              description: 'Funis de vendas completos gerados por IA',                            price: 'R$ 89,90', category: 'Marketing', icon: '🔄', popular: true,  planTier: 4 }
+  // 🛠️ FERRAMENTAS DEFAULT (fallback se API ainda não tiver dados)
+  const DEFAULT_TOOLS = [
+    { id: 1,  name: 'Gerador de Scripts IA',        description: 'Crie scripts virais para seus vídeos usando inteligência artificial',  price: 29.90, category: 'IA',        icon: '🤖', popular: true,  planTier: 1 },
+    { id: 2,  name: 'Criador de Thumbnails',         description: 'Gere thumbnails com DALL-E 3 para seus vídeos',                       price: 19.90, category: 'Design',    icon: '🎨', popular: false, planTier: 1 },
+    { id: 3,  name: 'Analisador de Trends',          description: 'Descubra as tendências mais quentes do momento com IA',               price: 39.90, category: 'Analytics', icon: '📈', popular: true,  planTier: 1 },
+    { id: 4,  name: 'Otimizador de SEO',             description: 'Otimize seu conteúdo para os mecanismos de busca',                    price: 24.90, category: 'SEO',       icon: '🔍', popular: false, planTier: 1 },
+    { id: 5,  name: 'Gerador de Hashtags',           description: 'Encontre as hashtags perfeitas para seu conteúdo',                    price: 14.90, category: 'Social',    icon: '#️⃣', popular: true,  planTier: 1 },
+    { id: 6,  name: 'Criador de Logos',              description: 'Crie logos profissionais com DALL-E 3',                               price: 49.90, category: 'Design',    icon: '🎯', popular: false, planTier: 1 },
+    { id: 7,  name: 'Agendamento Multiplataforma',   description: 'Agende posts em todas as redes sociais simultaneamente',              price: 39.90, category: 'Social',    icon: '📅', popular: true,  planTier: 2 },
+    { id: 8,  name: 'IA de Copywriting',             description: 'Copys persuasivas geradas por IA para suas campanhas',                price: 34.90, category: 'IA',        icon: '✍️', popular: false, planTier: 2 },
+    { id: 9,  name: 'Tradutor Automático',           description: 'Traduza conteúdo para múltiplos idiomas automaticamente',             price: 29.90, category: 'IA',        icon: '🌍', popular: false, planTier: 2 },
+    { id: 10, name: 'Gerador de QR Code',            description: 'QR Codes personalizados + estratégias de marketing com IA',           price: 19.90, category: 'Marketing', icon: '📱', popular: false, planTier: 3 },
+    { id: 11, name: 'Editor de Vídeo Pro',           description: 'Editor de vídeo completo com roteiros gerados por IA',                price: 97.00, category: 'Vídeo',     icon: '🎬', popular: true,  planTier: 3 },
+    { id: 12, name: 'Gerador de Ebooks Premium',     description: 'Ebooks profissionais com capítulos gerados por IA',                   price: 49.90, category: 'Conteúdo',  icon: '📚', popular: true,  planTier: 3 },
+    { id: 13, name: 'Gerador de Animações',          description: 'Animações profissionais com briefings gerados por IA',                price: 67.00, category: 'Design',    icon: '🎭', popular: false, planTier: 4 },
+    { id: 14, name: 'IA Video Generator 8K',         description: 'Geração de vídeos em alta qualidade com IA avançada',                 price: 79.90, category: 'Vídeo',     icon: '🎥', popular: true,  planTier: 4 },
+    { id: 15, name: 'AI Funil Builder',              description: 'Funis de vendas completos gerados por IA',                            price: 89.90, category: 'Marketing', icon: '🔄', popular: true,  planTier: 4 }
   ];
+
+  // 🔄 BUSCAR PREÇOS REAIS DO SUPABASE VIA API
+  useEffect(() => {
+    const fetchToolPrices = async () => {
+      try {
+        const res = await fetch('/api/admin/tool-pricing');
+        const data = await res.json();
+        if (data.success && data.tools && data.tools.length > 0) {
+          setToolPricesFromApi(data.tools);
+          console.log('✅ Preços das ferramentas carregados do Supabase:', data.tools.length);
+        } else {
+          // Seed: salvar ferramentas default no Supabase na primeira vez
+          console.log('🔄 Nenhum preço no Supabase, fazendo seed das 15 ferramentas...');
+          const seedTools = DEFAULT_TOOLS.map(t => ({
+            tool_id: t.id.toString(),
+            name: t.name,
+            price: t.price,
+            category: t.category,
+            description: t.description,
+            planTier: t.planTier,
+            icon: t.icon,
+            popular: t.popular,
+            is_active: true
+          }));
+          await fetch('/api/admin/tool-pricing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tools: seedTools })
+          });
+          console.log('✅ Seed de preços concluído');
+        }
+      } catch (e) {
+        console.warn('⚠️ Erro ao buscar preços das ferramentas:', e);
+      }
+    };
+    fetchToolPrices();
+  }, []);
+
+  // 🛠️ TODAS AS 15 FERRAMENTAS - preços dinâmicos do Supabase
+  const ALL_TOOLS = DEFAULT_TOOLS.map(tool => {
+    if (toolPricesFromApi) {
+      const apiTool = toolPricesFromApi.find(t => String(t.tool_id) === String(tool.id));
+      if (apiTool) {
+        return {
+          ...tool,
+          price: parseFloat(apiTool.price) || tool.price,
+          name: apiTool.name || tool.name,
+          description: apiTool.description || tool.description,
+          category: apiTool.category || tool.category,
+          popular: apiTool.popular !== undefined ? apiTool.popular : tool.popular
+        };
+      }
+    }
+    return tool;
+  }).map(tool => ({
+    ...tool,
+    priceFormatted: `R$ ${tool.price.toFixed(2).replace('.', ',')}`
+  }));
 
   const PLAN_NAMES_BY_TIER = { 1: 'Mensal', 2: 'Trimestral', 3: 'Semestral', 4: 'Anual' };
 
@@ -751,7 +810,7 @@ const UserDashboard = () => {
                 <div className="flex items-center mb-4 mt-2">
                   <div className="text-3xl mr-3">{tool.icon}</div>
                   <div>
-                    <h3 className="font-semibold text-lg">{tool.name}</h3>
+                    <h3 className="font-bold text-lg text-gray-900">{tool.name}</h3>
                     <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">{tool.category}</span>
                   </div>
                 </div>
@@ -807,7 +866,7 @@ const UserDashboard = () => {
                 <div className="flex items-center mb-4 mt-2">
                   <div className="text-3xl mr-3">{tool.icon}</div>
                   <div>
-                    <h3 className="font-semibold text-lg">{tool.name}</h3>
+                    <h3 className="font-bold text-lg text-gray-900">{tool.name}</h3>
                     <div className="flex gap-2 mt-1">
                       <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">{tool.category}</span>
                       {!tool.owned && (
@@ -820,7 +879,7 @@ const UserDashboard = () => {
                 <p className="text-gray-600 text-sm mb-4">{tool.description}</p>
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-2xl font-bold text-orange-600">{tool.price}</span>
+                  <span className="text-2xl font-bold text-orange-600">{tool.priceFormatted}</span>
                   {tool.owned ? (
                     <button 
                       onClick={() => handleUseTool(tool)}
@@ -1069,7 +1128,7 @@ const UserDashboard = () => {
             setSelectedTool(null);
           }}
           planName={selectedTool.name}
-          amount={parseFloat(selectedTool.price.replace('R$', '').replace(',', '.'))}
+          amount={selectedTool.price}
           onPaymentSuccess={() => {
             // Confirmar pagamento PIX e liberar acesso
             const payments = AccessControlService.getAllPayments();
