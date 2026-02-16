@@ -212,28 +212,35 @@ class RealVideoGeneratorAI {
     const prompt = avatarPrompts[avatarStyle] || avatarPrompts.professional;
 
     try {
+      console.log('👤 Gerando avatar DALL-E 3...', prompt.substring(0, 60));
       const response = await fetch(`${window.location.origin}/api/ai-generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tool: 'image',
           prompt,
-          params: { size: '1024x1024', quality: 'hd', style: 'natural' }
+          params: { size: '1024x1024', quality: 'standard', style: 'natural' }
         })
       });
 
+      console.log('👤 Avatar response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('👤 Avatar data:', { success: data.success, hasImage: !!data.imageUrl, isBase64: data.imageUrl?.startsWith('data:'), len: data.imageUrl?.length });
         if (data.success && data.imageUrl) {
-          console.log('👤 DALL-E 3 avatar gerado com sucesso');
+          console.log('✅ DALL-E 3 avatar gerado com sucesso (base64:', data.imageUrl.startsWith('data:'), ')');
           return data.imageUrl;
         }
+      } else {
+        const errText = await response.text();
+        console.error('❌ Avatar generation failed:', response.status, errText.substring(0, 200));
       }
     } catch (error) {
-      console.warn('⚠️ DALL-E 3 avatar falhou, usando fallback:', error);
+      console.error('❌ DALL-E 3 avatar erro:', error);
     }
 
     // Fallback Unsplash
+    console.warn('⚠️ Usando fallback Unsplash para avatar');
     return 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=1024&h=1024&fit=crop&crop=face';
   }
 
@@ -249,25 +256,31 @@ class RealVideoGeneratorAI {
     const prompt = backgroundPrompts[background] || backgroundPrompts.office;
 
     try {
+      console.log('🖼️ Gerando background DALL-E 3...', prompt.substring(0, 60));
       const response = await fetch(`${window.location.origin}/api/ai-generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tool: 'image',
           prompt,
-          params: { size: '1792x1024', quality: 'hd', style: 'natural' }
+          params: { size: '1024x1024', quality: 'standard', style: 'natural' }
         })
       });
 
+      console.log('🖼️ Background response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('🖼️ Background data:', { success: data.success, hasImage: !!data.imageUrl, isBase64: data.imageUrl?.startsWith('data:'), len: data.imageUrl?.length });
         if (data.success && data.imageUrl) {
-          console.log('🖼️ DALL-E 3 background gerado com sucesso');
+          console.log('✅ DALL-E 3 background gerado com sucesso (base64:', data.imageUrl.startsWith('data:'), ')');
           return data.imageUrl;
         }
+      } else {
+        const errText = await response.text();
+        console.error('❌ Background generation failed:', response.status, errText.substring(0, 200));
       }
     } catch (error) {
-      console.warn('⚠️ DALL-E 3 background falhou, usando fallback:', error);
+      console.error('❌ DALL-E 3 background erro:', error);
     }
 
     // Fallback Unsplash
