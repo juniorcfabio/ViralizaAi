@@ -671,34 +671,139 @@ const SocialMediaToolsPage: React.FC = () => {
         case 'generateAnimation':
           try {
             const animDesc = fi.content || 'Logo animado com motion graphics';
-            // 1) Gerar briefing completo
-            const animScript = await openaiService.generate('scripts',
-              `Crie um briefing completo para animação ${fi.animStyle || '2D motion graphics'} promocional.\n\nDescrição: ${animDesc}\nNicho: ${fi.niche || 'Tecnologia'}\n\nInclua:\n- Conceito visual detalhado\n- Estilo de animação: ${fi.animStyle || '2D motion graphics'}\n- Paleta de cores (hex codes)\n- Sequência de cenas (5 cenas mínimo com timecodes)\n- Texto animado para cada cena\n- Duração total e de cada cena\n- Referências visuais\n- Música/efeitos sonoros\n- Especificações técnicas (resolução, FPS, formato)`
-            );
-            // 2) Gerar concept art / key frame com DALL-E
-            let animImage = '';
+            const animStyle = fi.animStyle || '2D motion graphics';
+            const animNiche = fi.niche || 'Tecnologia';
+
+            // 1) Tentar gerar VÍDEO REAL com Sora-2
+            let videoGenerated = false;
+            let videoUrl = '';
             try {
-              const animImgRes = await fetch(`${window.location.origin}/api/ai-generate`, {
+              const soraPrompt = `Create a professional ${animStyle} promotional animation. Subject: ${animDesc}. Theme: ${animNiche}. Style: ${animStyle.includes('3D') ? 'photorealistic 3D rendered animation' : 'clean 2D motion graphics animation'}. Vibrant colors, smooth transitions, engaging visuals, high production quality.`;
+
+              // Mostrar progresso ao usuário
+              setResults({ success: true, data: { content: '⏳ Iniciando geração de vídeo com Sora-2... Aguarde.' }, message: 'Conectando ao Sora-2...' });
+
+              const createRes = await fetch(`${window.location.origin}/api/ai-generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  tool: 'image',
-                  prompt: `${fi.animStyle || '2D motion graphics'} animation key frame, ${animDesc}, ${fi.niche || 'technology'} theme, vibrant colors, professional ${fi.animStyle?.includes('3D') ? '3D rendered' : '2D flat design'} style, clean composition`,
-                  params: { size: '1792x1024', quality: 'standard', style: 'vivid' }
+                  tool: 'sora-create',
+                  prompt: soraPrompt,
+                  params: { size: '1280x720', seconds: 5 }
                 })
               });
-              const animImgData = await animImgRes.json();
-              if (animImgData.success && animImgData.imageUrl) {
-                animImage = animImgData.imageUrl;
+              const createData = await createRes.json();
+
+              if (createData.success && createData.videoId) {
+                const videoId = createData.videoId;
+                console.log('🎬 Sora-2 job criado:', videoId);
+
+                // Poll para status
+                let videoReady = false;
+                let attempts = 0;
+                const maxAttempts = 60; // 5 min max
+
+                while (!videoReady && attempts < maxAttempts) {
+                  await new Promise(resolve => setTimeout(resolve, 5000));
+                  attempts++;
+
+                  const statusRes = await fetch(`${window.location.origin}/api/ai-generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tool: 'sora-status', prompt: 'status', params: { videoId } })
+                  });
+                  const statusData = await statusRes.json();
+                  const progress = statusData.progress || 0;
+
+                  setResults({
+                    success: true,
+                    data: { content: `⏳ Gerando vídeo com Sora-2... ${progress}%\n\nTentativa ${attempts}/${maxAttempts}\nStatus: ${statusData.status || 'processando'}` },
+                    message: `Gerando vídeo: ${progress}%`
+                  });
+
+                  if (statusData.status === 'completed') {
+                    videoReady = true;
+                  } else if (statusData.status === 'failed' || statusData.error) {
+                    throw new Error(statusData.error || 'Geração de vídeo falhou no servidor');
+                  }
+                }
+
+                if (!videoReady) {
+                  throw new Error('Timeout: geração demorou mais de 5 minutos');
+                }
+
+                // Download do vídeo
+                setResults({ success: true, data: { content: '⬇️ Baixando vídeo gerado...' }, message: 'Baixando vídeo...' });
+
+                const dlRes = await fetch(`${window.location.origin}/api/ai-generate`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ tool: 'sora-download', prompt: 'download', params: { videoId } })
+                });
+
+                if (dlRes.ok) {
+                  const contentType = dlRes.headers.get('content-type') || '';
+                  if (contentType.includes('video')) {
+                    const videoBlob = await dlRes.blob();
+                    videoUrl = URL.createObjectURL(videoBlob);
+                    videoGenerated = true;
+                    console.log('✅ Vídeo Sora-2 baixado:', videoBlob.size, 'bytes');
+                  } else {
+                    const errData = await dlRes.json();
+                    throw new Error(errData.error || 'Download retornou formato inesperado');
+                  }
+                } else {
+                  throw new Error(`Download falhou: HTTP ${dlRes.status}`);
+                }
+              } else {
+                throw new Error(createData.error || createData.details || 'Sora-2 não disponível');
               }
-            } catch (imgErr) {
-              console.warn('⚠️ Animation image fallback:', imgErr);
+            } catch (soraErr: any) {
+              console.warn('⚠️ Sora-2 falhou, usando DALL-E como fallback:', soraErr.message);
             }
-            result = {
-              success: true,
-              data: { content: animScript, imageUrl: animImage || undefined },
-              message: animImage ? 'Concept art + Briefing de animação gerado com IA' : 'Briefing de animação gerado com IA'
-            };
+
+            // 2) Gerar briefing completo com IA
+            const animScript = await openaiService.generate('scripts',
+              `Crie um briefing completo para animação ${animStyle} promocional.\n\nDescrição: ${animDesc}\nNicho: ${animNiche}\n\nInclua:\n- Conceito visual detalhado\n- Estilo de animação: ${animStyle}\n- Paleta de cores (hex codes)\n- Sequência de cenas (5 cenas mínimo com timecodes)\n- Texto animado para cada cena\n- Duração total e de cada cena\n- Referências visuais\n- Música/efeitos sonoros\n- Especificações técnicas (resolução, FPS, formato)`
+            );
+
+            if (videoGenerated && videoUrl) {
+              // Sucesso com vídeo real
+              result = {
+                success: true,
+                data: {
+                  content: `🎬 Vídeo de Animação ${animStyle} Gerado com Sora-2!\n\nDescrição: ${animDesc}\nNicho: ${animNiche}\nDuração: 5 segundos\nResolução: 1280x720\nFormato: MP4\n\n✅ Use o player acima para assistir e o botão para baixar.\n\n---\n\n${animScript}`,
+                  videoUrl,
+                  videoDownloadUrl: videoUrl
+                },
+                message: 'Vídeo de animação gerado com Sora-2'
+              };
+            } else {
+              // Fallback: DALL-E concept art + briefing
+              let animImage = '';
+              try {
+                const animImgRes = await fetch(`${window.location.origin}/api/ai-generate`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    tool: 'image',
+                    prompt: `${animStyle} animation key frame, ${animDesc}, ${animNiche} theme, vibrant colors, professional ${animStyle.includes('3D') ? '3D rendered' : '2D flat design'} style, clean composition`,
+                    params: { size: '1792x1024', quality: 'standard', style: 'vivid' }
+                  })
+                });
+                const animImgData = await animImgRes.json();
+                if (animImgData.success && animImgData.imageUrl) {
+                  animImage = animImgData.imageUrl;
+                }
+              } catch (imgErr) {
+                console.warn('⚠️ DALL-E fallback also failed:', imgErr);
+              }
+              result = {
+                success: true,
+                data: { content: `⚠️ Sora-2 indisponível. Concept art gerado com DALL-E + briefing completo.\n\n${animScript}`, imageUrl: animImage || undefined },
+                message: animImage ? 'Concept art + Briefing (Sora-2 indisponível)' : 'Briefing de animação gerado com IA'
+              };
+            }
           } catch (e: any) {
             result = { success: false, message: `Erro na IA: ${e.message}` };
           }
@@ -1062,6 +1167,33 @@ const SocialMediaToolsPage: React.FC = () => {
                 {results.message}
               </span>
             </div>
+
+            {/* Video player for Sora-2 animations */}
+            {results.data?.videoUrl && (
+              <div className="mb-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-indigo-200">
+                <h4 className="text-lg font-bold text-gray-800 mb-3">🎬 Player de Vídeo</h4>
+                <video
+                  controls
+                  autoPlay
+                  muted
+                  loop
+                  src={results.data.videoUrl}
+                  className="w-full max-w-2xl rounded-lg shadow-md border border-gray-200 mb-3"
+                  style={{ maxHeight: '480px' }}
+                >
+                  Seu navegador não suporta o elemento de vídeo.
+                </video>
+                <div className="flex gap-3">
+                  <a
+                    href={results.data.videoDownloadUrl || results.data.videoUrl}
+                    download={`animacao_ia_${Date.now()}.mp4`}
+                    className="inline-flex items-center bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors shadow-md"
+                  >
+                    📥 Baixar Vídeo MP4
+                  </a>
+                </div>
+              </div>
+            )}
 
             {/* Audio player for music */}
             {results.data?.audioUrl && (
