@@ -1615,9 +1615,87 @@ const Footer: React.FC = () => {
     );
 };
 
+const AffiliateRegisterModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', cpf: '' });
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+    const { register, isLoading, isAuthenticated } = useAuth();
+    const navigate = useNavigate();
+
+    const formatCPF = (value: string) => {
+        const v = value.replace(/\D/g, '').slice(0, 11);
+        return v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+        if (e.target.name === 'cpf') value = formatCPF(value);
+        setFormData({ ...formData, [e.target.name]: value });
+        setError('');
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        if (formData.password !== confirmPassword) { setError('As senhas não coincidem.'); return; }
+        const plainCPF = formData.cpf.replace(/\D/g, '');
+        if (plainCPF.length !== 11) { setError('O CPF deve conter 11 dígitos.'); return; }
+        if (!formData.name || !formData.email || !formData.password) { setError('Preencha todos os campos.'); return; }
+
+        try {
+            if (isAuthenticated) {
+                setSuccessMessage('Você já tem uma conta! Redirecionando para o Programa de Afiliados...');
+                setTimeout(() => { onClose(); navigate('/dashboard/affiliate'); }, 1500);
+                return;
+            }
+            const result = await register({ name: formData.name, email: formData.email, password: formData.password, cpf: formData.cpf });
+            if (result.success) {
+                setSuccessMessage('Cadastro realizado! Redirecionando para o Programa de Afiliados...');
+                setTimeout(() => { onClose(); navigate('/dashboard/affiliate'); }, 1500);
+            } else {
+                setError(result.message || 'Erro ao fazer cadastro');
+            }
+        } catch (err: any) {
+            setError(err.message || 'Erro ao fazer cadastro');
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+            <div className="bg-secondary p-8 rounded-lg shadow-xl w-full max-w-md relative animate-fade-in-right max-h-[90vh] overflow-y-auto">
+                <button onClick={onClose} className="absolute top-4 right-4 text-2xl text-gray-dark hover:text-light">&times;</button>
+                <div className="text-center mb-6">
+                    <div className="text-4xl mb-2">🤝</div>
+                    <h2 className="text-2xl font-bold text-white">Programa de Afiliados</h2>
+                    <p className="text-gray-400 text-sm mt-1">Cadastre-se e comece a ganhar comissões</p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <input type="text" name="name" placeholder="Nome Completo" value={formData.name} onChange={handleChange} required className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-white" />
+                    <input type="text" name="cpf" placeholder="CPF (000.000.000-00)" value={formData.cpf} onChange={handleChange} required className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-white" />
+                    <input type="email" name="email" placeholder="E-mail" value={formData.email} onChange={handleChange} required className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-white" />
+                    <input type="password" name="password" placeholder="Senha" value={formData.password} onChange={handleChange} required className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-white" />
+                    <input type="password" name="confirmPassword" placeholder="Confirmar Senha" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="w-full bg-primary p-3 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-white" />
+
+                    {successMessage && <p className="text-green-500 text-sm text-center">{successMessage}</p>}
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
+                    <button type="submit" disabled={isLoading} className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold py-3 mt-2 rounded-full hover:from-green-500 hover:to-emerald-500 transition-colors disabled:opacity-50">
+                        {isLoading ? 'Cadastrando...' : 'Cadastrar'}
+                    </button>
+                </form>
+
+                <p className="text-gray-500 text-xs text-center mt-4">Cadastro apenas para Pessoa Física. Ao se cadastrar como afiliado, você poderá divulgar e vender os planos e ganhar comissões. O acesso às ferramentas requer assinatura de um plano.</p>
+            </div>
+        </div>
+    );
+};
+
 const LandingPage: React.FC = () => {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
     const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+    const [isAffiliateRegisterOpen, setIsAffiliateRegisterOpen] = useState(false);
     const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
     const [bannerMessage, setBannerMessage] = useState('');
 
@@ -1682,13 +1760,14 @@ const LandingPage: React.FC = () => {
                 <WorldMap />
                 <Testimonials />
                 <Pricing onRegister={() => setIsRegisterOpen(true)} />
-                <AffiliateSection onRegister={() => setIsRegisterOpen(true)} />
+                <AffiliateSection onRegister={() => setIsAffiliateRegisterOpen(true)} />
                 <PartnerAdsSection onRegister={() => setIsRegisterOpen(true)} />
             </main>
             <Footer />
 
             {isLoginOpen && <LoginModal onClose={() => setIsLoginOpen(false)} />}
             {isRegisterOpen && <RegisterModal onClose={() => setIsRegisterOpen(false)} />}
+            {isAffiliateRegisterOpen && <AffiliateRegisterModal onClose={() => setIsAffiliateRegisterOpen(false)} />}
             {isPersonaModalOpen && <InteractiveAIPersona onClose={() => setIsPersonaModalOpen(false)} />}
             
             {/* Botão de Auto Ajuda Flutuante e Arrastável */}

@@ -148,10 +148,19 @@ class RealAffiliateService {
 
   async activateAffiliate(userId: string, name: string, email: string): Promise<AffiliateAccount | null> {
     try {
+      // Verificar se já existe
+      const existing = await this.getAffiliateByUserId(userId);
+      if (existing) {
+        console.log('✅ Afiliado já existe:', existing.referral_code);
+        return existing;
+      }
+
       const settings = await this.getSettings();
       const referralCode = `VIR${userId.slice(-6).toUpperCase()}${Date.now().toString().slice(-4)}`;
+      const now = new Date().toISOString();
 
-      const newAffiliate: Partial<AffiliateAccount> = {
+      // Tentar insert com todas as colunas
+      const fullData: Record<string, any> = {
         user_id: userId,
         name,
         email,
@@ -164,25 +173,78 @@ class RealAffiliateService {
         total_referrals: 0,
         total_clicks: 0,
         payment_method: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        created_at: now,
+        updated_at: now
       };
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('affiliates')
-        .insert(newAffiliate)
+        .insert(fullData)
         .select()
         .single();
 
+      // Se erro de coluna inexistente, tentar com colunas mínimas
+      if (error && (error.message?.includes('column') || error.message?.includes('schema cache') || error.code === '42703' || error.code === 'PGRST204')) {
+        console.warn('⚠️ Colunas extras não existem na tabela affiliates, tentando com colunas mínimas...');
+        const minimalData: Record<string, any> = {
+          user_id: userId,
+          name,
+          email,
+          referral_code: referralCode,
+          status: 'active',
+          commission_rate: settings.commission_rate,
+          created_at: now,
+          updated_at: now
+        };
+
+        const retry = await supabase
+          .from('affiliates')
+          .insert(minimalData)
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
+      }
+
       if (error) {
-        // Se já existe, buscar
+        // Se já existe (duplicate key), buscar
         if (error.code === '23505') {
           return await this.getAffiliateByUserId(userId);
         }
         throw error;
       }
+
       console.log('✅ Afiliado ativado:', referralCode);
-      return data as AffiliateAccount;
+
+      // Garantir que o objeto retornado tenha todos os campos esperados
+      const result: AffiliateAccount = {
+        id: data?.id,
+        user_id: userId,
+        name,
+        email,
+        referral_code: referralCode,
+        status: 'active',
+        commission_rate: settings.commission_rate,
+        total_earnings: data?.total_earnings ?? 0,
+        pending_balance: data?.pending_balance ?? 0,
+        available_balance: data?.available_balance ?? 0,
+        total_referrals: data?.total_referrals ?? 0,
+        total_clicks: data?.total_clicks ?? 0,
+        bank_name: null,
+        bank_agency: null,
+        bank_account: null,
+        bank_account_type: null,
+        pix_key: null,
+        pix_key_type: null,
+        account_holder_name: null,
+        account_holder_cpf: null,
+        payment_method: null,
+        created_at: now,
+        updated_at: now,
+        ...data
+      };
+
+      return result;
     } catch (e) {
       console.error('❌ Erro ao ativar afiliado:', e);
       return null;
