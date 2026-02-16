@@ -138,11 +138,10 @@ export default async function handler(req, res) {
 
     // ==================== Image Generation via DALL-E 3 ====================
     if (tool === 'image') {
-      const size = params.size || '1792x1024';
+      const size = params.size || '1024x1024';
       const quality = params.quality || 'standard';
       const style = params.style || 'natural';
 
-      // Usar response_format b64_json para receber base64 direto da OpenAI (evita CORS)
       const imgRes = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: {
@@ -155,8 +154,7 @@ export default async function handler(req, res) {
           n: 1,
           size,
           quality,
-          style,
-          response_format: 'b64_json'
+          style
         })
       });
 
@@ -167,23 +165,10 @@ export default async function handler(req, res) {
       }
 
       const imgData = await imgRes.json();
-      const b64 = imgData.data?.[0]?.b64_json;
-      const revisedPrompt = imgData.data?.[0]?.revised_prompt;
-
-      if (b64) {
-        console.log(`✅ DALL-E 3 b64_json: size=${size}, quality=${quality}, base64 length=${b64.length}`);
-        return res.status(200).json({
-          success: true,
-          imageUrl: 'data:image/png;base64,' + b64,
-          revisedPrompt,
-          size,
-          quality
-        });
-      }
-
-      // Fallback: se b64 não disponível, tentar URL
       const imageUrl = imgData.data?.[0]?.url;
-      console.log(`⚠️ DALL-E 3 fallback URL: size=${size}`);
+      const revisedPrompt = imgData.data?.[0]?.revised_prompt;
+      console.log(`✅ DALL-E 3: size=${size}, quality=${quality}, url=${imageUrl ? 'OK' : 'EMPTY'}`);
+
       return res.status(200).json({
         success: true,
         imageUrl: imageUrl || '',

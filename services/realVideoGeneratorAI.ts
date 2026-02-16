@@ -440,21 +440,31 @@ class RealVideoGeneratorAI {
     });
   }
 
-  // Carregar imagem como Promise
+  // Carregar imagem como Promise — roteia URLs DALL-E pelo proxy para evitar CORS
   private loadImage(url: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      // Não usar crossOrigin para data URIs (base64)
-      if (!url.startsWith('data:')) {
+
+      // Determinar URL final: proxy para cross-origin, direto para base64/same-origin
+      let finalUrl = url;
+      if (!url.startsWith('data:') && (url.includes('oaidalleapi') || url.includes('blob.core.windows.net'))) {
+        // Rotear imagens DALL-E pelo proxy do servidor para evitar CORS
+        finalUrl = `${window.location.origin}/api/proxy-image?url=${encodeURIComponent(url)}`;
+        console.log('🔄 Proxy image via servidor:', url.substring(0, 60) + '...');
+      }
+
+      // crossOrigin necessário para canvas captureStream (exceto data URIs)
+      if (!finalUrl.startsWith('data:')) {
         img.crossOrigin = 'anonymous';
       }
+
       img.onload = () => {
-        console.log('✅ Imagem carregada:', url.substring(0, 50) + '...');
+        console.log('✅ Imagem carregada:', finalUrl.substring(0, 80) + '...');
         resolve(img);
       };
       img.onerror = () => {
-        console.warn('⚠️ Falha ao carregar imagem:', url.substring(0, 80));
-        // Criar imagem placeholder
+        console.warn('⚠️ Falha ao carregar imagem:', finalUrl.substring(0, 100));
+        // Criar imagem placeholder gradiente
         const canvas = document.createElement('canvas');
         canvas.width = 512; canvas.height = 512;
         const c = canvas.getContext('2d')!;
@@ -465,7 +475,7 @@ class RealVideoGeneratorAI {
         placeholder.src = canvas.toDataURL();
         placeholder.onload = () => resolve(placeholder);
       };
-      img.src = url;
+      img.src = finalUrl;
     });
   }
 
