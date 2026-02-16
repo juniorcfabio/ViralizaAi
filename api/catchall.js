@@ -150,6 +150,7 @@ export default async function handler(req, res) {
         if (existingMeta.affiliate_active && existingMeta.affiliate_referral_code) {
           return res.status(200).json({
             success: true, message: 'Afiliado já ativo',
+            storage: { metadata: true, database: true },
             affiliate: {
               id: aUserId, user_id: aUserId, name: existingMeta.affiliate_name || aName,
               email: existingMeta.affiliate_email || aEmail,
@@ -168,8 +169,54 @@ export default async function handler(req, res) {
         // Gerar código de referência
         var refCode = 'VIR' + aUserId.slice(-6).toUpperCase() + Date.now().toString().slice(-4);
         var nowISO = new Date().toISOString();
+        var dbSaved = false;
+        var dbMethod = 'none';
+        var dbError = null;
 
-        // Salvar em user_metadata (GoTrue - SEMPRE funciona, sem schema cache)
+        // ═══════ PERSISTÊNCIA 1: PostgreSQL via SQL direto (bypass schema cache) ═══════
+        try {
+          var sqlInsert = `INSERT INTO affiliates (user_id, code, status, name, email, referral_code, commission_rate, total_earnings, pending_balance, available_balance, total_referrals, total_clicks, created_at, updated_at) VALUES ('${aUserId}', '${refCode}', 'active', '${aName.replace(/'/g, "''")}', '${aEmail.replace(/'/g, "''")}', '${refCode}', 0.20, 0, 0, 0, 0, 0, '${nowISO}', '${nowISO}') ON CONFLICT (user_id) DO UPDATE SET status = 'active', name = '${aName.replace(/'/g, "''")}', email = '${aEmail.replace(/'/g, "''")}', updated_at = '${nowISO}' RETURNING id, user_id, code, status, name, email;`;
+          var { data: rpcData, error: rpcErr } = await supabase.rpc('exec_sql', { sql: sqlInsert });
+          if (!rpcErr) {
+            dbSaved = true;
+            dbMethod = 'rpc_exec_sql';
+            console.log('✅ Afiliado salvo no PostgreSQL via exec_sql');
+          } else {
+            console.warn('⚠️ exec_sql falhou:', rpcErr.message);
+            dbError = rpcErr.message;
+          }
+        } catch (e) {
+          console.warn('⚠️ exec_sql exception:', e.message);
+          dbError = e.message;
+        }
+
+        // ═══════ PERSISTÊNCIA 2: Fallback via PostgREST com colunas mínimas ═══════
+        if (!dbSaved) {
+          var columnSets = [
+            { user_id: aUserId, code: refCode, status: 'active', name: aName, email: aEmail },
+            { user_id: aUserId, code: refCode, status: 'active' },
+            { user_id: aUserId, code: refCode },
+            { user_id: aUserId }
+          ];
+          for (var ci = 0; ci < columnSets.length; ci++) {
+            try {
+              var { error: pgErr } = await supabase.from('affiliates').upsert(columnSets[ci], { onConflict: 'user_id' });
+              if (!pgErr) {
+                dbSaved = true;
+                dbMethod = 'postgrest_attempt_' + (ci + 1);
+                dbError = null;
+                console.log('✅ Afiliado salvo no PostgreSQL via PostgREST tentativa ' + (ci + 1));
+                break;
+              }
+              dbError = pgErr.message;
+              console.warn('⚠️ PostgREST tentativa ' + (ci + 1) + ' falhou:', pgErr.message);
+            } catch (e2) {
+              dbError = e2.message;
+            }
+          }
+        }
+
+        // ═══════ PERSISTÊNCIA 3: Auth user_metadata (backup garantido) ═══════
         var affiliateData = {
           affiliate_active: true,
           affiliate_name: aName,
@@ -181,7 +228,9 @@ export default async function handler(req, res) {
           affiliate_available_balance: 0,
           affiliate_total_referrals: 0,
           affiliate_total_clicks: 0,
-          affiliate_created_at: nowISO
+          affiliate_created_at: nowISO,
+          affiliate_db_saved: dbSaved,
+          affiliate_db_method: dbMethod
         };
 
         var { error: metaErr } = await supabase.auth.admin.updateUserById(aUserId, {
@@ -193,14 +242,16 @@ export default async function handler(req, res) {
           return res.status(500).json({ error: 'Erro ao ativar afiliado', details: metaErr.message });
         }
 
-        // Tentar salvar na tabela affiliates (best-effort, pode falhar por schema cache)
-        try {
-          await supabase.from('affiliates').upsert({ user_id: aUserId, code: refCode, status: 'active' }, { onConflict: 'user_id' });
-        } catch (e) { console.warn('Tabela affiliates best-effort falhou:', e.message); }
-
-        console.log('✅ Afiliado ativado via Auth metadata:', refCode);
+        console.log('✅ Afiliado ativado | DB:', dbSaved ? dbMethod : 'FALHOU', '| Metadata: OK | Code:', refCode);
         return res.status(201).json({
-          success: true, message: 'Afiliado ativado com sucesso',
+          success: true,
+          message: 'Afiliado ativado com sucesso',
+          storage: {
+            metadata: true,
+            database: dbSaved,
+            db_method: dbMethod,
+            db_error: dbSaved ? null : dbError
+          },
           affiliate: {
             id: aUserId, user_id: aUserId, name: aName, email: aEmail,
             referral_code: refCode, status: 'active', commission_rate: 0.20,
