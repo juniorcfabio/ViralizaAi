@@ -169,9 +169,24 @@ export default async function handler(req, res) {
       const revisedPrompt = imgData.data?.[0]?.revised_prompt;
       console.log(`✅ DALL-E 3: size=${size}, quality=${quality}`);
 
+      // Proxy image as base64 to avoid CORS issues on the client
+      let imageBase64 = null;
+      if (imageUrl) {
+        try {
+          const imgDownload = await fetch(imageUrl);
+          if (imgDownload.ok) {
+            const imgBuffer = Buffer.from(await imgDownload.arrayBuffer());
+            imageBase64 = 'data:image/png;base64,' + imgBuffer.toString('base64');
+            console.log(`✅ Image proxied as base64: ${imgBuffer.length} bytes`);
+          }
+        } catch (proxyErr) {
+          console.warn('⚠️ Failed to proxy image, returning URL:', proxyErr.message);
+        }
+      }
+
       return res.status(200).json({
         success: true,
-        imageUrl,
+        imageUrl: imageBase64 || imageUrl,
         revisedPrompt,
         size,
         quality

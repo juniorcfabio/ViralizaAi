@@ -203,10 +203,10 @@ class RealVideoGeneratorAI {
   // Gerar avatar com DALL-E 3 (server-side)
   private async generateAvatar(avatarStyle: string): Promise<string> {
     const avatarPrompts: Record<string, string> = {
-      professional: 'Photorealistic portrait of a confident professional business presenter in an elegant suit, studio lighting, clean background, looking at camera, ultra high quality, 8K resolution',
-      casual: 'Photorealistic portrait of a friendly young entrepreneur in smart casual clothing, warm smile, modern co-working space, looking at camera, ultra high quality, 8K resolution',
-      elegant: 'Photorealistic portrait of a sophisticated executive in luxury attire, premium studio setting, poised and authoritative, looking at camera, ultra high quality, 8K resolution',
-      modern: 'Photorealistic portrait of an innovative tech leader in contemporary style, futuristic background, dynamic pose, looking at camera, ultra high quality, 8K resolution'
+      professional: 'Photorealistic half-body shot of a confident professional female influencer in elegant business attire, gesturing naturally as if presenting a product on camera, warm smile, studio lighting, transparent/clean background, ultra detailed skin and hair, 8K quality',
+      casual: 'Photorealistic half-body shot of a friendly young female content creator in trendy casual outfit, speaking enthusiastically to camera, expressive hand gestures, warm natural lighting, transparent/clean background, ultra detailed, 8K quality',
+      elegant: 'Photorealistic half-body shot of a sophisticated female executive influencer in luxury attire, poised and confident, presenting to camera with open hand gesture, studio lighting, transparent/clean background, ultra detailed, 8K quality',
+      modern: 'Photorealistic half-body shot of a charismatic young male tech influencer in modern smart casual style, speaking energetically to camera with hand gestures, dynamic pose, transparent/clean background, ultra detailed, 8K quality'
     };
 
     const prompt = avatarPrompts[avatarStyle] || avatarPrompts.professional;
@@ -240,10 +240,10 @@ class RealVideoGeneratorAI {
   // Gerar background com DALL-E 3 (server-side)
   private async generateBackground(background: string, businessType: string): Promise<string> {
     const backgroundPrompts: Record<string, string> = {
-      office: `Modern luxury office interior with glass walls and city skyline view, professional ${businessType} setting, cinematic lighting, ultra detailed, 8K quality`,
-      studio: `Premium professional video studio with soft lighting and modern equipment, perfect for ${businessType} presentation, clean and elegant, 8K quality`,
-      outdoor: `Beautiful outdoor urban landscape with modern architecture, suitable for ${businessType} brand, golden hour lighting, ultra detailed, 8K quality`,
-      custom: `Creative professional environment for ${businessType}, modern design elements, vibrant yet elegant atmosphere, 8K quality`
+      office: `Wide cinematic shot of a beautiful modern ${businessType} environment, professional setting with warm ambient lighting, bokeh background effect, products or elements related to ${businessType} visible, ultra detailed, photorealistic, 8K quality`,
+      studio: `Wide cinematic shot of a premium ${businessType} studio or showroom, soft professional lighting, modern decor related to ${businessType}, depth of field effect, photorealistic, 8K quality`,
+      outdoor: `Wide cinematic outdoor scene perfect for ${businessType} brand, beautiful golden hour lighting, urban modern setting with elements of ${businessType}, bokeh background, photorealistic, 8K quality`,
+      custom: `Wide cinematic scene of a creative ${businessType} space, vibrant modern atmosphere with brand elements, professional lighting, depth of field, photorealistic, 8K quality`
     };
 
     const prompt = backgroundPrompts[background] || backgroundPrompts.office;
@@ -290,8 +290,8 @@ class RealVideoGeneratorAI {
   }): Promise<GeneratedVideoReal> {
     console.log('🎬 Compondo vídeo final com assets reais da IA...');
     console.log('🎵 Audio URL:', components.audioUrl ? 'OpenAI TTS ✅' : 'Fallback browser TTS');
-    console.log('👤 Avatar URL:', components.avatarUrl.includes('oaidalleapi') ? 'DALL-E 3 ✅' : 'Fallback');
-    console.log('🖼️ Background URL:', components.backgroundUrl.includes('oaidalleapi') ? 'DALL-E 3 ✅' : 'Fallback');
+    console.log('👤 Avatar URL:', components.avatarUrl.startsWith('data:image') ? 'DALL-E 3 base64 ✅' : 'Fallback');
+    console.log('🖼️ Background URL:', components.backgroundUrl.startsWith('data:image') ? 'DALL-E 3 base64 ✅' : 'Fallback');
 
     const videoId = `ai_video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -431,8 +431,14 @@ class RealVideoGeneratorAI {
   private loadImage(url: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img);
+      // Não usar crossOrigin para data URIs (base64)
+      if (!url.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
+      }
+      img.onload = () => {
+        console.log('✅ Imagem carregada:', url.substring(0, 50) + '...');
+        resolve(img);
+      };
       img.onerror = () => {
         console.warn('⚠️ Falha ao carregar imagem:', url.substring(0, 80));
         // Criar imagem placeholder
@@ -450,7 +456,7 @@ class RealVideoGeneratorAI {
     });
   }
 
-  // Desenhar frame composto com imagens IA reais
+  // Desenhar frame composto com imagens IA reais — influencer humanizada falando
   private drawAIComposedFrame(
     ctx: CanvasRenderingContext2D,
     avatarImg: HTMLImageElement,
@@ -463,123 +469,177 @@ class RealVideoGeneratorAI {
     const W = ctx.canvas.width;
     const H = ctx.canvas.height;
 
-    // 1. Background DALL-E 3 (full frame)
-    ctx.drawImage(bgImg, 0, 0, W, H);
+    // ====== 1. Background DALL-E 3 (full frame com leve zoom/pan) ======
+    const zoomFactor = 1.05 + Math.sin(frame * 0.005) * 0.02;
+    const panX = Math.sin(frame * 0.003) * 15;
+    const panY = Math.cos(frame * 0.004) * 8;
+    const zw = W * zoomFactor;
+    const zh = H * zoomFactor;
+    ctx.drawImage(bgImg, -(zw - W) / 2 + panX, -(zh - H) / 2 + panY, zw, zh);
 
-    // Overlay escuro sutil para legibilidade
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+    // Overlay gradiente (escurece embaixo para legibilidade do texto)
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, 'rgba(0,0,0,0.1)');
+    grad.addColorStop(0.55, 'rgba(0,0,0,0.15)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.7)');
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    // 2. Avatar DALL-E 3 (círculo centralizado com efeito de respiração)
-    const centerX = W / 2;
-    const centerY = H * 0.38;
-    const baseSize = 260;
-    const breathe = Math.sin(frame * 0.04) * 4;
-    const size = baseSize + breathe;
+    // ====== 2. Influencer DALL-E 3 (metade direita, grande, com animação de fala) ======
+    const isSpeaking = progress > 0.03 && progress < 0.97;
+    const breathe = Math.sin(frame * 0.04) * 3;
+    const sway = Math.sin(frame * 0.02) * 2;
 
-    // Sombra do avatar
+    // Tamanho grande do avatar (metade da tela)
+    const avW = avatarImg.naturalWidth || avatarImg.width;
+    const avH = avatarImg.naturalHeight || avatarImg.height;
+    const targetH = H * 0.88 + breathe;
+    const targetW = targetH * (avW / avH);
+    const avX = W - targetW * 0.72 + sway;
+    const avY = H - targetH + 4;
+
+    // Sombra suave atrás da influencer
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 30;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, size / 2 + 4, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fill();
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetX = -10;
+    ctx.shadowOffsetY = 5;
+    ctx.drawImage(avatarImg, avX, avY, targetW, targetH);
     ctx.restore();
 
-    // Avatar circular
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, size / 2, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(avatarImg, centerX - size / 2, centerY - size / 2, size, size);
-    ctx.restore();
-
-    // Borda do avatar (anel luminoso)
-    const isSpeaking = progress > 0.05 && progress < 0.95;
-    const ringAlpha = isSpeaking ? 0.6 + Math.sin(frame * 0.2) * 0.3 : 0.4;
-    ctx.strokeStyle = `rgba(255, 255, 255, ${ringAlpha})`;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, size / 2 + 2, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Ondas sonoras ao redor do avatar (quando falando)
+    // Glow sutil ao redor quando falando
     if (isSpeaking) {
-      for (let i = 1; i <= 3; i++) {
-        const waveRadius = size / 2 + 20 + i * 25 + Math.sin(frame * 0.25 + i) * 10;
-        const alpha = 0.25 - i * 0.07;
-        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-        ctx.lineWidth = 2;
+      ctx.save();
+      ctx.globalAlpha = 0.08 + Math.sin(frame * 0.15) * 0.04;
+      ctx.shadowColor = '#ffffff';
+      ctx.shadowBlur = 25;
+      ctx.drawImage(avatarImg, avX, avY, targetW, targetH);
+      ctx.restore();
+    }
+
+    // ====== 3. Indicador de fala (ondas ao lado da influencer) ======
+    if (isSpeaking) {
+      const waveX = avX + 20;
+      const waveY = avY + targetH * 0.25;
+      for (let i = 0; i < 4; i++) {
+        const amp = 8 + i * 4;
+        const barH = 18 + Math.sin(frame * 0.3 + i * 1.2) * amp;
+        const alpha = 0.6 - i * 0.12;
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, waveRadius, 0, Math.PI * 2);
-        ctx.stroke();
+        const bx = waveX - i * 12;
+        const by = waveY - barH / 2;
+        const bw = 4;
+        const br = 2;
+        ctx.moveTo(bx + br, by);
+        ctx.lineTo(bx + bw - br, by);
+        ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + br);
+        ctx.lineTo(bx + bw, by + barH - br);
+        ctx.quadraticCurveTo(bx + bw, by + barH, bx + bw - br, by + barH);
+        ctx.lineTo(bx + br, by + barH);
+        ctx.quadraticCurveTo(bx, by + barH, bx, by + barH - br);
+        ctx.lineTo(bx, by + br);
+        ctx.quadraticCurveTo(bx, by, bx + br, by);
+        ctx.fill();
       }
     }
 
-    // 3. Nome do negócio (topo)
+    // ====== 4. Nome do negócio (canto superior esquerdo, estilo profissional) ======
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 10;
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 44px Arial, Helvetica, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = 'rgba(0,0,0,0.7)';
-    ctx.shadowBlur = 8;
-    ctx.fillText(config.businessName || 'Seu Negócio', centerX, 70);
-    ctx.shadowBlur = 0;
+    ctx.font = 'bold 42px Arial, Helvetica, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(config.businessName || 'Seu Negócio', 50, 65);
 
-    // 4. Texto do script (legendas animadas na parte inferior)
-    const words = script.split(' ');
+    // Sub-linha com tipo de negócio
+    ctx.font = '20px Arial, Helvetica, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText(config.businessType || '', 52, 95);
+    ctx.restore();
+
+    // ====== 5. Legendas animadas (parte inferior esquerda, estilo moderno) ======
+    const words = script.replace(/\*\*\[.*?\]\*\*/g, '').replace(/\*\*/g, '').trim().split(' ');
     const wordsToShow = Math.floor(words.length * progress);
-    const currentText = words.slice(Math.max(0, wordsToShow - 15), wordsToShow).join(' ');
+    const currentText = words.slice(Math.max(0, wordsToShow - 12), wordsToShow).join(' ');
 
     if (currentText) {
-      // Fundo semi-transparente para texto
-      const textBoxY = H - 140;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-      const rd = 12;
+      const textBoxX = 40;
+      const textBoxY = H - 150;
+      const textBoxW = W * 0.55;
+      const textBoxH = 110;
+      const rd = 14;
+
+      // Fundo com blur effect
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
       ctx.beginPath();
-      ctx.moveTo(60 + rd, textBoxY);
-      ctx.lineTo(W - 60 - rd, textBoxY);
-      ctx.quadraticCurveTo(W - 60, textBoxY, W - 60, textBoxY + rd);
-      ctx.lineTo(W - 60, textBoxY + 100 - rd);
-      ctx.quadraticCurveTo(W - 60, textBoxY + 100, W - 60 - rd, textBoxY + 100);
-      ctx.lineTo(60 + rd, textBoxY + 100);
-      ctx.quadraticCurveTo(60, textBoxY + 100, 60, textBoxY + 100 - rd);
-      ctx.lineTo(60, textBoxY + rd);
-      ctx.quadraticCurveTo(60, textBoxY, 60 + rd, textBoxY);
+      ctx.moveTo(textBoxX + rd, textBoxY);
+      ctx.lineTo(textBoxX + textBoxW - rd, textBoxY);
+      ctx.quadraticCurveTo(textBoxX + textBoxW, textBoxY, textBoxX + textBoxW, textBoxY + rd);
+      ctx.lineTo(textBoxX + textBoxW, textBoxY + textBoxH - rd);
+      ctx.quadraticCurveTo(textBoxX + textBoxW, textBoxY + textBoxH, textBoxX + textBoxW - rd, textBoxY + textBoxH);
+      ctx.lineTo(textBoxX + rd, textBoxY + textBoxH);
+      ctx.quadraticCurveTo(textBoxX, textBoxY + textBoxH, textBoxX, textBoxY + textBoxH - rd);
+      ctx.lineTo(textBoxX, textBoxY + rd);
+      ctx.quadraticCurveTo(textBoxX, textBoxY, textBoxX + rd, textBoxY);
       ctx.fill();
 
+      // Barra colorida lateral
+      ctx.fillStyle = '#FFC107';
+      ctx.fillRect(textBoxX, textBoxY + 10, 4, textBoxH - 20);
+
+      // Texto das legendas
       ctx.fillStyle = '#ffffff';
-      ctx.font = '22px Arial, Helvetica, sans-serif';
-      ctx.textAlign = 'center';
-      const lines = this.wrapText(ctx, currentText, W - 160);
+      ctx.font = '21px Arial, Helvetica, sans-serif';
+      ctx.textAlign = 'left';
+      const lines = this.wrapText(ctx, currentText, textBoxW - 40);
       lines.slice(-3).forEach((line, idx) => {
-        ctx.fillText(line, centerX, textBoxY + 35 + idx * 28);
+        ctx.fillText(line, textBoxX + 18, textBoxY + 34 + idx * 28);
       });
     }
 
-    // 5. Badge qualidade 8K
+    // ====== 6. Badge 8K AI (canto superior direito) ======
+    const badgeW = 80;
+    const badgeH = 32;
+    const badgeX = W - badgeW - 20;
+    const badgeY = 20;
     ctx.fillStyle = 'rgba(255, 193, 7, 0.9)';
     ctx.beginPath();
-    ctx.moveTo(W - 90 + 8, 20);
-    ctx.lineTo(W - 20 - 8, 20);
-    ctx.quadraticCurveTo(W - 20, 20, W - 20, 28);
-    ctx.lineTo(W - 20, 52);
-    ctx.quadraticCurveTo(W - 20, 60, W - 28, 60);
-    ctx.lineTo(W - 82, 60);
-    ctx.quadraticCurveTo(W - 90, 60, W - 90, 52);
-    ctx.lineTo(W - 90, 28);
-    ctx.quadraticCurveTo(W - 90, 20, W - 82, 20);
+    ctx.moveTo(badgeX + 8, badgeY);
+    ctx.lineTo(badgeX + badgeW - 8, badgeY);
+    ctx.quadraticCurveTo(badgeX + badgeW, badgeY, badgeX + badgeW, badgeY + 8);
+    ctx.lineTo(badgeX + badgeW, badgeY + badgeH - 8);
+    ctx.quadraticCurveTo(badgeX + badgeW, badgeY + badgeH, badgeX + badgeW - 8, badgeY + badgeH);
+    ctx.lineTo(badgeX + 8, badgeY + badgeH);
+    ctx.quadraticCurveTo(badgeX, badgeY + badgeH, badgeX, badgeY + badgeH - 8);
+    ctx.lineTo(badgeX, badgeY + 8);
+    ctx.quadraticCurveTo(badgeX, badgeY, badgeX + 8, badgeY);
     ctx.fill();
     ctx.fillStyle = '#000';
-    ctx.font = 'bold 18px Arial';
+    ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('8K AI', W - 55, 46);
+    ctx.fillText('8K AI', badgeX + badgeW / 2, badgeY + 22);
 
-    // 6. Barra de progresso
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    // ====== 7. Barra de progresso (inferior) ======
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
     ctx.fillRect(0, H - 4, W, 4);
     ctx.fillStyle = '#FFC107';
     ctx.fillRect(0, H - 4, W * progress, 4);
+
+    // ====== 8. CTA piscante no final ======
+    if (progress > 0.85) {
+      const ctaAlpha = 0.5 + Math.sin(frame * 0.2) * 0.4;
+      ctx.save();
+      ctx.globalAlpha = ctaAlpha;
+      ctx.fillStyle = '#FFC107';
+      ctx.font = 'bold 28px Arial, Helvetica, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 6;
+      ctx.fillText(config.callToAction || '👉 Saiba mais!', 50, H - 170);
+      ctx.restore();
+    }
   }
 
   // Gerar vídeo demo legado (fallback)
