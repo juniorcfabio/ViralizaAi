@@ -13,49 +13,17 @@ const UploadIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
 );
 
-const getFromStorage = <T,>(key: string, defaultValue: T): T => {
+const saveMarketingToApi = async (data: { campaigns?: any[]; coupons?: any[]; posts?: any[] }) => {
     try {
-        const item = localStorage.getItem(key);
-        return item ? JSON.parse(item) : defaultValue;
-    } catch (error) {
-        return defaultValue;
+        await fetch('/api/admin/marketing/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    } catch (e) {
+        console.error('Erro ao salvar marketing no Supabase:', e);
     }
-}
-
-const saveToStorage = <T,>(key: string, data: T) => {
-    localStorage.setItem(key, JSON.stringify(data));
-    // SYNC COM SUPABASE
-    import('../../src/lib/supabase').then(({ supabase }) => {
-        supabase.from('system_settings').upsert({ key, value: data, updated_at: new Date().toISOString() }).then(() => {});
-    });
-}
-
-// Helper to set time for initial mocked data relative to now
-const getRelativeDateStr = (diffDays: number): string => {
-    const date = new Date();
-    date.setDate(date.getDate() + diffDays);
-    date.setHours(12, 0, 0, 0); // normalize to noon
-    return date.toISOString();
 };
-
-const initialCampaigns: Campaign[] = [
-    { id: 'camp_1', name: 'Lançamento Verão 2024', status: 'Ativa', budget: 5000, clicks: 1204, conversions: 89, startDate: getRelativeDateStr(-5), endDate: getRelativeDateStr(10) },
-    { id: 'camp_2', name: 'Promoção Dia das Mães', status: 'Concluída', budget: 2500, clicks: 850, conversions: 152, startDate: getRelativeDateStr(-30), endDate: getRelativeDateStr(-10) },
-    { id: 'camp_3', name: 'Black Friday Antecipada', status: 'Pausada', budget: 10000, clicks: 450, conversions: 12, startDate: getRelativeDateStr(-2), endDate: getRelativeDateStr(12) },
-    { id: 'camp_4', name: 'Divulgação App Mobile', status: 'Planejada', budget: 7000, clicks: 0, conversions: 0, startDate: getRelativeDateStr(15), endDate: getRelativeDateStr(25) },
-    { id: 'camp_5', name: 'Natal 2025', status: 'Planejada', budget: 15000, clicks: 0, conversions: 0, startDate: getRelativeDateStr(30), endDate: getRelativeDateStr(45) },
-];
-
-const initialCoupons: Coupon[] = [
-    { id: 'coup_1', code: 'BEMVINDO10', discount: '10%', status: 'Ativo', uses: 142, startDate: getRelativeDateStr(-15), endDate: getRelativeDateStr(30) },
-    { id: 'coup_2', code: 'VERAO20', discount: '20%', status: 'Ativo', uses: 54, startDate: getRelativeDateStr(-3), endDate: getRelativeDateStr(7) },
-    { id: 'coup_3', code: 'FRETEGRATIS', discount: 'Frete Grátis', status: 'Expirado', uses: 587, startDate: getRelativeDateStr(-45), endDate: getRelativeDateStr(-15) },
-];
-
-const initialPosts: ScheduledPost[] = [
-    { id: 'post_1', title: 'Dica do Dia', content: 'Confira nossas novidades...', platform: 'Instagram', scheduledAt: getRelativeDateStr(1), status: 'Agendado' },
-    { id: 'post_2', title: 'Vídeo Novo', content: 'Acabamos de postar um tutorial...', platform: 'YouTube', scheduledAt: getRelativeDateStr(-1), status: 'Publicado' },
-];
 
 const formatDateStr = (date: Date): string => {
     const y = date.getFullYear();
@@ -258,16 +226,37 @@ const MarketingCalendar: React.FC<MarketingCalendarProps> = ({ campaigns, coupon
 
 const AdminMarketingPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'calendar' | 'tools'>('calendar');
-    const [campaigns, setCampaigns] = useState<Campaign[]>(() => getFromStorage('viraliza_campaigns', initialCampaigns));
-    const [coupons, setCoupons] = useState<Coupon[]>(() => getFromStorage('viraliza_coupons', initialCoupons));
-    const [posts, setPosts] = useState<ScheduledPost[]>(() => getFromStorage('viraliza_posts', initialPosts));
-    
+    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+    const [coupons, setCoupons] = useState<Coupon[]>([]);
+    const [posts, setPosts] = useState<ScheduledPost[]>([]);
+    const [loadingMkt, setLoadingMkt] = useState(true);
+
+    // Carregar dados de marketing do Supabase via API
+    useEffect(() => {
+        const loadFromApi = async () => {
+            try {
+                const res = await fetch('/api/admin/marketing/load');
+                const data = await res.json();
+                if (data.success) {
+                    if (data.campaigns?.length) setCampaigns(data.campaigns);
+                    if (data.coupons?.length) setCoupons(data.coupons);
+                    if (data.posts?.length) setPosts(data.posts);
+                    console.log('✅ Dados de marketing carregados do Supabase');
+                }
+            } catch (e) {
+                console.error('❌ Erro ao carregar marketing:', e);
+            } finally {
+                setLoadingMkt(false);
+            }
+        };
+        loadFromApi();
+    }, []);
+
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isPostModalOpen, setIsPostModalOpen] = useState(false);
     const [modalType, setModalType] = useState<'campaign' | 'coupon'>('campaign');
     const [editingItem, setEditingItem] = useState<Campaign | Coupon | null>(null);
 
-    // AI Tools State
     const [generatingVideo, setGeneratingVideo] = useState(false);
     const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
     const [videoPrompt, setVideoPrompt] = useState('');
@@ -279,10 +268,10 @@ const AdminMarketingPage: React.FC = () => {
     const [editingImage, setEditingImage] = useState(false);
     const [editedImage, setEditedImage] = useState<string | null>(null);
 
-    useEffect(() => { saveToStorage('viraliza_campaigns', campaigns) }, [campaigns]);
-    useEffect(() => { saveToStorage('viraliza_coupons', coupons) }, [coupons]);
-    useEffect(() => { saveToStorage('viraliza_posts', posts) }, [posts]);
-    
+    useEffect(() => { if (!loadingMkt) saveMarketingToApi({ campaigns }); }, [campaigns]);
+    useEffect(() => { if (!loadingMkt) saveMarketingToApi({ coupons }); }, [coupons]);
+    useEffect(() => { if (!loadingMkt) saveMarketingToApi({ posts }); }, [posts]);
+
     useEffect(() => {
         // @ts-ignore
         if (typeof window.aistudio?.hasSelectedApiKey === 'function') {

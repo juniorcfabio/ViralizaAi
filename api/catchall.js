@@ -556,6 +556,37 @@ export default async function handler(req, res) {
           return res.status(200).json({ stripe: null, paypal: null, pix: null, crypto: null });
         }
       }
+      case 'admin/marketing/load': {
+        try {
+          var { data: mktData } = await supabase.from('system_settings').select('key, value').in('key', ['viraliza_campaigns', 'viraliza_coupons', 'viraliza_posts']);
+          var mktResult = { campaigns: [], coupons: [], posts: [] };
+          (mktData || []).forEach(function(row) {
+            if (row.key === 'viraliza_campaigns' && row.value) mktResult.campaigns = row.value;
+            if (row.key === 'viraliza_coupons' && row.value) mktResult.coupons = row.value;
+            if (row.key === 'viraliza_posts' && row.value) mktResult.posts = row.value;
+          });
+          return res.status(200).json({ success: true, ...mktResult });
+        } catch (e) {
+          return res.status(200).json({ success: true, campaigns: [], coupons: [], posts: [] });
+        }
+      }
+      case 'admin/marketing/save': {
+        if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
+        try {
+          var mktBody = req.body || {};
+          var upserts = [];
+          if (mktBody.campaigns !== undefined) upserts.push({ key: 'viraliza_campaigns', value: mktBody.campaigns, updated_at: new Date().toISOString() });
+          if (mktBody.coupons !== undefined) upserts.push({ key: 'viraliza_coupons', value: mktBody.coupons, updated_at: new Date().toISOString() });
+          if (mktBody.posts !== undefined) upserts.push({ key: 'viraliza_posts', value: mktBody.posts, updated_at: new Date().toISOString() });
+          if (upserts.length > 0) {
+            await supabase.from('system_settings').upsert(upserts, { onConflict: 'key' });
+          }
+          return res.status(200).json({ success: true, message: 'Marketing data saved' });
+        } catch (e) {
+          console.error('Erro ao salvar marketing:', e);
+          return res.status(500).json({ error: 'Erro ao salvar', details: e.message });
+        }
+      }
       case 'affiliate/payout':
         return res.status(200).json({ success: true, message: 'Payout endpoint active' });
       case 'create-pix-checkout': {
