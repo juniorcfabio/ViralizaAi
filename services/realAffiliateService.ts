@@ -198,12 +198,13 @@ class RealAffiliateService {
 
   async getAllAffiliates(): Promise<AffiliateAccount[]> {
     try {
-      const { data, error } = await supabase
-        .from('affiliates')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data || []) as AffiliateAccount[];
+      const apiBase = this.getApiBase();
+      const response = await fetch(`${apiBase}/affiliate/list-all`);
+      const result = await response.json();
+      if (result.success && result.affiliates) {
+        return result.affiliates as AffiliateAccount[];
+      }
+      return [];
     } catch (e) {
       console.error('❌ Erro ao listar afiliados:', e);
       return [];

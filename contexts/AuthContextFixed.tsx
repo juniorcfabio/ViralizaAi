@@ -134,6 +134,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               console.warn('⚠️ Erro ao buscar plano do banco:', e);
             }
             
+            // Verificar se é afiliado ativo via user_metadata
+            const meta = session.user.user_metadata || {};
+            const isAffiliate = !!meta.affiliate_active;
+            const affiliateInfo = isAffiliate ? {
+              isActive: true,
+              referralCode: meta.affiliate_referral_code || '',
+              earnings: meta.affiliate_total_earnings || 0,
+              referredUserIds: []
+            } : undefined;
+            if (isAffiliate) console.log('🤝 Afiliado ativo detectado:', meta.affiliate_referral_code);
+
             const userData: User = {
               id: session.user.id,
               name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
@@ -141,6 +152,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               type: 'client',
               status: 'Ativo',
               plan: activePlan,
+              affiliateInfo,
               joinedDate: new Date().toISOString().split('T')[0],
               socialAccounts: [],
               paymentMethods: [],
@@ -178,6 +190,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 }
               } catch (e) { /* silencioso */ }
 
+              // Verificar se é afiliado ativo via user_metadata
+              const sMeta = session.user.user_metadata || {};
+              const sIsAffiliate = !!sMeta.affiliate_active;
+              const sAffiliateInfo = sIsAffiliate ? {
+                isActive: true,
+                referralCode: sMeta.affiliate_referral_code || '',
+                earnings: sMeta.affiliate_total_earnings || 0,
+                referredUserIds: []
+              } : undefined;
+
               const userData: User = {
                 id: session.user.id,
                 name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
@@ -185,6 +207,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 type: 'client',
                 status: 'Ativo',
                 plan: activePlan,
+                affiliateInfo: sAffiliateInfo,
                 joinedDate: new Date().toISOString().split('T')[0],
                 socialAccounts: [],
                 paymentMethods: [],

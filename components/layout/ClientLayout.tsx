@@ -100,10 +100,15 @@ const ClientLayout: React.FC = () => {
         }
     }, [location.search, checkoutProcessed]);
 
-    // === AUTO-REDIRECT: Novo usuário sem plano → billing ===
+    // === AUTO-REDIRECT: Novo usuário sem plano → billing OU affiliate ===
     useEffect(() => {
         if (user && !hasPlan && user.type !== 'admin' && location.pathname === '/dashboard') {
-            navigate('/dashboard/billing', { replace: true });
+            // Se é afiliado ativo, ir para painel de afiliados
+            if (user.affiliateInfo?.isActive) {
+                navigate('/dashboard/affiliate', { replace: true });
+            } else {
+                navigate('/dashboard/billing', { replace: true });
+            }
         }
     }, [user, hasPlan, location.pathname]);
 

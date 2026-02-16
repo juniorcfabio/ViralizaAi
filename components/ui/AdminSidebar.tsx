@@ -170,17 +170,13 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
                             <span className="text-lg">👥</span>
                             <span className="font-medium">Usuários</span>
                         </NavLink>
-                        <NavLink to="/admin/withdrawals" className={navLinkClasses} onClick={handleNavClick}>
-                            <span className="text-lg">🛡️</span>
-                            <span className="font-medium">Gerenciar Saques</span>
-                        </NavLink>
                         <NavLink to="/admin/affiliates" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🤝</span>
                             <span className="font-medium">Afiliados</span>
                         </NavLink>
                     </div>
 
-                    {/* 👑 ULTRA IMPÉRIO - SISTEMA COMPLETO */}
+                    {/* ULTRA IMPÉRIO - SISTEMA COMPLETO */}
                     <div className="pt-3">
                         <h3 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2 px-3">👑 Ultra Império</h3>
                         <NavLink to="/admin/marketplace" className={navLinkClasses} onClick={handleNavClick}>
@@ -222,35 +218,6 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
                         </div>
                     </div>
 
-                    {/* FERRAMENTAS IA - ACESSO GRATUITO */}
-                    <div className="pt-3">
-                        <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider mb-2 px-3">🆓 Ferramentas IA (Gratuito)</h3>
-                        <NavLink to="/admin/ai-video-generator" className={navLinkClasses} onClick={handleNavClick}>
-                            <span className="text-lg">🎬</span>
-                            <span className="font-medium">Gerador de Vídeo IA 8K</span>
-                        </NavLink>
-                        <NavLink to="/admin/ai-funnel-builder" className={navLinkClasses} onClick={handleNavClick}>
-                            <span className="text-lg">🔧</span>
-                            <span className="font-medium">AI Funnel Builder</span>
-                        </NavLink>
-                        <NavLink to="/admin/ebook-generator" className={navLinkClasses} onClick={handleNavClick}>
-                            <span className="text-lg">📚</span>
-                            <span className="font-medium">Ebook Generator</span>
-                        </NavLink>
-                        <NavLink to="/admin/growth-engine" className={navLinkClasses} onClick={handleNavClick}>
-                            <span className="text-lg">🚀</span>
-                            <span className="font-medium">Motor de Crescimento</span>
-                        </NavLink>
-                        <NavLink to="/admin/social-tools" className={navLinkClasses} onClick={handleNavClick}>
-                            <span className="text-lg">🛠️</span>
-                            <span className="font-medium">Ferramentas Sociais</span>
-                        </NavLink>
-                        <NavLink to="/admin/viral-analyzer" className={navLinkClasses} onClick={handleNavClick}>
-                            <span className="text-lg">🌟</span>
-                            <span className="font-medium">Analisador Viral IA</span>
-                        </NavLink>
-                    </div>
-
                     {/* MARKETING E PROMOÇÃO */}
                     <div className="pt-3">
                         <h3 className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2 px-3">Marketing & Promoção</h3>
@@ -290,6 +257,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
                         <NavLink to="/admin/tools-pricing" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🏷️</span>
                             <span className="font-medium">Gerenciar Preços</span>
+                        </NavLink>
+                        <NavLink to="/admin/withdrawals" className={navLinkClasses} onClick={handleNavClick}>
+                            <span className="text-lg">🏦</span>
+                            <span className="font-medium">Gerenciar Saques</span>
                         </NavLink>
                     </div>
 

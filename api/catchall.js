@@ -368,6 +368,76 @@ export default async function handler(req, res) {
         try { await supabase.from('affiliate_clicks').insert({ affiliate_code: code, ip: req.headers['x-forwarded-for'] || 'unknown' }); } catch(e) {}
         return res.status(200).json({ success: true });
       }
+      case 'affiliate/list-all': {
+        // Listar TODOS os afiliados do sistema (via auth users metadata)
+        try {
+          var page = 1;
+          var allAffiliates = [];
+          var hasMore = true;
+          while (hasMore && page <= 10) {
+            var { data: listData, error: listErr } = await supabase.auth.admin.listUsers({ page, perPage: 100 });
+            if (listErr || !listData?.users?.length) { hasMore = false; break; }
+            for (var u of listData.users) {
+              var m = u.user_metadata || {};
+              if (m.affiliate_active) {
+                allAffiliates.push({
+                  id: u.id, user_id: u.id,
+                  name: m.affiliate_name || m.name || u.email?.split('@')[0] || '',
+                  email: m.affiliate_email || u.email || '',
+                  referral_code: m.affiliate_referral_code || '',
+                  status: 'active',
+                  commission_rate: m.affiliate_commission_rate || 0.20,
+                  total_earnings: m.affiliate_total_earnings || 0,
+                  pending_balance: m.affiliate_pending_balance || 0,
+                  available_balance: m.affiliate_available_balance || 0,
+                  total_referrals: m.affiliate_total_referrals || 0,
+                  total_clicks: m.affiliate_total_clicks || 0,
+                  created_at: m.affiliate_created_at || u.created_at || '',
+                  updated_at: new Date().toISOString()
+                });
+              }
+            }
+            hasMore = listData.users.length === 100;
+            page++;
+          }
+          return res.status(200).json({ success: true, affiliates: allAffiliates, total: allAffiliates.length });
+        } catch (e) {
+          console.error('Erro ao listar afiliados:', e);
+          return res.status(500).json({ error: 'Erro ao listar afiliados', details: e.message });
+        }
+      }
+      case 'admin/users': {
+        // Listar TODOS os usuários do Supabase auth
+        try {
+          var uPage = 1;
+          var allUsers = [];
+          var uHasMore = true;
+          while (uHasMore && uPage <= 10) {
+            var { data: uListData, error: uListErr } = await supabase.auth.admin.listUsers({ page: uPage, perPage: 100 });
+            if (uListErr || !uListData?.users?.length) { uHasMore = false; break; }
+            for (var au of uListData.users) {
+              var um = au.user_metadata || {};
+              allUsers.push({
+                id: au.id,
+                name: um.name || au.email?.split('@')[0] || '',
+                email: au.email || '',
+                plan: um.plan || null,
+                status: au.email_confirmed_at ? 'Ativo' : 'Pendente',
+                created_at: au.created_at || '',
+                last_sign_in: au.last_sign_in_at || null,
+                is_affiliate: !!um.affiliate_active,
+                affiliate_code: um.affiliate_referral_code || null
+              });
+            }
+            uHasMore = uListData.users.length === 100;
+            uPage++;
+          }
+          return res.status(200).json({ success: true, users: allUsers, total: allUsers.length });
+        } catch (e) {
+          console.error('Erro ao listar usuarios:', e);
+          return res.status(500).json({ error: 'Erro ao listar usuarios', details: e.message });
+        }
+      }
       case 'affiliate/payout':
         return res.status(200).json({ success: true, message: 'Payout endpoint active' });
       case 'create-pix-checkout': {
