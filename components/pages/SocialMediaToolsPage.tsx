@@ -116,6 +116,110 @@ const SocialMediaToolsPage: React.FC = () => {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [showPixModal, setShowPixModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<{name: string, price: number, type: string} | null>(null);
+  const [selectedTool, setSelectedTool] = useState<{id: string, action: string, title: string} | null>(null);
+  const [formInputs, setFormInputs] = useState<Record<string, string>>({
+    businessName: '',
+    niche: '',
+    platform: 'Instagram',
+    content: '',
+    targetAudience: '',
+    languages: 'English, Spanish, French',
+    style: 'profissional',
+    duration: '30',
+    objective: 'Gerar engajamento e conversões',
+    musicGenre: 'pop',
+    musicMood: 'energético',
+    animStyle: '2D motion graphics',
+    thumbnailTitle: '',
+    audienceSize: '1000'
+  });
+
+  const updateInput = (key: string, value: string) => {
+    setFormInputs(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Campos de formulário por tool action
+  const toolFormFields: Record<string, { label: string, key: string, type: 'text' | 'textarea' | 'select', placeholder?: string, options?: string[] }[]> = {
+    scheduleContent: [
+      { label: 'Nicho/Negócio', key: 'niche', type: 'text', placeholder: 'Ex: Marketing Digital, Gastronomia...' },
+      { label: 'Plataformas', key: 'platform', type: 'select', options: ['Instagram, TikTok, Facebook', 'Instagram, TikTok, Twitter', 'Todas as plataformas', 'Instagram, Facebook, Threads'] },
+      { label: 'Tom de comunicação', key: 'style', type: 'select', options: ['profissional', 'casual', 'divertido', 'sofisticado', 'educativo'] }
+    ],
+    generateCopy: [
+      { label: 'Nome do Negócio', key: 'businessName', type: 'text', placeholder: 'Ex: Minha Loja Online' },
+      { label: 'Plataforma', key: 'platform', type: 'select', options: ['Instagram', 'TikTok', 'Facebook', 'Twitter/X', 'LinkedIn', 'Threads'] },
+      { label: 'Objetivo', key: 'objective', type: 'text', placeholder: 'Ex: Vender curso, Gerar leads...' },
+      { label: 'Público-alvo', key: 'targetAudience', type: 'text', placeholder: 'Ex: Empreendedores 25-45 anos' }
+    ],
+    translateContent: [
+      { label: 'Texto para traduzir', key: 'content', type: 'textarea', placeholder: 'Cole aqui o texto que deseja traduzir...' },
+      { label: 'Idiomas de destino', key: 'languages', type: 'select', options: ['English, Spanish, French', 'English, Spanish', 'English, German, Italian', 'Chinese, Japanese, Korean', 'English, Arabic, Hindi'] },
+      { label: 'Contexto/Nicho', key: 'niche', type: 'text', placeholder: 'Ex: Marketing digital para empreendedores' }
+    ],
+    editVideo: [
+      { label: 'Nicho/Tema', key: 'niche', type: 'text', placeholder: 'Ex: Tecnologia, Fitness, Culinária...' },
+      { label: 'Duração (segundos)', key: 'duration', type: 'select', options: ['15', '30', '60', '90'] },
+      { label: 'Estilo do vídeo', key: 'style', type: 'select', options: ['profissional', 'dinâmico', 'minimalista', 'cinemático', 'tutorial'] }
+    ],
+    generateAnimation: [
+      { label: 'Descrição da animação', key: 'content', type: 'textarea', placeholder: 'Descreva o que deseja animar...' },
+      { label: 'Estilo', key: 'animStyle', type: 'select', options: ['2D motion graphics', '3D render', 'Flat design', 'Isométrico', 'Cartoon'] },
+      { label: 'Nicho', key: 'niche', type: 'text', placeholder: 'Ex: Tecnologia, Educação...' }
+    ],
+    generateMusic: [
+      { label: 'Gênero musical', key: 'musicGenre', type: 'select', options: ['pop', 'electronic', 'hip-hop', 'lo-fi', 'corporate', 'cinematic', 'acoustic', 'jazz'] },
+      { label: 'Humor/Atmosfera', key: 'musicMood', type: 'select', options: ['energético', 'calmo', 'inspirador', 'misterioso', 'alegre', 'dramático', 'relaxante'] },
+      { label: 'Duração (segundos)', key: 'duration', type: 'select', options: ['15', '30', '60'] },
+      { label: 'Uso pretendido', key: 'niche', type: 'text', placeholder: 'Ex: Vídeo de marketing, Podcast intro...' }
+    ],
+    generateThumbnails: [
+      { label: 'Título/Tema do vídeo', key: 'thumbnailTitle', type: 'text', placeholder: 'Ex: Como Viralizar no TikTok em 2025' },
+      { label: 'Estilo visual', key: 'style', type: 'select', options: ['vibrante', 'minimalista', 'dark mode', 'neon', 'profissional'] },
+      { label: 'Nicho', key: 'niche', type: 'text', placeholder: 'Ex: Marketing, Tecnologia, Fitness...' }
+    ],
+    generateHashtags: [
+      { label: 'Nicho', key: 'niche', type: 'text', placeholder: 'Ex: Marketing digital, Fitness, Culinária...' },
+      { label: 'Plataforma', key: 'platform', type: 'select', options: ['Instagram', 'TikTok', 'Twitter/X', 'LinkedIn', 'YouTube'] },
+      { label: 'Tipo de conteúdo', key: 'style', type: 'select', options: ['post educativo', 'reels/shorts', 'carrossel', 'stories', 'vídeo longo'] }
+    ],
+    createChatbot: [
+      { label: 'Tipo de Negócio', key: 'niche', type: 'text', placeholder: 'Ex: E-commerce de moda, Consultoria...' },
+      { label: 'Objetivo do chatbot', key: 'objective', type: 'select', options: ['Atendimento ao cliente', 'Captura de leads', 'Vendas automáticas', 'Agendamento', 'Suporte técnico'] },
+      { label: 'Plataforma', key: 'platform', type: 'select', options: ['Instagram DM', 'Telegram', 'WhatsApp', 'Facebook Messenger'] }
+    ],
+    createGamification: [
+      { label: 'Nicho', key: 'niche', type: 'text', placeholder: 'Ex: Marketing, Educação, Saúde...' },
+      { label: 'Plataforma', key: 'platform', type: 'select', options: ['Instagram', 'TikTok', 'Todas'] },
+      { label: 'Tipo de gamificação', key: 'style', type: 'select', options: ['Quiz interativo', 'Desafio de 7 dias', 'Enquetes e votações', 'Sistema de pontos', 'Concurso'] }
+    ],
+    showDashboard: [
+      { label: 'Nicho do negócio', key: 'niche', type: 'text', placeholder: 'Ex: Marketing digital, E-commerce...' },
+      { label: 'Plataformas', key: 'platform', type: 'select', options: ['Instagram, TikTok, Facebook, Twitter', 'Instagram, TikTok', 'YouTube, TikTok', 'Todas as plataformas'] }
+    ],
+    detectTrends: [
+      { label: 'Nicho', key: 'niche', type: 'text', placeholder: 'Ex: Tecnologia, Moda, Fitness...' },
+      { label: 'Plataforma', key: 'platform', type: 'select', options: ['Instagram', 'TikTok', 'Twitter/X', 'YouTube', 'LinkedIn'] }
+    ],
+    analyzeCompetitors: [
+      { label: 'Nicho', key: 'niche', type: 'text', placeholder: 'Ex: Marketing digital, SaaS...' },
+      { label: 'Plataforma', key: 'platform', type: 'select', options: ['Instagram', 'TikTok', 'YouTube', 'LinkedIn', 'Twitter/X'] }
+    ],
+    generateSalesLinks: [
+      { label: 'Nome do Negócio', key: 'businessName', type: 'text', placeholder: 'Ex: Meu Curso Online' },
+      { label: 'Produtos e preços', key: 'content', type: 'textarea', placeholder: 'Ex:\nCurso Marketing - R$197\nConsultoria 1:1 - R$497' },
+      { label: 'Público-alvo', key: 'targetAudience', type: 'text', placeholder: 'Ex: Empreendedores digitais' }
+    ],
+    setupLeadCapture: [
+      { label: 'Nicho', key: 'niche', type: 'text', placeholder: 'Ex: Marketing digital, Coaching...' },
+      { label: 'Objetivo', key: 'objective', type: 'select', options: ['Capturar emails', 'Agendar reuniões', 'Vender produto', 'Crescer lista', 'Gerar downloads'] },
+      { label: 'Plataforma principal', key: 'platform', type: 'select', options: ['Instagram', 'Landing Page', 'Facebook', 'Blog', 'YouTube'] }
+    ],
+    setupRemarketing: [
+      { label: 'Nicho', key: 'niche', type: 'text', placeholder: 'Ex: E-commerce, Cursos online...' },
+      { label: 'Tamanho da audiência', key: 'audienceSize', type: 'select', options: ['500', '1000', '5000', '10000', '50000+'] },
+      { label: 'Objetivo principal', key: 'objective', type: 'select', options: ['Recuperar carrinhos abandonados', 'Reengajar seguidores', 'Converter visitantes', 'Upsell para clientes'] }
+    ]
+  };
 
   const userPlan = user?.plan || 'mensal';
   const isAdmin = window.location.pathname.includes('/admin') || window.location.hash.includes('/admin');
@@ -123,13 +227,17 @@ const SocialMediaToolsPage: React.FC = () => {
   // Função para salvar resultados no Supabase
   const saveToSupabase = async (toolAction: string, content: any, success: boolean) => {
     try {
-      await supabase.from('generated_content').insert({
+      const truncatedContent = typeof content?.data?.content === 'string' 
+        ? { ...content, data: { ...content.data, content: content.data.content.substring(0, 5000) } }
+        : content;
+      
+      const { error } = await supabase.from('generated_content').insert({
         user_id: user?.id,
         content_type: 'social_tool_result',
         title: `Resultado: ${toolAction}`,
         content: {
           tool_action: toolAction,
-          result: content,
+          result: truncatedContent,
           generated_at: new Date().toISOString(),
           success
         },
@@ -139,9 +247,14 @@ const SocialMediaToolsPage: React.FC = () => {
           tool_category: activeTab
         }
       });
-      console.log('✅ Resultado salvo no Supabase:', toolAction);
+      
+      if (error) {
+        console.warn('⚠️ Supabase save warning:', error.message);
+      } else {
+        console.log('✅ Resultado salvo no Supabase:', toolAction);
+      }
     } catch (error) {
-      console.error('❌ Erro ao salvar no Supabase:', error);
+      console.warn('⚠️ Supabase save falhou (não crítico):', error);
     }
   };
 
@@ -477,11 +590,13 @@ const SocialMediaToolsPage: React.FC = () => {
 
       let result;
       
+      const fi = formInputs;
+      
       switch (action) {
         case 'scheduleContent':
           try {
             const scheduleContent = await openaiService.generate('copywriting',
-              `Crie 3 posts otimizados para agendamento simultâneo em Instagram, TikTok e Facebook.\n\nPara cada plataforma, inclua:\n- Legenda otimizada (com emojis, hashtags, CTA)\n- Melhor horário para publicar\n- Formato ideal (carrossel, reels, stories)\n- Tamanho de imagem recomendado\n\nNicho: Marketing Digital. Tom: profissional mas engajante.`
+              `Crie 3 posts otimizados para agendamento simultâneo em ${fi.platform || 'Instagram, TikTok, Facebook'}.\n\nPara cada plataforma, inclua:\n- Legenda otimizada (com emojis, hashtags, CTA)\n- Melhor horário para publicar\n- Formato ideal (carrossel, reels, stories)\n- Tamanho de imagem recomendado\n\nNicho: ${fi.niche || 'Marketing Digital'}. Tom: ${fi.style || 'profissional'}.`
             );
             result = { success: true, data: { content: scheduleContent }, message: 'Conteúdo para agendamento gerado com IA' };
           } catch (e: any) {
@@ -492,10 +607,10 @@ const SocialMediaToolsPage: React.FC = () => {
         case 'generateCopy':
           try {
             const copyContent = await openaiService.generateCopywriting(
-              user?.name || 'Meu Negócio',
-              'Instagram',
-              'Gerar engajamento e conversões',
-              'Empreendedores e pequenas empresas'
+              fi.businessName || user?.name || 'Meu Negócio',
+              fi.platform || 'Instagram',
+              fi.objective || 'Gerar engajamento e conversões',
+              fi.targetAudience || 'Empreendedores e pequenas empresas'
             );
             result = { success: true, data: { content: copyContent }, message: 'Copy gerada com IA real' };
           } catch (e: any) {
@@ -505,10 +620,11 @@ const SocialMediaToolsPage: React.FC = () => {
           
         case 'translateContent':
           try {
+            const textToTranslate = fi.content || 'Transforme seu negócio com estratégias de marketing digital! Descubra como crescer nas redes sociais.';
             const translated = await openaiService.translateContent(
-              'Transforme seu negócio com estratégias de marketing digital! Descubra como crescer nas redes sociais com ferramentas de IA.',
-              'English, Spanish, French',
-              'Marketing digital para empreendedores'
+              textToTranslate,
+              fi.languages || 'English, Spanish, French',
+              fi.niche || 'Marketing digital'
             );
             result = { success: true, data: { content: translated }, message: 'Tradução gerada com IA real' };
           } catch (e: any) {
@@ -519,7 +635,7 @@ const SocialMediaToolsPage: React.FC = () => {
         case 'editVideo':
           try {
             const videoScript = await openaiService.generate('scripts',
-              `Crie um roteiro completo de vídeo de 30 segundos sobre marketing digital.\n\nInclua:\n- Storyboard (cena por cena com descrição visual)\n- Narração/falas\n- Música sugerida\n- Efeitos visuais\n- Texto na tela\n- Transições recomendadas\n- Duração de cada cena`
+              `Crie um roteiro completo de vídeo de ${fi.duration || '30'} segundos sobre ${fi.niche || 'marketing digital'}. Estilo: ${fi.style || 'profissional'}.\n\nInclua:\n- Storyboard (cena por cena com descrição visual)\n- Narração/falas\n- Música sugerida\n- Efeitos visuais\n- Texto na tela\n- Transições recomendadas\n- Duração de cada cena`
             );
             result = { success: true, data: { content: videoScript }, message: 'Roteiro de vídeo gerado com IA' };
           } catch (e: any) {
@@ -529,8 +645,9 @@ const SocialMediaToolsPage: React.FC = () => {
           
         case 'generateAnimation':
           try {
+            const animDesc = fi.content || 'Logo animado com motion graphics';
             const animScript = await openaiService.generate('scripts',
-              `Crie um briefing completo para animação promocional.\n\nInclua:\n- Conceito visual\n- Estilo de animação (2D/3D/motion graphics)\n- Paleta de cores\n- Sequência de cenas\n- Texto animado\n- Duração sugerida\n- Referências visuais\n- Música/efeitos sonoros`
+              `Crie um briefing completo para animação ${fi.animStyle || '2D motion graphics'} promocional.\n\nDescrição: ${animDesc}\nNicho: ${fi.niche || 'Tecnologia'}\n\nInclua:\n- Conceito visual detalhado\n- Estilo de animação: ${fi.animStyle || '2D motion graphics'}\n- Paleta de cores (hex codes)\n- Sequência de cenas (5 cenas mínimo com timecodes)\n- Texto animado para cada cena\n- Duração total e de cada cena\n- Referências visuais\n- Música/efeitos sonoros\n- Especificações técnicas (resolução, FPS, formato)`
             );
             result = { success: true, data: { content: animScript }, message: 'Briefing de animação gerado com IA' };
           } catch (e: any) {
@@ -541,7 +658,7 @@ const SocialMediaToolsPage: React.FC = () => {
         case 'generateMusic':
           try {
             const musicBrief = await openaiService.generate('general',
-              `Crie uma descrição detalhada de música para vídeo de marketing digital (30 segundos).\n\nInclua:\n- Gênero musical recomendado\n- BPM (batidas por minuto)\n- Humor/atmosfera\n- Instrumentos sugeridos\n- Estrutura (intro, desenvolvimento, clímax)\n- Licenciamento: sugira 3 músicas royalty-free similares de bibliotecas como Epidemic Sound, Artlist ou YouTube Audio Library\n- Links de referência`
+              `Crie uma descrição detalhada de música para vídeo (${fi.duration || '30'} segundos).\n\nGênero: ${fi.musicGenre || 'pop'}\nAtmosfera: ${fi.musicMood || 'energético'}\nUso: ${fi.niche || 'Vídeo de marketing'}\n\nInclua:\n- BPM (batidas por minuto) ideal\n- Instrumentos sugeridos\n- Estrutura (intro, desenvolvimento, clímax, fade-out)\n- 5 músicas royalty-free recomendadas de bibliotecas como Epidemic Sound, Artlist, YouTube Audio Library, Pixabay Music\n- Para cada música: nome, artista/biblioteca, link, duração, gênero\n- Dicas de edição (cortes, fade in/out, sincronização)`
             );
             result = { success: true, data: { content: musicBrief }, message: 'Briefing musical gerado com IA' };
           } catch (e: any) {
@@ -551,11 +668,12 @@ const SocialMediaToolsPage: React.FC = () => {
           
         case 'generateThumbnails':
           try {
+            const thumbTitle = fi.thumbnailTitle || 'Como Viralizar no TikTok em 2025';
             const thumbResponse = await fetch(`${window.location.origin}/api/ai-image`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                prompt: 'Como Viralizar no TikTok - thumbnail para YouTube, cores vibrantes, texto bold, profissional',
+                prompt: `${thumbTitle} - thumbnail profissional para YouTube/redes sociais, estilo ${fi.style || 'vibrante'}, nicho ${fi.niche || 'Marketing'}, cores chamativas, texto bold legível, design atraente que gera cliques`,
                 style: 'thumbnail',
                 size: '1024x1024',
                 quality: 'standard'
@@ -563,7 +681,8 @@ const SocialMediaToolsPage: React.FC = () => {
             });
             const thumbData = await thumbResponse.json();
             if (thumbData.success) {
-              result = { success: true, data: { content: `\n\n✨ Thumbnail gerada com DALL-E 3:\n${thumbData.imageUrl}\n\nPrompt revisado: ${thumbData.revisedPrompt || ''}` }, message: 'Thumbnail gerada com DALL-E 3' };
+              const imgSrc = thumbData.imageUrl?.startsWith('data:') ? thumbData.imageUrl : `data:image/png;base64,${thumbData.imageUrl}`;
+              result = { success: true, data: { content: `Thumbnail gerada com DALL-E 3 para: "${thumbTitle}"`, imageUrl: imgSrc }, message: 'Thumbnail gerada com DALL-E 3' };
             } else {
               result = { success: false, message: thumbData.error || 'Erro ao gerar thumbnail' };
             }
@@ -575,9 +694,9 @@ const SocialMediaToolsPage: React.FC = () => {
         case 'generateHashtags':
           try {
             const hashtags = await openaiService.generateHashtags(
-              'marketing digital',
-              'Instagram',
-              'post educativo'
+              fi.niche || 'marketing digital',
+              fi.platform || 'Instagram',
+              fi.style || 'post educativo'
             );
             result = { success: true, data: { content: hashtags }, message: 'Hashtags geradas com IA real' };
           } catch (e: any) {
@@ -588,7 +707,7 @@ const SocialMediaToolsPage: React.FC = () => {
         case 'createChatbot':
           try {
             const chatbot = await openaiService.generate('general',
-              `Crie um chatbot completo para atendimento automático via DM/Telegram para um negócio de marketing digital.\n\nInclua:\n- Mensagem de boas-vindas\n- 10 perguntas frequentes com respostas\n- Fluxo de captura de leads (nome, email, telefone)\n- Mensagens de promoção\n- Respostas para objeções comuns\n- Fluxo de agendamento\n- Mensagem de fallback\n- Gatilhos de palavras-chave\n\nFormate como fluxograma de conversação.`
+              `Crie um chatbot completo para ${fi.objective || 'atendimento ao cliente'} via ${fi.platform || 'Instagram DM'} para um negócio de ${fi.niche || 'marketing digital'}.\n\nInclua:\n- Mensagem de boas-vindas personalizada\n- 10 perguntas frequentes com respostas\n- Fluxo de captura de leads (nome, email, telefone)\n- Mensagens de promoção\n- Respostas para objeções comuns\n- Fluxo de agendamento\n- Mensagem de fallback\n- Gatilhos de palavras-chave\n\nFormate como fluxograma de conversação pronto para implementar.`
             );
             result = { success: true, data: { content: chatbot }, message: 'Chatbot gerado com IA' };
           } catch (e: any) {
@@ -599,7 +718,7 @@ const SocialMediaToolsPage: React.FC = () => {
         case 'createGamification':
           try {
             const quiz = await openaiService.generate('general',
-              `Crie conteúdo gamificado completo para redes sociais de marketing digital.\n\nInclua:\n1. Quiz: "Qual seu perfil de empreendedor?" (10 perguntas com 4 opções cada + 4 resultados possíveis)\n2. Desafio de 7 dias para engajamento\n3. Enquete interativa (5 enquetes prontas)\n4. Sistema de pontos e recompensas\n5. Ranking de engajamento\n\nFormate tudo pronto para copiar e usar.`
+              `Crie conteúdo gamificado completo para redes sociais de ${fi.niche || 'marketing digital'} na plataforma ${fi.platform || 'Instagram'}.\nTipo: ${fi.style || 'Quiz interativo'}\n\nInclua:\n1. Quiz completo (10 perguntas com 4 opções + 4 resultados)\n2. Desafio de 7 dias para engajamento\n3. 5 enquetes interativas prontas\n4. Sistema de pontos e recompensas\n5. Ranking de engajamento\n\nFormate tudo pronto para copiar e usar.`
             );
             result = { success: true, data: { content: quiz }, message: 'Gamificação gerada com IA' };
           } catch (e: any) {
@@ -610,7 +729,7 @@ const SocialMediaToolsPage: React.FC = () => {
         case 'showDashboard':
           try {
             const dashInsights = await openaiService.generate('trends',
-              `Gere um relatório de insights de mídias sociais para um negócio de marketing digital.\n\nPlataformas: Instagram, TikTok, Facebook, Twitter\n\nInclua:\n- Métricas-chave para acompanhar (KPIs)\n- Benchmarks do setor para cada plataforma\n- Análise de melhor horário para publicar\n- Tipos de conteúdo com maior ROI\n- Estratégias de crescimento para cada plataforma\n- Metas sugeridas para 30/60/90 dias\n- Template de relatório semanal`
+              `Gere um relatório de insights de mídias sociais para um negócio de ${fi.niche || 'marketing digital'}.\n\nPlataformas: ${fi.platform || 'Instagram, TikTok, Facebook, Twitter'}\n\nInclua:\n- Métricas-chave para acompanhar (KPIs)\n- Benchmarks do setor para cada plataforma\n- Análise de melhor horário para publicar\n- Tipos de conteúdo com maior ROI\n- Estratégias de crescimento para cada plataforma\n- Metas sugeridas para 30/60/90 dias\n- Template de relatório semanal`
             );
             result = { success: true, data: { content: dashInsights }, message: 'Insights do dashboard gerados com IA' };
           } catch (e: any) {
@@ -620,7 +739,7 @@ const SocialMediaToolsPage: React.FC = () => {
           
         case 'detectTrends':
           try {
-            const trends = await openaiService.analyzeTrends('marketing digital', 'Instagram');
+            const trends = await openaiService.analyzeTrends(fi.niche || 'marketing digital', fi.platform || 'Instagram');
             result = { success: true, data: { content: trends }, message: 'Tendências analisadas com IA real' };
           } catch (e: any) {
             result = { success: false, message: `Erro na IA: ${e.message}` };
@@ -629,8 +748,9 @@ const SocialMediaToolsPage: React.FC = () => {
           
         case 'generateSalesLinks':
           try {
+            const products = fi.content || 'Curso de Marketing Digital - R$197\nConsultoria 1:1 - R$497';
             const salesCopy = await openaiService.generate('funnel',
-              `Crie uma estratégia completa de links de vendas para um negócio digital.\n\nProdutos:\n1. Curso de Marketing Digital - R$197\n2. Consultoria 1:1 - R$497\n\nInclua:\n- Copy de venda para cada produto\n- Estrutura da página de vendas\n- Sequência de emails (5 emails)\n- CTAs otimizados\n- Estratégia de upsell/downsell\n- Textos para links na bio\n- Modelo de link tree otimizado`
+              `Crie uma estratégia completa de links de vendas para ${fi.businessName || 'negócio digital'}.\n\nProdutos:\n${products}\n\nPúblico-alvo: ${fi.targetAudience || 'Empreendedores digitais'}\n\nInclua:\n- Copy de venda para cada produto\n- Estrutura da página de vendas\n- Sequência de emails (5 emails)\n- CTAs otimizados\n- Estratégia de upsell/downsell\n- Textos para links na bio\n- Modelo de link tree otimizado`
             );
             result = { success: true, data: { content: salesCopy }, message: 'Estratégia de vendas gerada com IA' };
           } catch (e: any) {
@@ -641,7 +761,7 @@ const SocialMediaToolsPage: React.FC = () => {
         case 'setupLeadCapture':
           try {
             const leadStrategy = await openaiService.generate('funnel',
-              `Crie uma estratégia completa de captura de leads para marketing digital.\n\nInclua:\n- 3 modelos de popup (headline + copy + CTA)\n- 5 ideias de lead magnet (ebook, checklist, webinar, etc.)\n- Sequência de nurturing (7 emails)\n- Campos do formulário otimizados\n- Integrações recomendadas (Mailchimp, HubSpot, etc.)\n- Estratégia de segmentação\n- A/B tests sugeridos\n- Métricas de acompanhamento`
+              `Crie uma estratégia completa de captura de leads para ${fi.niche || 'marketing digital'}.\nObjetivo: ${fi.objective || 'Capturar emails'}\nPlataforma: ${fi.platform || 'Instagram'}\n\nInclua:\n- 3 modelos de popup (headline + copy + CTA)\n- 5 ideias de lead magnet (ebook, checklist, webinar, etc.)\n- Sequência de nurturing (7 emails)\n- Campos do formulário otimizados\n- Integrações recomendadas\n- Estratégia de segmentação\n- A/B tests sugeridos\n- Métricas de acompanhamento`
             );
             result = { success: true, data: { content: leadStrategy }, message: 'Estratégia de leads gerada com IA' };
           } catch (e: any) {
@@ -652,7 +772,7 @@ const SocialMediaToolsPage: React.FC = () => {
         case 'setupRemarketing':
           try {
             const remarketing = await openaiService.generate('general',
-              `Crie uma estratégia completa de remarketing para negócio digital.\n\nAudiência: 1000 visitantes, interesses em marketing e negócios.\n\nInclua:\n- Segmentos de audiência (quente, morna, fria)\n- Copy de anúncios para cada segmento (5 variações)\n- Estratégia de retargeting por plataforma\n- Orçamento sugerido (diário/mensal)\n- Frequência ideal de exibição\n- Públicos lookalike\n- Métricas de acompanhamento (CPA, ROAS, CTR)\n- Sequência de anúncios (7 dias)`
+              `Crie uma estratégia completa de remarketing para ${fi.niche || 'negócio digital'}.\n\nAudiência: ${fi.audienceSize || '1000'} visitantes.\nObjetivo: ${fi.objective || 'Converter visitantes'}\n\nInclua:\n- Segmentos de audiência (quente, morna, fria)\n- Copy de anúncios para cada segmento (5 variações)\n- Estratégia de retargeting por plataforma\n- Orçamento sugerido (diário/mensal)\n- Frequência ideal de exibição\n- Públicos lookalike\n- Métricas de acompanhamento (CPA, ROAS, CTR)\n- Sequência de anúncios (7 dias)`
             );
             result = { success: true, data: { content: remarketing }, message: 'Estratégia de remarketing gerada com IA' };
           } catch (e: any) {
@@ -663,7 +783,7 @@ const SocialMediaToolsPage: React.FC = () => {
         case 'analyzeCompetitors':
           try {
             const analysis = await openaiService.generate('trends',
-              `Analise a estratégia de concorrentes no nicho de marketing digital nas plataformas Instagram e TikTok.\n\nForneça:\n1. Estratégias mais comuns dos top players\n2. Tipos de conteúdo que mais engajam\n3. Frequência ideal de postagem\n4. Oportunidades não exploradas\n5. Recomendações para se diferenciar`
+              `Analise a estratégia de concorrentes no nicho de ${fi.niche || 'marketing digital'} na plataforma ${fi.platform || 'Instagram'}.\n\nForneça:\n1. Estratégias mais comuns dos top players\n2. Tipos de conteúdo que mais engajam\n3. Frequência ideal de postagem\n4. Oportunidades não exploradas\n5. Recomendações para se diferenciar\n6. Análise de pontos fortes e fracos\n7. Estratégias de conteúdo vencedoras`
             );
             result = { success: true, data: { content: analysis }, message: 'Análise gerada com IA real' };
           } catch (e: any) {
@@ -751,30 +871,169 @@ const SocialMediaToolsPage: React.FC = () => {
               icon={tool.icon}
               available={isToolAvailable(tool.requiredPlan)}
               requiredPlan={tool.requiredPlan}
-              onClick={() => handleToolAction(tool.action, tool.id)}
+              onClick={() => {
+                setSelectedTool({ id: tool.id, action: tool.action, title: tool.title });
+                setResults(null);
+              }}
               onUpgrade={() => handleSecureCheckout(tool.requiredPlan)}
             />
           ))}
         </div>
 
+        {/* Input Form for Selected Tool */}
+        {selectedTool && (
+          <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-blue-200 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900">
+                🛠️ {selectedTool.title}
+              </h3>
+              <button
+                onClick={() => { setSelectedTool(null); setResults(null); }}
+                className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+              >×</button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              {(toolFormFields[selectedTool.action] || []).map((field) => (
+                <div key={field.key} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    {field.label}
+                  </label>
+                  {field.type === 'select' ? (
+                    <select
+                      value={formInputs[field.key] || (field.options?.[0] || '')}
+                      onChange={(e) => updateInput(field.key, e.target.value)}
+                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg bg-white text-gray-900 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                    >
+                      {(field.options || []).map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : field.type === 'textarea' ? (
+                    <textarea
+                      value={formInputs[field.key] || ''}
+                      onChange={(e) => updateInput(field.key, e.target.value)}
+                      placeholder={field.placeholder}
+                      rows={4}
+                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all resize-none"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={formInputs[field.key] || ''}
+                      onChange={(e) => updateInput(field.key, e.target.value)}
+                      placeholder={field.placeholder}
+                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => handleToolAction(selectedTool.action, selectedTool.id)}
+              disabled={loading}
+              className={`w-full py-3 px-6 rounded-lg font-bold text-lg transition-all ${
+                loading
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl'
+              }`}
+            >
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                  Processando com IA...
+                </span>
+              ) : (
+                `🚀 Gerar ${selectedTool.title}`
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Results */}
-        {loading && (
+        {loading && !selectedTool && (
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <div className="flex items-center justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Processando...</span>
+              <span className="ml-3 text-gray-600">Processando com IA...</span>
             </div>
           </div>
         )}
 
         {results && (
-          <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">
-              {results.success ? '✅ Resultado' : '❌ Erro'}
-            </h3>
-            <pre className="bg-gray-50 p-4 rounded-lg text-sm overflow-auto">
-              {JSON.stringify(results, null, 2)}
-            </pre>
+          <div className={`rounded-xl p-6 shadow-lg mb-8 ${results.success ? 'bg-white border-2 border-green-200' : 'bg-red-50 border-2 border-red-200'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">
+                {results.success ? '✅ Resultado' : '❌ Erro'}
+              </h3>
+              <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-medium">
+                {results.message}
+              </span>
+            </div>
+
+            {/* Image display for thumbnails */}
+            {results.data?.imageUrl && (
+              <div className="mb-4">
+                <img
+                  src={results.data.imageUrl}
+                  alt="Thumbnail gerada"
+                  className="max-w-md rounded-lg shadow-md border border-gray-200"
+                />
+                <a
+                  href={results.data.imageUrl}
+                  download="thumbnail.png"
+                  className="inline-block mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  📥 Baixar Thumbnail
+                </a>
+              </div>
+            )}
+
+            {/* Formatted text content */}
+            {results.data?.content && (
+              <div className="bg-gray-50 rounded-lg p-5 border border-gray-200 max-h-[600px] overflow-y-auto">
+                <div className="prose prose-sm max-w-none text-gray-800 whitespace-pre-wrap leading-relaxed" style={{ fontSize: '14px', lineHeight: '1.7' }}>
+                  {results.data.content}
+                </div>
+              </div>
+            )}
+
+            {/* Error message */}
+            {!results.success && !results.data?.content && (
+              <div className="bg-red-100 rounded-lg p-4 text-red-700 font-medium">
+                {results.message}
+              </div>
+            )}
+
+            {/* Copy and action buttons */}
+            {results.success && results.data?.content && (
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(results.data.content);
+                    alert('✅ Conteúdo copiado para a área de transferência!');
+                  }}
+                  className="bg-green-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-green-700 transition-colors shadow-md"
+                >
+                  📋 Copiar Resultado
+                </button>
+                <button
+                  onClick={() => {
+                    const blob = new Blob([results.data.content], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${selectedTool?.action || 'resultado'}_${Date.now()}.txt`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-md"
+                >
+                  💾 Salvar como Arquivo
+                </button>
+              </div>
+            )}
           </div>
         )}
 
