@@ -1,5 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import { StatCardData } from '../../types';
@@ -71,14 +70,6 @@ const AdminDashboardPage: React.FC = () => {
 
     const recentUsers = dashboardData?.recentUsers || [];
 
-    const getChurnRiskChip = (risk: 'Baixo' | 'Médio' | 'Alto' | undefined) => {
-        switch (risk) {
-            case 'Baixo': return 'bg-green-500 bg-opacity-20 text-green-300';
-            case 'Médio': return 'bg-yellow-500 bg-opacity-20 text-yellow-300';
-            case 'Alto': return 'bg-red-500 bg-opacity-20 text-red-300';
-            default: return 'bg-gray-500 bg-opacity-20 text-gray-300';
-        }
-    };
     
     return (
         <>
