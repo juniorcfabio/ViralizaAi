@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './components/pages/LandingPage';
-import AdminDashboardPageReal from './components/pages/AdminDashboardPageReal';
+import AdminDashboardPage from './components/pages/AdminDashboardPage';
 import AdminPaymentsPage from './components/pages/AdminPaymentsPage';
 import AdminPixApprovalsPage from './components/pages/AdminPixApprovalsPage';
 import AdminAdsPage from './components/pages/AdminAdsPage';
@@ -14,7 +14,6 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import autoIntegration from './config/autoIntegrationConfig';
 import globalAutoSave from './services/globalAutoSave'; // 🔥 SISTEMA GLOBAL DE AUTO-SAVE
 import AdminFinancialPageReal from './components/pages/AdminFinancialPageReal';
-import AdminFinancialPage from './components/pages/AdminFinancialPage';
 import SocialAccountsPage from './components/pages/SocialAccountsPage';
 import AnalyticsPage from './components/pages/AnalyticsPage';
 import BillingPage from './components/pages/BillingPage';
@@ -176,9 +175,9 @@ const AppRoutes: React.FC = () => {
                 path="/admin"
                 element={user?.type === 'admin' ? <AdminLayout /> : <Navigate to="/" />}
             >
-                <Route index element={<AdminDashboardPageReal />} />
+                <Route index element={<AdminDashboardPage />} />
                 <Route path="ultra-imperio" element={<AdminDashboardUltra />} />
-                <Route path="financial" element={<AdminFinancialPage />} />
+                <Route path="financial" element={<AdminFinancialPageReal />} />
                 <Route path="autonomous-promotion" element={<AutonomousPromotionPage />} />
                 <Route path="payments" element={<AdminPaymentsPage />} />
                 <Route path="pix-approvals" element={<AdminPixApprovalsPage />} />

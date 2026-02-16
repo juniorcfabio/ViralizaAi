@@ -15,6 +15,8 @@
     { "source": "/api/admin/dashboard-stats", "destination": "/api/catchall?route=admin/dashboard-stats" },
     { "source": "/api/admin/financial", "destination": "/api/catchall?route=admin/financial" },
     { "source": "/api/admin/payment-configs", "destination": "/api/catchall?route=admin/payment-configs" },
+    { "source": "/api/admin/marketing/load", "destination": "/api/catchall?route=admin/marketing/load" },
+    { "source": "/api/admin/marketing/save", "destination": "/api/catchall?route=admin/marketing/save" },
     { "source": "/api/admin/:action", "destination": "/api/admin-handler?action=:action" },
     { "source": "/api/health/:path*", "destination": "/api/catchall?route=health/:path*" },
     { "source": "/api/affiliate/:path*", "destination": "/api/catchall?route=affiliate/:path*" },
