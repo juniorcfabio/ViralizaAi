@@ -6,6 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
 import { useCentralizedPricing } from '../../services/centralizedPricingService';
 import openaiService from '../../services/openaiService';
+import RealMusicGenerator from '../../services/realMusicGenerator';
 import { supabase } from '../../src/lib/supabase';
 import PixPaymentSecure from '../ui/PixPaymentSecure';
 
@@ -634,10 +635,34 @@ const SocialMediaToolsPage: React.FC = () => {
           
         case 'editVideo':
           try {
+            // 1) Gerar roteiro com IA
             const videoScript = await openaiService.generate('scripts',
               `Crie um roteiro completo de vídeo de ${fi.duration || '30'} segundos sobre ${fi.niche || 'marketing digital'}. Estilo: ${fi.style || 'profissional'}.\n\nInclua:\n- Storyboard (cena por cena com descrição visual)\n- Narração/falas\n- Música sugerida\n- Efeitos visuais\n- Texto na tela\n- Transições recomendadas\n- Duração de cada cena`
             );
-            result = { success: true, data: { content: videoScript }, message: 'Roteiro de vídeo gerado com IA' };
+            // 2) Gerar frame visual com DALL-E (storyboard key frame)
+            let storyboardImage = '';
+            try {
+              const frameRes = await fetch(`${window.location.origin}/api/ai-generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  tool: 'image',
+                  prompt: `Professional video storyboard frame, cinematic ${fi.style || 'profissional'} style, topic: ${fi.niche || 'marketing digital'}, high quality, vibrant colors, 16:9 aspect ratio`,
+                  params: { size: '1792x1024', quality: 'standard', style: 'vivid' }
+                })
+              });
+              const frameData = await frameRes.json();
+              if (frameData.success && frameData.imageUrl) {
+                storyboardImage = frameData.imageUrl;
+              }
+            } catch (imgErr) {
+              console.warn('⚠️ Storyboard image fallback:', imgErr);
+            }
+            result = {
+              success: true,
+              data: { content: videoScript, imageUrl: storyboardImage || undefined },
+              message: storyboardImage ? 'Roteiro + Storyboard visual gerado com IA' : 'Roteiro de vídeo gerado com IA'
+            };
           } catch (e: any) {
             result = { success: false, message: `Erro na IA: ${e.message}` };
           }
@@ -646,10 +671,34 @@ const SocialMediaToolsPage: React.FC = () => {
         case 'generateAnimation':
           try {
             const animDesc = fi.content || 'Logo animado com motion graphics';
+            // 1) Gerar briefing completo
             const animScript = await openaiService.generate('scripts',
               `Crie um briefing completo para animação ${fi.animStyle || '2D motion graphics'} promocional.\n\nDescrição: ${animDesc}\nNicho: ${fi.niche || 'Tecnologia'}\n\nInclua:\n- Conceito visual detalhado\n- Estilo de animação: ${fi.animStyle || '2D motion graphics'}\n- Paleta de cores (hex codes)\n- Sequência de cenas (5 cenas mínimo com timecodes)\n- Texto animado para cada cena\n- Duração total e de cada cena\n- Referências visuais\n- Música/efeitos sonoros\n- Especificações técnicas (resolução, FPS, formato)`
             );
-            result = { success: true, data: { content: animScript }, message: 'Briefing de animação gerado com IA' };
+            // 2) Gerar concept art / key frame com DALL-E
+            let animImage = '';
+            try {
+              const animImgRes = await fetch(`${window.location.origin}/api/ai-generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  tool: 'image',
+                  prompt: `${fi.animStyle || '2D motion graphics'} animation key frame, ${animDesc}, ${fi.niche || 'technology'} theme, vibrant colors, professional ${fi.animStyle?.includes('3D') ? '3D rendered' : '2D flat design'} style, clean composition`,
+                  params: { size: '1792x1024', quality: 'standard', style: 'vivid' }
+                })
+              });
+              const animImgData = await animImgRes.json();
+              if (animImgData.success && animImgData.imageUrl) {
+                animImage = animImgData.imageUrl;
+              }
+            } catch (imgErr) {
+              console.warn('⚠️ Animation image fallback:', imgErr);
+            }
+            result = {
+              success: true,
+              data: { content: animScript, imageUrl: animImage || undefined },
+              message: animImage ? 'Concept art + Briefing de animação gerado com IA' : 'Briefing de animação gerado com IA'
+            };
           } catch (e: any) {
             result = { success: false, message: `Erro na IA: ${e.message}` };
           }
@@ -657,34 +706,76 @@ const SocialMediaToolsPage: React.FC = () => {
           
         case 'generateMusic':
           try {
-            const musicBrief = await openaiService.generate('general',
-              `Crie uma descrição detalhada de música para vídeo (${fi.duration || '30'} segundos).\n\nGênero: ${fi.musicGenre || 'pop'}\nAtmosfera: ${fi.musicMood || 'energético'}\nUso: ${fi.niche || 'Vídeo de marketing'}\n\nInclua:\n- BPM (batidas por minuto) ideal\n- Instrumentos sugeridos\n- Estrutura (intro, desenvolvimento, clímax, fade-out)\n- 5 músicas royalty-free recomendadas de bibliotecas como Epidemic Sound, Artlist, YouTube Audio Library, Pixabay Music\n- Para cada música: nome, artista/biblioteca, link, duração, gênero\n- Dicas de edição (cortes, fade in/out, sincronização)`
-            );
-            result = { success: true, data: { content: musicBrief }, message: 'Briefing musical gerado com IA' };
+            // Mapear gênero → instrumentos e BPM
+            const genreMap: Record<string, { instruments: string[], tempo: number, key: string }> = {
+              'pop': { instruments: ['piano', 'bateria', 'sintetizador'], tempo: 120, key: 'C' },
+              'electronic': { instruments: ['sintetizador', 'bateria'], tempo: 128, key: 'A' },
+              'hip-hop': { instruments: ['bateria', 'baixo', 'sintetizador'], tempo: 90, key: 'G' },
+              'lo-fi': { instruments: ['piano', 'guitarra'], tempo: 75, key: 'E' },
+              'corporate': { instruments: ['piano', 'sintetizador'], tempo: 110, key: 'C' },
+              'cinematic': { instruments: ['sintetizador', 'piano', 'bateria'], tempo: 80, key: 'D' },
+              'acoustic': { instruments: ['guitarra', 'piano'], tempo: 100, key: 'G' },
+              'jazz': { instruments: ['piano', 'baixo', 'bateria'], tempo: 95, key: 'F' }
+            };
+            const genre = genreMap[fi.musicGenre || 'pop'] || genreMap['pop'];
+            
+            // Gerar áudio real com Web Audio API
+            const musicGen = RealMusicGenerator.getInstance();
+            const musicResult = await musicGen.generateMusic({
+              style: fi.musicGenre || 'pop',
+              mood: fi.musicMood || 'energético',
+              duration: parseInt(fi.duration) || 30,
+              instruments: genre.instruments,
+              tempo: genre.tempo,
+              key: genre.key
+            });
+            
+            const musicInfo = `🎵 Música Original Gerada com IA\n\n` +
+              `Gênero: ${fi.musicGenre || 'pop'}\n` +
+              `Atmosfera: ${fi.musicMood || 'energético'}\n` +
+              `Duração: ${fi.duration || '30'} segundos\n` +
+              `BPM: ${genre.tempo}\n` +
+              `Tonalidade: ${genre.key}\n` +
+              `Instrumentos: ${genre.instruments.join(', ')}\n` +
+              `Uso: ${fi.niche || 'Vídeo de marketing'}\n\n` +
+              `✅ Áudio WAV gerado com sucesso! Use o player acima para ouvir e o botão para baixar.`;
+
+            result = {
+              success: true,
+              data: {
+                content: musicInfo,
+                audioUrl: musicResult.audioUrl,
+                downloadUrl: musicResult.downloadUrl
+              },
+              message: 'Música original gerada com IA'
+            };
           } catch (e: any) {
-            result = { success: false, message: `Erro na IA: ${e.message}` };
+            result = { success: false, message: `Erro ao gerar música: ${e.message}` };
           }
           break;
           
         case 'generateThumbnails':
           try {
             const thumbTitle = fi.thumbnailTitle || 'Como Viralizar no TikTok em 2025';
-            const thumbResponse = await fetch(`${window.location.origin}/api/ai-image`, {
+            // Usar /api/ai-generate com tool='image' que retorna data:image/png;base64
+            const thumbResponse = await fetch(`${window.location.origin}/api/ai-generate`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                prompt: `${thumbTitle} - thumbnail profissional para YouTube/redes sociais, estilo ${fi.style || 'vibrante'}, nicho ${fi.niche || 'Marketing'}, cores chamativas, texto bold legível, design atraente que gera cliques`,
-                style: 'thumbnail',
-                size: '1024x1024',
-                quality: 'standard'
+                tool: 'image',
+                prompt: `Create a vibrant, eye-catching YouTube/social media thumbnail. Bold colors, high contrast, engaging composition. Title: "${thumbTitle}", niche: ${fi.niche || 'Marketing'}, style: ${fi.style || 'vibrante'}. Professional design that drives clicks.`,
+                params: { size: '1792x1024', quality: 'standard', style: 'vivid' }
               })
             });
             const thumbData = await thumbResponse.json();
-            if (thumbData.success) {
-              const imgSrc = thumbData.imageUrl?.startsWith('data:') ? thumbData.imageUrl : `data:image/png;base64,${thumbData.imageUrl}`;
-              result = { success: true, data: { content: `Thumbnail gerada com DALL-E 3 para: "${thumbTitle}"`, imageUrl: imgSrc }, message: 'Thumbnail gerada com DALL-E 3' };
+            if (thumbData.success && thumbData.imageUrl) {
+              result = {
+                success: true,
+                data: { content: `Thumbnail gerada com DALL-E 3 para: "${thumbTitle}"\n\nPrompt revisado: ${thumbData.revisedPrompt || 'N/A'}`, imageUrl: thumbData.imageUrl },
+                message: 'Thumbnail gerada com DALL-E 3'
+              };
             } else {
-              result = { success: false, message: thumbData.error || 'Erro ao gerar thumbnail' };
+              result = { success: false, message: thumbData.error || thumbData.details || 'Erro ao gerar thumbnail' };
             }
           } catch (e: any) {
             result = { success: false, message: `Erro: ${e.message}` };
@@ -972,20 +1063,44 @@ const SocialMediaToolsPage: React.FC = () => {
               </span>
             </div>
 
-            {/* Image display for thumbnails */}
+            {/* Audio player for music */}
+            {results.data?.audioUrl && (
+              <div className="mb-5 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-5 border border-purple-200">
+                <h4 className="text-lg font-bold text-gray-800 mb-3">🎵 Player de Áudio</h4>
+                <audio
+                  controls
+                  src={results.data.audioUrl}
+                  className="w-full mb-3"
+                  style={{ height: '50px' }}
+                >
+                  Seu navegador não suporta o elemento de áudio.
+                </audio>
+                <div className="flex gap-3">
+                  <a
+                    href={results.data.downloadUrl || results.data.audioUrl}
+                    download={`musica_ia_${Date.now()}.wav`}
+                    className="inline-flex items-center bg-purple-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-purple-700 transition-colors shadow-md"
+                  >
+                    📥 Baixar Música WAV
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Image display for thumbnails/storyboard/animation */}
             {results.data?.imageUrl && (
-              <div className="mb-4">
+              <div className="mb-5">
                 <img
                   src={results.data.imageUrl}
-                  alt="Thumbnail gerada"
-                  className="max-w-md rounded-lg shadow-md border border-gray-200"
+                  alt="Imagem gerada com IA"
+                  className="w-full max-w-2xl rounded-lg shadow-md border border-gray-200"
                 />
                 <a
                   href={results.data.imageUrl}
-                  download="thumbnail.png"
+                  download={`imagem_ia_${Date.now()}.png`}
                   className="inline-block mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                 >
-                  📥 Baixar Thumbnail
+                  📥 Baixar Imagem
                 </a>
               </div>
             )}
