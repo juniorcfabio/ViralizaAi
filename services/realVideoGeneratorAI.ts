@@ -84,24 +84,46 @@ class RealVideoGeneratorAI {
     }
 
     try {
-      // Mostrar progresso para o usuário
-      console.log('⏳ Etapa 1/5: Gerando script personalizado...');
+      console.log('⏳ Etapa 1/3: Gerando script personalizado...');
       const script = await this.generateScript(config);
       console.log('📝 Script gerado:', script.substring(0, 100) + '...');
 
-      console.log('⏳ Etapa 2/5: Gerando áudio com IA...');
+      console.log('⏳ Etapa 2/3: Gerando áudio com IA (OpenAI TTS)...');
       const audioUrl = await this.generateAudio(script, config.voiceStyle);
-      console.log('🎵 Áudio gerado com sucesso');
+      console.log('🎵 Áudio:', audioUrl ? 'OpenAI TTS ✅' : 'Fallback');
 
-      console.log('⏳ Etapa 3/5: Gerando avatar...');
+      // ====== Tentar Sora-2 para vídeo real de influencer ======
+      try {
+        console.log('⏳ Etapa 3/3: Gerando vídeo Sora-2 (influencer IA real)...');
+        const soraVideoUrl = await this.generateSoraVideo(config, script);
+        console.log('🎬 Sora-2 vídeo gerado! Compondo com áudio TTS...');
+
+        const finalBlob = await this.composeSoraWithAudio(soraVideoUrl, audioUrl, config, script);
+        const videoUrl = URL.createObjectURL(finalBlob);
+        const videoId = `sora_video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        console.log('✅ Vídeo Sora-2 + TTS composto com sucesso!');
+        return {
+          id: videoId,
+          videoUrl,
+          thumbnailUrl: '',
+          duration: parseInt(config.duration),
+          quality: '8K' as const,
+          status: 'completed' as const,
+          createdAt: new Date().toISOString(),
+          config,
+          downloadUrl: videoUrl
+        };
+      } catch (soraError) {
+        console.warn('⚠️ Sora-2 falhou, usando fallback DALL-E + Canvas:', soraError);
+      }
+
+      // ====== Fallback: DALL-E avatar + background + Canvas animation ======
+      console.log('⏳ Fallback: Gerando avatar DALL-E...');
       const avatarUrl = await this.generateAvatar(config.avatarStyle);
-      console.log('👤 Avatar gerado com sucesso');
-
-      console.log('⏳ Etapa 4/5: Gerando background...');
+      console.log('⏳ Fallback: Gerando background DALL-E...');
       const backgroundUrl = await this.generateBackground(config.background, config.businessType);
-      console.log('🖼️ Background gerado com sucesso');
-
-      console.log('⏳ Etapa 5/5: Compondo vídeo final...');
+      console.log('⏳ Fallback: Compondo vídeo Canvas...');
       const finalVideo = await this.composeVideo({
         script,
         audioUrl,
@@ -110,14 +132,12 @@ class RealVideoGeneratorAI {
         config
       });
 
-      console.log('✅ Vídeo gerado com sucesso!');
+      console.log('✅ Vídeo Canvas fallback gerado com sucesso!');
       return finalVideo;
 
     } catch (error) {
       console.error('❌ Erro na geração do vídeo:', error);
       console.log('🔄 Gerando vídeo funcional alternativo...');
-      
-      // Gerar vídeo funcional real usando HTML5 Canvas
       return this.generateCanvasVideo(config);
     }
   }
@@ -332,6 +352,304 @@ class RealVideoGeneratorAI {
       config: components.config,
       downloadUrl: videoUrl
     };
+  }
+
+  // ==================== Sora-2 Video Generation ====================
+
+  // Gerar vídeo com Sora-2: create → poll → download
+  private async generateSoraVideo(config: VideoConfig, script: string): Promise<string> {
+    const genderWord = config.avatarGender === 'feminino' ? 'woman' : 'man';
+    const styleDesc: Record<string, string> = {
+      professional: `a confident professional ${genderWord} in elegant business attire`,
+      casual: `a friendly young ${genderWord} in trendy casual clothing`,
+      elegant: `a sophisticated ${genderWord} in luxury formal attire`,
+      modern: `a charismatic ${genderWord} in modern smart casual style`
+    };
+    const bgDesc: Record<string, string> = {
+      office: 'a sleek modern office with warm ambient lighting',
+      studio: 'a professional video studio with soft key lighting',
+      outdoor: 'a beautiful outdoor urban setting at golden hour',
+      custom: 'a creative modern workspace with vibrant decor'
+    };
+
+    const person = styleDesc[config.avatarStyle] || styleDesc.professional;
+    const bg = bgDesc[config.background] || bgDesc.office;
+
+    const soraPrompt = `Medium close-up cinematic shot of ${person} speaking directly to camera with natural gestures and warm expressions, standing in ${bg} related to ${config.businessType}. The person is presenting enthusiastically, using hand gestures to emphasize points, natural head movement and body language, professional depth of field, warm cinematic lighting, smooth subtle camera movement.`;
+
+    const seconds = Math.min(Math.max(parseInt(config.duration) || 5, 5), 10);
+
+    // Step 1: Create Sora job
+    console.log('🎬 Sora-2: Criando job de vídeo...');
+    const createRes = await fetch(`${window.location.origin}/api/ai-generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tool: 'sora-create',
+        prompt: soraPrompt,
+        params: { size: '1280x720', seconds }
+      })
+    });
+
+    if (!createRes.ok) {
+      const err = await createRes.json().catch(() => ({ error: 'Unknown' }));
+      throw new Error(`Sora create failed: ${err.error || err.details || createRes.status}`);
+    }
+
+    const createData = await createRes.json();
+    if (!createData.success || !createData.videoId) {
+      throw new Error('Sora: no videoId returned');
+    }
+
+    const videoId = createData.videoId;
+    console.log(`🎬 Sora-2 job: ${videoId}, status: ${createData.status}`);
+
+    // Step 2: Poll for completion (max ~8 min)
+    let status = createData.status;
+    let progress = createData.progress;
+    let attempts = 0;
+    const maxAttempts = 50;
+
+    while ((status === 'queued' || status === 'in_progress') && attempts < maxAttempts) {
+      await new Promise(r => setTimeout(r, 10000));
+      attempts++;
+
+      console.log(`📊 Sora-2 poll #${attempts}: status=${status}, progress=${progress}%`);
+
+      try {
+        const statusRes = await fetch(`${window.location.origin}/api/ai-generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tool: 'sora-status',
+            params: { videoId }
+          })
+        });
+
+        if (statusRes.ok) {
+          const data = await statusRes.json();
+          status = data.status;
+          progress = data.progress || 0;
+          if (data.error) throw new Error(`Sora failed: ${JSON.stringify(data.error)}`);
+        }
+      } catch (pollErr) {
+        console.warn('⚠️ Sora poll error:', pollErr);
+      }
+    }
+
+    if (status !== 'completed') {
+      throw new Error(`Sora timeout/failed: status=${status}, progress=${progress}%`);
+    }
+
+    console.log('✅ Sora-2 vídeo gerado com sucesso! Baixando...');
+
+    // Step 3: Download video MP4
+    const dlRes = await fetch(`${window.location.origin}/api/ai-generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tool: 'sora-download',
+        params: { videoId }
+      })
+    });
+
+    if (!dlRes.ok) {
+      throw new Error(`Sora download failed: ${dlRes.status}`);
+    }
+
+    const videoBlob = await dlRes.blob();
+    const videoBlobUrl = URL.createObjectURL(videoBlob);
+    console.log(`✅ Sora-2 MP4 baixado: ${(videoBlob.size / 1024 / 1024).toFixed(1)}MB`);
+
+    return videoBlobUrl;
+  }
+
+  // Compor vídeo Sora-2 + áudio TTS com overlays (nome, legendas, CTA)
+  private async composeSoraWithAudio(
+    soraVideoUrl: string,
+    audioUrl: string,
+    config: VideoConfig,
+    script: string
+  ): Promise<Blob> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        // Carregar vídeo Sora
+        const videoEl = document.createElement('video');
+        videoEl.src = soraVideoUrl;
+        videoEl.muted = true;
+        videoEl.playsInline = true;
+        videoEl.preload = 'auto';
+
+        await new Promise<void>((res, rej) => {
+          videoEl.onloadeddata = () => res();
+          videoEl.onerror = () => rej(new Error('Failed to load Sora video'));
+          setTimeout(() => rej(new Error('Sora video load timeout')), 30000);
+        });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = videoEl.videoWidth || 1280;
+        canvas.height = videoEl.videoHeight || 720;
+        const ctx = canvas.getContext('2d')!;
+
+        // Configurar áudio TTS
+        let audioElement: HTMLAudioElement | null = null;
+        let stream: MediaStream;
+
+        if (audioUrl) {
+          audioElement = new Audio(audioUrl);
+          const audioContext = new AudioContext();
+          const source = audioContext.createMediaElementSource(audioElement);
+          const destination = audioContext.createMediaStreamDestination();
+          source.connect(destination);
+          source.connect(audioContext.destination);
+
+          const videoStream = canvas.captureStream(30);
+          stream = new MediaStream([
+            ...videoStream.getVideoTracks(),
+            ...destination.stream.getAudioTracks()
+          ]);
+        } else {
+          stream = canvas.captureStream(30);
+        }
+
+        let mediaRecorder: MediaRecorder;
+        try {
+          mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9,opus' });
+        } catch {
+          try {
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+          } catch {
+            mediaRecorder = new MediaRecorder(stream);
+          }
+        }
+
+        const chunks: Blob[] = [];
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          const finalBlob = new Blob(chunks, { type: 'video/webm' });
+          console.log('✅ Sora + TTS final:', (finalBlob.size / 1024 / 1024).toFixed(1), 'MB');
+          resolve(finalBlob);
+        };
+        mediaRecorder.onerror = (e) => reject(e);
+
+        mediaRecorder.start(100);
+
+        // Iniciar reprodução
+        videoEl.play();
+        if (audioElement) {
+          try { await audioElement.play(); } catch { console.warn('⚠️ TTS autoplay bloqueado'); }
+        } else {
+          this.playUltraNaturalAudio(script, config);
+        }
+
+        const W = canvas.width;
+        const H = canvas.height;
+        const duration = (videoEl.duration || parseInt(config.duration)) * 1000;
+        const startTime = Date.now();
+        const words = script.replace(/\*\*\[.*?\]\*\*/g, '').replace(/\*\*/g, '').trim().split(' ');
+
+        const animate = () => {
+          const elapsed = Date.now() - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+
+          if (videoEl.ended || elapsed >= duration) {
+            if (audioElement) { audioElement.pause(); }
+            videoEl.pause();
+            mediaRecorder.stop();
+            return;
+          }
+
+          // Desenhar frame do vídeo Sora
+          ctx.drawImage(videoEl, 0, 0, W, H);
+
+          // Overlay: nome do negócio
+          ctx.save();
+          ctx.shadowColor = 'rgba(0,0,0,0.8)';
+          ctx.shadowBlur = 10;
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 42px Arial, Helvetica, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(config.businessName || '', 50, 65);
+          ctx.font = '20px Arial, Helvetica, sans-serif';
+          ctx.fillStyle = 'rgba(255,255,255,0.7)';
+          ctx.fillText(config.businessType || '', 52, 95);
+          ctx.restore();
+
+          // Overlay: legendas animadas
+          const wordsToShow = Math.floor(words.length * progress);
+          const currentText = words.slice(Math.max(0, wordsToShow - 12), wordsToShow).join(' ');
+          if (currentText) {
+            const tbX = 40, tbY = H - 150, tbW = W * 0.65, tbH = 110;
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
+            ctx.beginPath();
+            ctx.moveTo(tbX + 14, tbY);
+            ctx.lineTo(tbX + tbW - 14, tbY);
+            ctx.quadraticCurveTo(tbX + tbW, tbY, tbX + tbW, tbY + 14);
+            ctx.lineTo(tbX + tbW, tbY + tbH - 14);
+            ctx.quadraticCurveTo(tbX + tbW, tbY + tbH, tbX + tbW - 14, tbY + tbH);
+            ctx.lineTo(tbX + 14, tbY + tbH);
+            ctx.quadraticCurveTo(tbX, tbY + tbH, tbX, tbY + tbH - 14);
+            ctx.lineTo(tbX, tbY + 14);
+            ctx.quadraticCurveTo(tbX, tbY, tbX + 14, tbY);
+            ctx.fill();
+            ctx.fillStyle = '#FFC107';
+            ctx.fillRect(tbX, tbY + 10, 4, tbH - 20);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '21px Arial, Helvetica, sans-serif';
+            ctx.textAlign = 'left';
+            const lines = this.wrapText(ctx, currentText, tbW - 40);
+            lines.slice(-3).forEach((line, idx) => {
+              ctx.fillText(line, tbX + 18, tbY + 34 + idx * 28);
+            });
+          }
+
+          // Badge Sora AI
+          ctx.fillStyle = 'rgba(255,193,7,0.9)';
+          ctx.beginPath();
+          const bX = W - 100, bY = 20, bW2 = 80, bH2 = 30;
+          ctx.moveTo(bX + 8, bY);
+          ctx.lineTo(bX + bW2 - 8, bY);
+          ctx.quadraticCurveTo(bX + bW2, bY, bX + bW2, bY + 8);
+          ctx.lineTo(bX + bW2, bY + bH2 - 8);
+          ctx.quadraticCurveTo(bX + bW2, bY + bH2, bX + bW2 - 8, bY + bH2);
+          ctx.lineTo(bX + 8, bY + bH2);
+          ctx.quadraticCurveTo(bX, bY + bH2, bX, bY + bH2 - 8);
+          ctx.lineTo(bX, bY + 8);
+          ctx.quadraticCurveTo(bX, bY, bX + 8, bY);
+          ctx.fill();
+          ctx.fillStyle = '#000';
+          ctx.font = 'bold 14px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('SORA AI', bX + bW2 / 2, bY + 20);
+
+          // Barra de progresso
+          ctx.fillStyle = 'rgba(255,255,255,0.15)';
+          ctx.fillRect(0, H - 4, W, 4);
+          ctx.fillStyle = '#FFC107';
+          ctx.fillRect(0, H - 4, W * progress, 4);
+
+          // CTA no final
+          if (progress > 0.85) {
+            const ctaAlpha = 0.5 + Math.sin(Date.now() * 0.005) * 0.4;
+            ctx.save();
+            ctx.globalAlpha = ctaAlpha;
+            ctx.fillStyle = '#FFC107';
+            ctx.font = 'bold 28px Arial, Helvetica, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 6;
+            ctx.fillText(config.callToAction || 'Saiba mais!', 50, H - 170);
+            ctx.restore();
+          }
+
+          requestAnimationFrame(animate);
+        };
+        animate();
+
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   // Compor vídeo Canvas com imagens DALL-E 3 + áudio OpenAI TTS

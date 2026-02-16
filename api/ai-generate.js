@@ -91,7 +91,7 @@ export default async function handler(req, res) {
   try {
     const { tool, prompt, params = {} } = req.body;
 
-    if (!tool || !prompt) {
+    if (!tool || (!prompt && tool !== 'sora-status' && tool !== 'sora-download')) {
       return res.status(400).json({ error: 'Campos obrigatórios: tool, prompt' });
     }
 
@@ -209,6 +209,117 @@ export default async function handler(req, res) {
       } catch (imgError) {
         console.error('❌ DALL-E 3 erro:', imgError.message);
         return res.status(500).json({ error: 'Image generation error', details: imgError.message });
+      }
+    }
+
+    // ==================== Sora-2 Video Generation ====================
+
+    // sora-create: Iniciar job de geração de vídeo
+    if (tool === 'sora-create') {
+      const size = params.size || '1280x720';
+      const seconds = params.seconds || 5;
+
+      try {
+        console.log(`🎬 Sora-2: criando vídeo ${size} ${seconds}s...`);
+
+        const formData = new FormData();
+        formData.append('model', 'sora-2');
+        formData.append('prompt', prompt);
+        formData.append('size', size);
+        formData.append('seconds', String(seconds));
+
+        const soraRes = await fetch('https://api.openai.com/v1/videos', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${openaiKey}` },
+          body: formData
+        });
+
+        if (!soraRes.ok) {
+          const errText = await soraRes.text();
+          console.error('Sora error:', soraRes.status, errText.substring(0, 300));
+          return res.status(soraRes.status).json({ error: 'Sora video creation failed', details: errText.substring(0, 300) });
+        }
+
+        const videoJob = await soraRes.json();
+        console.log(`✅ Sora-2 job criado: ${videoJob.id}, status: ${videoJob.status}`);
+
+        return res.status(200).json({
+          success: true,
+          videoId: videoJob.id,
+          status: videoJob.status,
+          progress: videoJob.progress || 0
+        });
+
+      } catch (err) {
+        console.error('❌ Sora-2 create error:', err.message);
+        return res.status(500).json({ error: 'Sora video creation error', details: err.message });
+      }
+    }
+
+    // sora-status: Verificar progresso da geração
+    if (tool === 'sora-status') {
+      const videoId = params.videoId;
+      if (!videoId) {
+        return res.status(400).json({ error: 'videoId é obrigatório' });
+      }
+
+      try {
+        const statusRes = await fetch(`https://api.openai.com/v1/videos/${videoId}`, {
+          headers: { 'Authorization': `Bearer ${openaiKey}` }
+        });
+
+        if (!statusRes.ok) {
+          const errText = await statusRes.text();
+          return res.status(statusRes.status).json({ error: 'Status check failed', details: errText.substring(0, 200) });
+        }
+
+        const statusData = await statusRes.json();
+        console.log(`📊 Sora-2 status: ${statusData.status}, progress: ${statusData.progress}%`);
+
+        return res.status(200).json({
+          success: true,
+          videoId: statusData.id,
+          status: statusData.status,
+          progress: statusData.progress || 0,
+          error: statusData.error || null
+        });
+
+      } catch (err) {
+        return res.status(500).json({ error: 'Status check error', details: err.message });
+      }
+    }
+
+    // sora-download: Baixar vídeo MP4 completo como binary stream
+    if (tool === 'sora-download') {
+      const videoId = params.videoId;
+      if (!videoId) {
+        return res.status(400).json({ error: 'videoId é obrigatório' });
+      }
+
+      try {
+        console.log(`📥 Sora-2: baixando vídeo ${videoId}...`);
+
+        const dlRes = await fetch(`https://api.openai.com/v1/videos/${videoId}/content`, {
+          headers: { 'Authorization': `Bearer ${openaiKey}` },
+          redirect: 'follow'
+        });
+
+        if (!dlRes.ok) {
+          const errText = await dlRes.text();
+          console.error('Sora download error:', dlRes.status, errText.substring(0, 200));
+          return res.status(dlRes.status).json({ error: 'Video download failed', details: errText.substring(0, 200) });
+        }
+
+        const videoBuffer = Buffer.from(await dlRes.arrayBuffer());
+        console.log(`✅ Sora-2 vídeo baixado: ${videoBuffer.length} bytes (${(videoBuffer.length / 1024 / 1024).toFixed(1)}MB)`);
+
+        res.setHeader('Content-Type', 'video/mp4');
+        res.setHeader('Content-Length', videoBuffer.length);
+        return res.end(videoBuffer);
+
+      } catch (err) {
+        console.error('❌ Sora-2 download error:', err.message);
+        return res.status(500).json({ error: 'Video download error', details: err.message });
       }
     }
 
