@@ -393,7 +393,8 @@ class RealVideoGeneratorAI {
 
     if (!createRes.ok) {
       const err = await createRes.json().catch(() => ({ error: 'Unknown' }));
-      throw new Error(`Sora create failed: ${err.error || err.details || createRes.status}`);
+      console.error('❌ Sora-2 API error details:', JSON.stringify(err));
+      throw new Error(`Sora create failed (${createRes.status}): ${err.details || err.error || 'Unknown error'}`);
     }
 
     const createData = await createRes.json();

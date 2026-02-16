@@ -221,23 +221,66 @@ export default async function handler(req, res) {
 
       try {
         console.log(`🎬 Sora-2: criando vídeo ${size} ${seconds}s...`);
+        console.log(`🎬 Sora-2 prompt: ${prompt.substring(0, 150)}...`);
 
-        const formData = new FormData();
-        formData.append('model', 'sora-2');
-        formData.append('prompt', prompt);
-        formData.append('size', size);
-        formData.append('seconds', String(seconds));
-
+        // Tentar JSON primeiro (como o SDK faz)
         const soraRes = await fetch('https://api.openai.com/v1/videos', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${openaiKey}` },
-          body: formData
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiKey}`
+          },
+          body: JSON.stringify({
+            model: 'sora-2',
+            prompt,
+            size,
+            seconds: parseInt(seconds)
+          })
         });
 
         if (!soraRes.ok) {
           const errText = await soraRes.text();
-          console.error('Sora error:', soraRes.status, errText.substring(0, 300));
-          return res.status(soraRes.status).json({ error: 'Sora video creation failed', details: errText.substring(0, 300) });
+          console.error(`❌ Sora-2 API error ${soraRes.status}:`, errText.substring(0, 500));
+
+          // Se JSON falhar, tentar multipart/form-data
+          if (soraRes.status === 415 || soraRes.status === 400) {
+            console.log('🔄 Tentando Sora-2 com multipart/form-data...');
+            const formData = new FormData();
+            formData.append('model', 'sora-2');
+            formData.append('prompt', prompt);
+            formData.append('size', size);
+            formData.append('seconds', String(seconds));
+
+            const soraRes2 = await fetch('https://api.openai.com/v1/videos', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${openaiKey}` },
+              body: formData
+            });
+
+            if (!soraRes2.ok) {
+              const errText2 = await soraRes2.text();
+              console.error(`❌ Sora-2 multipart also failed ${soraRes2.status}:`, errText2.substring(0, 500));
+              return res.status(soraRes2.status).json({
+                error: 'Sora video creation failed (both JSON and multipart)',
+                details: errText2.substring(0, 500),
+                jsonError: errText.substring(0, 300)
+              });
+            }
+
+            const videoJob2 = await soraRes2.json();
+            console.log(`✅ Sora-2 job criado (multipart): ${videoJob2.id}, status: ${videoJob2.status}`);
+            return res.status(200).json({
+              success: true,
+              videoId: videoJob2.id,
+              status: videoJob2.status,
+              progress: videoJob2.progress || 0
+            });
+          }
+
+          return res.status(soraRes.status).json({
+            error: 'Sora video creation failed',
+            details: errText.substring(0, 500)
+          });
         }
 
         const videoJob = await soraRes.json();
