@@ -440,30 +440,22 @@ class RealVideoGeneratorAI {
     });
   }
 
-  // Carregar imagem como Promise — roteia URLs DALL-E pelo proxy para evitar CORS
+  // Carregar imagem como Promise
   private loadImage(url: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-
-      // Determinar URL final: proxy para cross-origin, direto para base64/same-origin
-      let finalUrl = url;
-      if (!url.startsWith('data:') && (url.includes('oaidalleapi') || url.includes('blob.core.windows.net'))) {
-        // Rotear imagens DALL-E pelo proxy do servidor para evitar CORS
-        finalUrl = `${window.location.origin}/api/proxy-image?url=${encodeURIComponent(url)}`;
-        console.log('🔄 Proxy image via servidor:', url.substring(0, 60) + '...');
-      }
-
-      // crossOrigin necessário para canvas captureStream (exceto data URIs)
-      if (!finalUrl.startsWith('data:')) {
+      const isDataUri = url.startsWith('data:');
+      console.log(`🖼️ loadImage: ${isDataUri ? 'data:image (base64)' : url.substring(0, 80)}...`);
+      // Não usar crossOrigin para data URIs (base64) — evita CORS
+      if (!isDataUri) {
         img.crossOrigin = 'anonymous';
       }
-
       img.onload = () => {
-        console.log('✅ Imagem carregada:', finalUrl.substring(0, 80) + '...');
+        console.log('✅ Imagem carregada com sucesso:', isDataUri ? `base64 (${url.length} chars)` : url.substring(0, 60));
         resolve(img);
       };
       img.onerror = () => {
-        console.warn('⚠️ Falha ao carregar imagem:', finalUrl.substring(0, 100));
+        console.warn('⚠️ Falha ao carregar imagem:', isDataUri ? 'base64 falhou' : url.substring(0, 80));
         // Criar imagem placeholder gradiente
         const canvas = document.createElement('canvas');
         canvas.width = 512; canvas.height = 512;
@@ -475,7 +467,7 @@ class RealVideoGeneratorAI {
         placeholder.src = canvas.toDataURL();
         placeholder.onload = () => resolve(placeholder);
       };
-      img.src = finalUrl;
+      img.src = url;
     });
   }
 

@@ -142,40 +142,74 @@ export default async function handler(req, res) {
       const quality = params.quality || 'standard';
       const style = params.style || 'natural';
 
-      const imgRes = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openaiKey}`
-        },
-        body: JSON.stringify({
-          model: 'dall-e-3',
-          prompt,
-          n: 1,
-          size,
-          quality,
-          style
-        })
-      });
+      // Tentar b64_json primeiro para evitar CORS no cliente
+      try {
+        console.log(`🖼️ DALL-E 3: gerando ${size} ${quality} com b64_json...`);
+        const imgRes = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiKey}`
+          },
+          body: JSON.stringify({
+            model: 'dall-e-3',
+            prompt,
+            n: 1,
+            size,
+            quality,
+            style,
+            response_format: 'b64_json'
+          })
+        });
 
-      if (!imgRes.ok) {
-        const errText = await imgRes.text();
-        console.error('DALL-E error:', imgRes.status, errText);
-        return res.status(imgRes.status).json({ error: 'Image generation failed', details: errText.substring(0, 200) });
+        if (!imgRes.ok) {
+          const errText = await imgRes.text();
+          console.error('DALL-E error:', imgRes.status, errText.substring(0, 200));
+          return res.status(imgRes.status).json({ error: 'Image generation failed', details: errText.substring(0, 200) });
+        }
+
+        const imgData = await imgRes.json();
+        const b64 = imgData.data?.[0]?.b64_json;
+        const revisedPrompt = imgData.data?.[0]?.revised_prompt;
+
+        if (b64) {
+          const dataUri = 'data:image/png;base64,' + b64;
+          console.log(`✅ DALL-E 3 b64_json OK: ${dataUri.length} chars`);
+          return res.status(200).json({
+            success: true,
+            imageUrl: dataUri,
+            revisedPrompt,
+            size,
+            quality
+          });
+        }
+
+        // Se b64 vazio, tentar URL com download
+        const imageUrl = imgData.data?.[0]?.url;
+        if (imageUrl) {
+          console.log(`⚠️ b64_json vazio, baixando URL...`);
+          const dlRes = await fetch(imageUrl);
+          if (dlRes.ok) {
+            const buf = Buffer.from(await dlRes.arrayBuffer());
+            const dataUri = 'data:image/png;base64,' + buf.toString('base64');
+            console.log(`✅ DALL-E 3 download OK: ${dataUri.length} chars`);
+            return res.status(200).json({
+              success: true,
+              imageUrl: dataUri,
+              revisedPrompt,
+              size,
+              quality
+            });
+          }
+        }
+
+        console.error('❌ DALL-E 3: sem b64 nem URL válida');
+        return res.status(500).json({ error: 'No image data returned' });
+
+      } catch (imgError) {
+        console.error('❌ DALL-E 3 erro:', imgError.message);
+        return res.status(500).json({ error: 'Image generation error', details: imgError.message });
       }
-
-      const imgData = await imgRes.json();
-      const imageUrl = imgData.data?.[0]?.url;
-      const revisedPrompt = imgData.data?.[0]?.revised_prompt;
-      console.log(`✅ DALL-E 3: size=${size}, quality=${quality}, url=${imageUrl ? 'OK' : 'EMPTY'}`);
-
-      return res.status(200).json({
-        success: true,
-        imageUrl: imageUrl || '',
-        revisedPrompt,
-        size,
-        quality
-      });
     }
 
     const routing = MODEL_ROUTING[tool] || MODEL_ROUTING['general'];
