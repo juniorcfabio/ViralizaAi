@@ -214,6 +214,79 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, gateway: 'active', version: 'v1' });
       case 'database/init':
         return res.status(200).json({ success: true, message: 'Database connected via Supabase' });
+      case 'database/init-affiliates': {
+        // Add missing columns to affiliates table
+        const columnsToAdd = [
+          { name: 'total_earnings', type: 'numeric default 0' },
+          { name: 'pending_balance', type: 'numeric default 0' },
+          { name: 'available_balance', type: 'numeric default 0' },
+          { name: 'total_referrals', type: 'integer default 0' },
+          { name: 'total_clicks', type: 'integer default 0' },
+          { name: 'payment_method', type: 'text' },
+          { name: 'bank_name', type: 'text' },
+          { name: 'bank_agency', type: 'text' },
+          { name: 'bank_account', type: 'text' },
+          { name: 'bank_account_type', type: 'text' },
+          { name: 'pix_key', type: 'text' },
+          { name: 'pix_key_type', type: 'text' },
+          { name: 'account_holder_name', type: 'text' },
+          { name: 'account_holder_cpf', type: 'text' }
+        ];
+        var results = [];
+        for (var col of columnsToAdd) {
+          try {
+            var { error: colErr } = await supabase.rpc('exec_sql', {
+              sql: `ALTER TABLE affiliates ADD COLUMN IF NOT EXISTS ${col.name} ${col.type};`
+            });
+            if (colErr) {
+              // Try direct approach if rpc doesn't exist
+              results.push({ column: col.name, status: 'rpc_failed', error: colErr.message });
+            } else {
+              results.push({ column: col.name, status: 'ok' });
+            }
+          } catch (colE) {
+            results.push({ column: col.name, status: 'error', error: colE.message });
+          }
+        }
+        // Also create chatbot_configs and chatbot_messages tables if they don't exist
+        try {
+          await supabase.rpc('exec_sql', {
+            sql: `CREATE TABLE IF NOT EXISTS chatbot_configs (
+              id uuid default gen_random_uuid() primary key,
+              user_id text not null,
+              business_name text,
+              business_type text,
+              objective text,
+              tone text,
+              platform text default 'whatsapp',
+              phone_number_id text,
+              whatsapp_token text,
+              custom_instructions text,
+              faq text,
+              bot_name text,
+              active boolean default true,
+              created_at timestamptz default now(),
+              updated_at timestamptz default now()
+            );
+            CREATE TABLE IF NOT EXISTS chatbot_messages (
+              id uuid default gen_random_uuid() primary key,
+              phone_number_id text,
+              sender_phone text,
+              sender_name text,
+              recipient_phone text,
+              role text,
+              content text,
+              platform text default 'whatsapp',
+              created_at timestamptz default now()
+            );`
+          });
+          results.push({ table: 'chatbot_configs', status: 'ok' });
+          results.push({ table: 'chatbot_messages', status: 'ok' });
+        } catch (tblE) {
+          results.push({ table: 'chatbot_tables', status: 'error', error: tblE.message });
+        }
+        return res.status(200).json({ success: true, message: 'Affiliate DB init attempted', results });
+      }
       case 'franchise/create':
       case 'franchise/territories':
       case 'marketplace/tools':

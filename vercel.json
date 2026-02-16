@@ -21,6 +21,8 @@
     { "source": "/api/marketplace/:path*", "destination": "/api/catchall?route=marketplace/:path*" },
     { "source": "/api/whitelabel/:path*", "destination": "/api/catchall?route=whitelabel/:path*" },
     { "source": "/api/database/:path*", "destination": "/api/catchall?route=database/:path*" },
+    { "source": "/api/whatsapp-webhook", "destination": "/api/whatsapp-webhook" },
+    { "source": "/api/whatsapp-send", "destination": "/api/whatsapp-send" },
     { "source": "/api/webhook/:path*", "destination": "/api/catchall?route=webhook/:path*" },
     { "source": "/api/webhooks/:path*", "destination": "/api/catchall?route=webhooks/:path*" },
     { "source": "/api/create-pix-checkout", "destination": "/api/catchall?route=create-pix-checkout" },
