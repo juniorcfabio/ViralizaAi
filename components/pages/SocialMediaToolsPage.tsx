@@ -184,9 +184,16 @@ const SocialMediaToolsPage: React.FC = () => {
       { label: 'Tipo de conteúdo', key: 'style', type: 'select', options: ['post educativo', 'reels/shorts', 'carrossel', 'stories', 'vídeo longo'] }
     ],
     createChatbot: [
-      { label: 'Tipo de Negócio', key: 'niche', type: 'text', placeholder: 'Ex: E-commerce de moda, Consultoria...' },
+      { label: 'Plataforma', key: 'platform', type: 'select', options: ['WhatsApp', 'Instagram DM', 'Telegram', 'Facebook Messenger'] },
+      { label: 'Tipo de Negócio', key: 'niche', type: 'text', placeholder: 'Ex: E-commerce de moda, Consultoria, Restaurante...' },
+      { label: 'Nome do Bot', key: 'botName', type: 'text', placeholder: 'Ex: Assistente ViralizaAI' },
       { label: 'Objetivo do chatbot', key: 'objective', type: 'select', options: ['Atendimento ao cliente', 'Captura de leads', 'Vendas automáticas', 'Agendamento', 'Suporte técnico'] },
-      { label: 'Plataforma', key: 'platform', type: 'select', options: ['Instagram DM', 'Telegram', 'WhatsApp', 'Facebook Messenger'] }
+      { label: 'Tom de Voz', key: 'tone', type: 'select', options: ['Amigável e profissional', 'Formal', 'Descontraído', 'Direto e objetivo'] },
+      { label: 'Número WhatsApp (com DDD e código país)', key: 'whatsappPhone', type: 'text', placeholder: 'Ex: 5511999999999' },
+      { label: 'WhatsApp Phone Number ID (Meta)', key: 'phoneNumberId', type: 'text', placeholder: 'ID do número na Meta Business (ex: 123456789)' },
+      { label: 'WhatsApp Access Token (Meta)', key: 'whatsappToken', type: 'text', placeholder: 'Token de acesso da Meta Business API' },
+      { label: 'Instruções Personalizadas', key: 'customInstructions', type: 'textarea', placeholder: 'Ex: Horário de funcionamento: 8h-18h. Não oferecer descontos acima de 10%...' },
+      { label: 'Perguntas Frequentes (FAQ)', key: 'faq', type: 'textarea', placeholder: 'P: Qual o horário?\nR: Seg-Sex 8h-18h\n\nP: Fazem entrega?\nR: Sim, entregamos em toda a cidade...' },
     ],
     createGamification: [
       { label: 'Nicho', key: 'niche', type: 'text', placeholder: 'Ex: Marketing, Educação, Saúde...' },
@@ -403,8 +410,8 @@ const SocialMediaToolsPage: React.FC = () => {
         },
         {
           id: 'chatbots',
-          title: 'Chatbots para DMs/Telegram',
-          description: 'Atendimento automático, envio de promoções e captura de leads com IA conversacional.',
+          title: 'Chatbot WhatsApp + DMs',
+          description: 'Chatbot IA com respostas automáticas via WhatsApp Business API, Instagram DM, Telegram e Messenger.',
           icon: <BotIcon />,
           requiredPlan: 'semestral',
           action: 'createChatbot'
@@ -902,10 +909,134 @@ const SocialMediaToolsPage: React.FC = () => {
           
         case 'createChatbot':
           try {
+            const chatPlatform = fi.platform || 'WhatsApp';
+            const chatNiche = fi.niche || 'negócio';
+            const chatObjective = fi.objective || 'Atendimento ao cliente';
+            const chatTone = fi.tone || 'Amigável e profissional';
+            const chatBotName = fi.botName || 'Assistente IA';
+
+            // 1) Gerar scripts do chatbot com IA
             const chatbot = await openaiService.generate('general',
-              `Crie um chatbot completo para ${fi.objective || 'atendimento ao cliente'} via ${fi.platform || 'Instagram DM'} para um negócio de ${fi.niche || 'marketing digital'}.\n\nInclua:\n- Mensagem de boas-vindas personalizada\n- 10 perguntas frequentes com respostas\n- Fluxo de captura de leads (nome, email, telefone)\n- Mensagens de promoção\n- Respostas para objeções comuns\n- Fluxo de agendamento\n- Mensagem de fallback\n- Gatilhos de palavras-chave\n\nFormate como fluxograma de conversação pronto para implementar.`
+              `Crie um chatbot completo para ${chatObjective} via ${chatPlatform} para um negócio de ${chatNiche}.\nNome do bot: ${chatBotName}\nTom de voz: ${chatTone}\n${fi.customInstructions ? `Instruções: ${fi.customInstructions}\n` : ''}${fi.faq ? `FAQ fornecido:\n${fi.faq}\n` : ''}\n\nInclua:\n- Mensagem de boas-vindas personalizada\n- 10 perguntas frequentes com respostas\n- Fluxo de captura de leads (nome, email, telefone)\n- Mensagens de promoção e ofertas\n- Respostas para objeções comuns\n- Fluxo de agendamento\n- Mensagem de fallback (quando não entende)\n- Gatilhos de palavras-chave\n- Mensagem de encerramento\n\nFormate como fluxograma de conversação pronto para implementar.`
             );
-            result = { success: true, data: { content: chatbot }, message: 'Chatbot gerado com IA' };
+
+            // 2) Se WhatsApp selecionado e tem credenciais, salvar config + testar conexão
+            let whatsappStatus = '';
+            let whatsappConnected = false;
+            if (chatPlatform === 'WhatsApp' && fi.phoneNumberId && fi.whatsappToken) {
+              try {
+                // Salvar configuração
+                const configRes = await fetch(`${window.location.origin}/api/whatsapp-send`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    action: 'config',
+                    userId: user?.id || 'anonymous',
+                    businessName: chatBotName,
+                    businessType: chatNiche,
+                    objective: chatObjective,
+                    tone: chatTone,
+                    platform: 'whatsapp',
+                    phoneNumberId: fi.phoneNumberId,
+                    whatsappToken: fi.whatsappToken,
+                    customInstructions: fi.customInstructions || '',
+                    faq: fi.faq || '',
+                    botName: chatBotName
+                  })
+                });
+                const configData = await configRes.json();
+
+                if (configData.success) {
+                  // Testar conexão
+                  const statusRes = await fetch(`${window.location.origin}/api/whatsapp-send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      action: 'status',
+                      phoneNumberId: fi.phoneNumberId,
+                      whatsappToken: fi.whatsappToken
+                    })
+                  });
+                  const statusData = await statusRes.json();
+
+                  if (statusData.connected) {
+                    whatsappConnected = true;
+                    whatsappStatus = `\n\n✅ WHATSAPP CONECTADO COM SUCESSO!\n📱 Número: ${statusData.phoneNumber || fi.whatsappPhone || fi.phoneNumberId}\n🏢 Nome verificado: ${statusData.verifiedName || 'N/A'}\n⭐ Qualidade: ${statusData.qualityRating || 'N/A'}\n\n🔗 Webhook URL (copie para o Meta Business):\n${configData.webhookUrl}\n\n🔑 Verify Token:\n${configData.verifyToken}\n\n📌 O chatbot IA está ATIVO e respondendo automaticamente!`;
+                  } else {
+                    whatsappStatus = `\n\n⚠️ WhatsApp configurado mas conexão pendente.\nErro: ${statusData.error || 'Verifique o token e Phone Number ID'}\n\n🔗 Webhook URL: ${configData.webhookUrl}\n🔑 Verify Token: ${configData.verifyToken}\n\nSiga as instruções abaixo para configurar o webhook no Meta Business.`;
+                  }
+                }
+              } catch (waErr: any) {
+                whatsappStatus = `\n\n⚠️ Erro ao configurar WhatsApp: ${waErr.message}`;
+              }
+            }
+
+            // 3) Montar instruções de setup por plataforma
+            let setupInstructions = '';
+            if (chatPlatform === 'WhatsApp') {
+              if (!fi.phoneNumberId || !fi.whatsappToken) {
+                setupInstructions = `\n\n${'='.repeat(60)}\n📱 COMO CONFIGURAR O WHATSAPP BUSINESS API\n${'='.repeat(60)}\n\n` +
+                  `PASSO 1 - Criar conta Meta Developer:\n` +
+                  `→ Acesse: https://developers.facebook.com\n` +
+                  `→ Clique em "Criar App" → Tipo: "Business"\n\n` +
+                  `PASSO 2 - Adicionar WhatsApp ao App:\n` +
+                  `→ No painel do app, clique "Adicionar Produto"\n` +
+                  `→ Selecione "WhatsApp" → "Configurar"\n\n` +
+                  `PASSO 3 - Obter credenciais:\n` +
+                  `→ Em "WhatsApp > API Setup" copie:\n` +
+                  `  • Phone Number ID (campo "WhatsApp Phone Number ID" acima)\n` +
+                  `  • Access Token temporário (campo "WhatsApp Access Token" acima)\n\n` +
+                  `PASSO 4 - Configurar Webhook:\n` +
+                  `→ Em "WhatsApp > Configuration > Webhook"\n` +
+                  `→ Callback URL: https://viralizaai.vercel.app/api/whatsapp-webhook\n` +
+                  `→ Verify Token: viralizaai_whatsapp_verify_2024\n` +
+                  `→ Campos: messages, messaging_postbacks\n\n` +
+                  `PASSO 5 - Gerar Token Permanente:\n` +
+                  `→ Em "Configurações do App > Avançado"\n` +
+                  `→ Gere um System User Token com permissão whatsapp_business_messaging\n\n` +
+                  `PASSO 6 - Preencher os campos acima e gerar novamente!\n` +
+                  `Após preencher Phone Number ID e Access Token, execute esta ferramenta novamente para ativar o chatbot automático.\n\n` +
+                  `💡 O número de teste gratuito da Meta já funciona para desenvolvimento!\n` +
+                  `📖 Documentação: https://developers.facebook.com/docs/whatsapp/cloud-api`;
+              }
+            } else if (chatPlatform === 'Telegram') {
+              setupInstructions = `\n\n${'='.repeat(60)}\n🤖 COMO CONFIGURAR O BOT NO TELEGRAM\n${'='.repeat(60)}\n\n` +
+                `1. Abra o Telegram e busque @BotFather\n` +
+                `2. Envie /newbot e siga as instruções\n` +
+                `3. Copie o token do bot\n` +
+                `4. Configure o webhook: https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://viralizaai.vercel.app/api/whatsapp-webhook\n\n` +
+                `⚠️ Integração Telegram em desenvolvimento. Use o script acima como guia para seu bot.`;
+            } else if (chatPlatform === 'Instagram DM') {
+              setupInstructions = `\n\n${'='.repeat(60)}\n📸 INSTAGRAM DM - INFORMAÇÕES\n${'='.repeat(60)}\n\n` +
+                `A API de Instagram Messaging requer:\n` +
+                `- Conta Instagram Business/Creator\n` +
+                `- App verificado pela Meta\n` +
+                `- Aprovação de permissões de messaging\n\n` +
+                `⚠️ Restrições: Meta limita o uso automatizado de DMs.\nRecomendamos WhatsApp Business API como alternativa mais robusta.`;
+            } else if (chatPlatform === 'Facebook Messenger') {
+              setupInstructions = `\n\n${'='.repeat(60)}\n💬 FACEBOOK MESSENGER - INFORMAÇÕES\n${'='.repeat(60)}\n\n` +
+                `A API de Messenger requer:\n` +
+                `- Página do Facebook vinculada\n` +
+                `- App Meta com produto Messenger adicionado\n` +
+                `- Token de acesso da página\n\n` +
+                `⚠️ Restrições: Mensagens após 24h requerem Message Tags aprovados.\nRecomendamos WhatsApp Business API como alternativa mais confiável.`;
+            }
+
+            const fullContent = `🤖 Chatbot "${chatBotName}" para ${chatPlatform}\n` +
+              `📋 Negócio: ${chatNiche}\n` +
+              `🎯 Objetivo: ${chatObjective}\n` +
+              `🗣️ Tom: ${chatTone}` +
+              (whatsappConnected ? '\n🟢 Status: CONECTADO E ATIVO' : '') +
+              whatsappStatus +
+              setupInstructions +
+              `\n\n${'='.repeat(60)}\n📝 SCRIPTS DO CHATBOT GERADOS POR IA\n${'='.repeat(60)}\n\n` +
+              chatbot;
+
+            result = {
+              success: true,
+              data: { content: fullContent },
+              message: whatsappConnected ? `✅ Chatbot WhatsApp ATIVO e respondendo!` : `Chatbot ${chatPlatform} gerado com IA`
+            };
           } catch (e: any) {
             result = { success: false, message: `Erro na IA: ${e.message}` };
           }
