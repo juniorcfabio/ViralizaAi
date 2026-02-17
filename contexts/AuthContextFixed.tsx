@@ -371,12 +371,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const authData = await loginUser(email, password);
       
       if (authData.user) {
+        // Buscar plano REAL do banco de dados ANTES de setar o user
+        let activePlan: string | undefined = authData.user.user_metadata?.plan || undefined;
+        let affiliateInfo: any = undefined;
+        try {
+          const planRes = await fetch(`/api/activate-plan?userId=${authData.user.id}`);
+          if (planRes.ok) {
+            const planData = await planRes.json();
+            if (planData.success && planData.plan && planData.planStatus === 'active') {
+              activePlan = planData.plan;
+              console.log('📋 Plano ativo encontrado no login:', activePlan, `(${planData.toolsCount} ferramentas)`);
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ Erro ao buscar plano no login:', e);
+        }
+
+        // Verificar se é afiliado ativo
+        const loginMeta = authData.user.user_metadata || {};
+        if (loginMeta.affiliate_active) {
+          affiliateInfo = {
+            isActive: true,
+            referralCode: loginMeta.affiliate_referral_code || '',
+            earnings: loginMeta.affiliate_total_earnings || 0,
+            referredUserIds: []
+          };
+        }
+
         const userData: User = {
           id: authData.user.id,
           name: authData.user.user_metadata?.name || authData.user.email?.split('@')[0] || 'Usuário',
           email: authData.user.email || '',
           type: 'client',
           status: 'Ativo',
+          plan: activePlan,
+          affiliateInfo,
           joinedDate: new Date().toISOString().split('T')[0],
           socialAccounts: [],
           paymentMethods: [],
@@ -385,7 +414,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         setUser(userData);
         setIsAuthenticated(true);
-        console.log('✅ Login SUPABASE realizado com sucesso');
+        console.log('✅ Login SUPABASE realizado com sucesso, plano:', activePlan || 'nenhum');
         return userData;
       }
 
@@ -437,17 +466,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const updateUser = async (userId: string, data: Partial<User>) => {
-    // Função administrativa - não usa Supabase Auth
+    // Atualizar em platformUsers (admin)
     const userToUpdate = platformUsers.find((u) => u.id === userId);
+    if (userToUpdate) {
+      const updatedUser = { ...userToUpdate, ...data };
+      setPlatformUsers((prev) => prev.map((u) => (u.id === userId ? updatedUser : u)));
+    }
 
-    if (!userToUpdate) return;
-
-    const updatedUser = { ...userToUpdate, ...data };
-
-    setPlatformUsers((prev) => prev.map((u) => (u.id === userId ? updatedUser : u)));
-
+    // Atualizar o user logado diretamente (essencial para sidebar/plano)
     if (user && user.id === userId) {
-      setUser(updatedUser);
+      setUser(prev => prev ? { ...prev, ...data } : prev);
     }
   };
 

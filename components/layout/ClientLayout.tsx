@@ -24,7 +24,12 @@ const ClientLayout: React.FC = () => {
                 if (res.ok) {
                     const data = await res.json();
                     if (data.success && data.plan && data.planStatus === 'active') {
-                        setDbPlan(data.plan);
+                        const newPlan = data.plan;
+                        setDbPlan(newPlan);
+                        // Propagar plano para o AuthContext para que o sidebar atualize imediatamente
+                        if (user && user.plan !== newPlan) {
+                            updateUser(user.id, { plan: newPlan } as any);
+                        }
                     }
                 }
             } catch { /* silencioso */ }
@@ -32,7 +37,7 @@ const ClientLayout: React.FC = () => {
         fetchPlan();
         const interval = setInterval(fetchPlan, 15000);
         return () => clearInterval(interval);
-    }, [user?.id]);
+    }, [user?.id, user?.plan]);
 
     // Rotas que NÃO precisam de assinatura (billing, affiliate, settings)
     const freeRoutes = ['/dashboard/billing', '/dashboard/affiliate', '/dashboard/settings', '/dashboard/targeting-areas'];
