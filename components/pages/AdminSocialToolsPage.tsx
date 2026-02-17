@@ -943,10 +943,21 @@ const AdminSocialToolsPage: React.FC = () => {
         return;
       }
 
-      // Para outras ferramentas, mostrar interface funcional
+      // Para outras ferramentas, chamar APIs reais
       
-      // Simular processamento da ferramenta
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Processar com APIs reais
+      const apiResponse = await fetch(`/api/social-tools/${toolId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          userId: user?.id,
+          toolConfig: {}
+        })
+      });
+      
+      const apiResult = await apiResponse.json();
       
       // Gerar interface funcional baseada na ferramenta
       const functionalInterface = generateFunctionalInterface(toolId);

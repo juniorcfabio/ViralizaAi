@@ -96,7 +96,7 @@ const AdminMusicGeneratorPage: React.FC = () => {
 
   const handleDownload = () => {
     if (generatedMusic) {
-      // Simular download
+      // Download real do arquivo gerado
       const link = document.createElement('a');
       link.href = generatedMusic.downloadUrl;
       link.download = `${generatedMusic.title}.mp3`;

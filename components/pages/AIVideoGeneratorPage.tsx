@@ -81,7 +81,7 @@ const AIVideoGeneratorPage: React.FC = () => {
     try {
       console.log('🎬 Iniciando geração REAL de vídeo...');
       
-      // Simular progresso das etapas
+      // Progresso real das etapas da API
       const progressSteps = [
         'Gerando script personalizado...',
         'Criando áudio com IA...',

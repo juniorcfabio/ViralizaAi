@@ -8,6 +8,7 @@ import {
 } from '../../services/geminiService';
 import { checkDatabaseHealth, repairDatabase } from '../../services/dbService';
 import { isRealModeEnabled, setRealMode } from '../../services/appModeService';
+import { supabase } from '../../src/lib/supabase';
 
 // Icons
 const HeartPulseIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -136,18 +137,8 @@ const AlertTriangleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-// Log de sistema simulado
-const mockLogStream = [
-  'INICIANDO DIAGNÓSTICO DE ROTINA...',
-  'Verificando integridade do banco de dados de usuários...',
-  'Analisando latência da API Gemini...',
-  'Otimizando cache de imagens de posts...',
-  'Cache de imagens otimizado. Redução de 12% no tempo de carregamento.',
-  'Escaneando por dependências vulneráveis...',
-  'Balanceando carga do servidor de autenticação...',
-  'Monitoração contínua de eventos de erro no front-end.',
-  'DIAGNÓSTICO COMPLETO. Todos os subsistemas monitorados.'
-];
+// Logs reais do sistema do Supabase
+const [realLogs, setRealLogs] = useState<string[]>([]);
 
 const initialIssues: SystemIssue[] = [
   {
@@ -309,18 +300,35 @@ const AdminMaintenancePage: React.FC = () => {
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLogIndex((prev) => {
-        const newIndex = (prev + 1) % mockLogStream.length;
-        setLogs((currentLogs) => [mockLogStream[newIndex], ...currentLogs].slice(0, 20));
+    // Carregar logs reais do Supabase
+    const loadRealLogs = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('activity_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20);
 
-        if (mockLogStream[newIndex].includes('Monitoração contínua')) {
-          setHealthStatus('Monitorando erros e desempenho em tempo real.');
+        if (error) {
+          console.error('Erro ao carregar logs:', error);
+          return;
         }
 
-        return newIndex;
-      });
-    }, 4000);
+        const logMessages = (data || []).map(log => 
+          `[${log.created_at}] ${log.action}: ${log.details || 'N/A'}`
+        );
+        
+        setLogs(logMessages);
+        setHealthStatus('Monitorando logs reais do sistema...');
+      } catch (error) {
+        console.error('Erro ao carregar logs:', error);
+      }
+    };
+
+    loadRealLogs();
+    
+    // Atualizar logs a cada 30 segundos
+    const interval = setInterval(loadRealLogs, 30000);
     return () => clearInterval(interval);
   }, []);
 
