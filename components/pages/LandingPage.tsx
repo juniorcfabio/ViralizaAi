@@ -5,6 +5,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { Plan, Testimonial, AdPartner, TrustedCompany } from '../../types';
 import { API_BASE_URL } from '../../src/config/api';
 import { centralizedPricingService } from '../../services/centralizedPricingService';
+import { supabase } from '../../src/lib/supabase';
 import '../../styles/logos-8k.css';
 import Logo from '../ui/Logo';
 import AIPersona from '../ui/AIPersona';
@@ -877,80 +878,40 @@ const PartnerAdsSection: React.FC<{ onRegister: () => void }> = ({ onRegister })
     const currentSlotRef = useRef(0);
     const nextDataIndexRef = useRef(4);
 
-    const fallbackPartners: AdPartner[] = [
-        {
-            id: 'ad_demo_1',
-            companyName: 'TechStart Solutions',
-            role: 'Inovação & TI',
-            logo: 'https://cdn-icons-png.flaticon.com/512/3094/3094826.png', 
-            websiteUrl: '#',
-            status: 'Active',
-            planType: 'Monthly',
-            joinedDate: new Date().toISOString(),
-            isMock: true
-        },
-        {
-            id: 'ad_demo_2',
-            companyName: 'Bella Vita Moda',
-            role: 'Estilo Sustentável',
-            logo: 'https://cdn-icons-png.flaticon.com/512/3531/3531759.png',
-            websiteUrl: '#',
-            status: 'Active',
-            planType: 'Monthly',
-            joinedDate: new Date().toISOString(),
-            isMock: true
-        },
-        {
-            id: 'ad_demo_3',
-            companyName: 'FitLife Academy',
-            role: 'Alta Performance',
-            logo: 'https://cdn-icons-png.flaticon.com/512/2964/2964514.png',
-            websiteUrl: '#',
-            status: 'Active',
-            planType: 'Monthly',
-            joinedDate: new Date().toISOString(),
-            isMock: true
-        },
-        {
-            id: 'ad_demo_4',
-            companyName: 'Gourmet Express',
-            role: 'Gastronomia',
-            logo: 'https://cdn-icons-png.flaticon.com/512/706/706164.png',
-            websiteUrl: '#',
-            status: 'Active',
-            planType: 'Monthly',
-            joinedDate: new Date().toISOString(),
-            isMock: true
-        },
-        {
-            id: 'ad_demo_5',
-            companyName: 'Solar Energy',
-            role: 'Energia Limpa',
-            logo: 'https://cdn-icons-png.flaticon.com/512/861/861099.png',
-            websiteUrl: '#',
-            status: 'Active',
-            planType: 'Monthly',
-            joinedDate: new Date().toISOString(),
-            isMock: true
-        }
-    ];
-
     useEffect(() => {
         const loadPartners = async () => {
-            const data = await getPartnersDB();
-            let active = data.filter(p => p.status === 'Active');
+            try {
+                const { data, error } = await supabase
+                    .from('whitelabel_clients')
+                    .select('*')
+                    .eq('status', 'active')
+                    .order('created_at', { ascending: false });
 
-            if (active.length === 0) {
-                active = fallbackPartners;
-            }
+                if (error) {
+                    console.error('Erro ao carregar parceiros:', error);
+                    return;
+                }
 
-            active.sort((a, b) => {
-                if (a.isMock === b.isMock) return 0;
-                return a.isMock ? 1 : -1;
-            });
-            
-            let partnerPool = [...active];
-            if (partnerPool.length > 0) {
+                // Transformar dados para o formato esperado
+                const realPartners = (data || []).map(client => ({
+                    id: client.id,
+                    companyName: client.client_name,
+                    role: 'White-Label Partner',
+                    logo: client.logo_url || 'https://cdn-icons-png.flaticon.com/512/3094/3094826.png',
+                    websiteUrl: client.domain || '#',
+                    status: 'Active',
+                    planType: 'Monthly',
+                    joinedDate: client.created_at,
+                    isMock: false
+                }));
+
+                let active = realPartners;
+                if (active.length === 0) {
+                    active = [];
+                }
+
+                let partnerPool = [...active];
+                if (partnerPool.length > 0) {
                 while (partnerPool.length < 8) {
                     partnerPool = [...partnerPool, ...partnerPool];
                 }
@@ -958,6 +919,9 @@ const PartnerAdsSection: React.FC<{ onRegister: () => void }> = ({ onRegister })
 
             setPartners(partnerPool);
             setVisiblePartners(partnerPool.slice(0, 4));
+            } catch (error) {
+                console.error('Erro ao carregar parceiros:', error);
+            }
         };
         loadPartners();
     }, []);
