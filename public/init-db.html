@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inicializar Banco de Dados</title>
+</head>
+<body>
+    <h1>Inicializar Banco de Dados</h1>
+    <button onclick="initDatabase()">Iniciar Banco</button>
+    <div id="result"></div>
+
+    <script>
+        async function initDatabase() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Inicializando...';
+            
+            try {
+                const response = await fetch('/api/catchall?route=init-database', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.innerHTML = `
+                        <h2>✅ Sucesso!</h2>
+                        <p>${result.message}</p>
+                        <pre>${JSON.stringify(result.checks, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <h2>❌ Erro!</h2>
+                        <p>${result.error}</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h2>❌ Erro!</h2>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

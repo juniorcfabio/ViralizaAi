@@ -43,6 +43,78 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Função para inicializar banco de dados se necessário
+const initializeDatabaseIfNeeded = async () => {
+  try {
+    // Verificar se as tabelas essenciais existem
+    const { data: usersCheck, error: usersError } = await supabase
+      .from('users')
+      .select('count')
+      .single();
+    
+    if (usersError && usersError.code === 'PGRST116') {
+      console.log('🔧 Tabela users não encontrada, criando...');
+      
+      // Criar tabela users com usuário admin
+      const { data: adminUser, error: createError } = await supabase
+        .from('users')
+        .insert({
+          email: 'admin@viraliza.ai',
+          name: 'Administrador',
+          type: 'admin',
+          status: 'Ativo',
+          plan: 'admin'
+        })
+        .select();
+      
+      if (createError) {
+        console.error('❌ Erro ao criar tabela users:', createError);
+      } else {
+        console.log('✅ Tabela users criada com admin:', adminUser);
+      }
+    }
+    
+    // Verificar user_profiles
+    const { error: profilesError } = await supabase
+      .from('user_profiles')
+      .select('count')
+      .single();
+    
+    if (profilesError && profilesError.code === 'PGRST116') {
+      console.log('🔧 Criando tabela user_profiles...');
+      await supabase
+        .from('user_profiles')
+        .insert({
+          user_id: '00000000-0000-0000-0000-000000000000',
+          name: 'Temp',
+          email: 'temp@temp.com',
+          plan: 'mensal'
+        });
+    }
+    
+    // Verificar user_access
+    const { error: accessError } = await supabase
+      .from('user_access')
+      .select('count')
+      .single();
+    
+    if (accessError && accessError.code === 'PGRST116') {
+      console.log('🔧 Criando tabela user_access...');
+      await supabase
+        .from('user_access')
+        .insert({
+          user_id: '00000000-0000-0000-0000-000000000000',
+          tool_name: 'temp',
+          has_access: false
+        });
+    }
+    
+    console.log('✅ Banco de dados verificado e inicializado');
+  } catch (error) {
+    console.error('❌ Erro ao inicializar banco:', error);
+  }
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [platformUsers, setPlatformUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,6 +160,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const initializeAuth = async () => {
+      // Inicializar banco de dados se necessário
+      await initializeDatabaseIfNeeded();
       try {
         setIsLoading(true);
         
