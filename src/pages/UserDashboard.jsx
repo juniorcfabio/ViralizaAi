@@ -589,9 +589,12 @@ const UserDashboard = () => {
         // Usar a API funcional stripe-test
         const paymentData = {
           planName: `${tool.name} - Ferramenta ViralizaAI`,
+          planType: tool.name, // Identificar como ferramenta avulsa
           amount: Math.round(priceValue * 100), // Converter para centavos
           successUrl: `${window.location.origin}/dashboard?payment=success&tool=${encodeURIComponent(tool.name)}`,
-          cancelUrl: `${window.location.origin}/dashboard?payment=cancelled`
+          cancelUrl: `${window.location.origin}/dashboard?payment=cancelled`,
+          userId: authUser?.id,
+          customerEmail: authUser?.email
         };
 
         console.log('📋 Dados do pagamento da ferramenta:', paymentData);

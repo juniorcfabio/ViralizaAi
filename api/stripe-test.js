@@ -76,6 +76,8 @@ export default async function handler(req, res) {
         'line_items[0][quantity]': '1',
         'metadata[planName]': planName || '',
         'metadata[planType]': planType || planName || '',
+        'metadata[productType]': planType && planType !== 'mensal' && planType !== 'trimestral' && planType !== 'semestral' && planType !== 'anual' ? 'tool' : 'subscription',
+        'metadata[toolName]': (planType && planType !== 'mensal' && planType !== 'trimestral' && planType !== 'semestral' && planType !== 'anual') ? planName : '',
         'metadata[source]': 'landing_page'
       });
 
