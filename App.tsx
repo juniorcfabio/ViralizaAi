@@ -12,69 +12,57 @@ import { AuthProvider, useAuth } from './contexts/AuthContextFixed';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import autoIntegration from './config/autoIntegrationConfig';
-import globalAutoSave from './services/globalAutoSave'; // 🔥 SISTEMA GLOBAL DE AUTO-SAVE
 import AdminFinancialPageReal from './components/pages/AdminFinancialPageReal';
 import SocialAccountsPage from './components/pages/SocialAccountsPage';
 import AnalyticsPage from './components/pages/AnalyticsPage';
 import BillingPage from './components/pages/BillingPage';
-import AdminDashboard from './components/admin/AdminDashboard';
-import AdminDashboardUltra from './src/pages/AdminDashboard';
-import UserDashboardUltra from './src/pages/UserDashboard';
-import AdminMarketplacePage from './components/pages/AdminMarketplacePage';
-import AdminFranchiseSystemPage from './components/pages/AdminFranchiseSystemPage';
-import AdminWhiteLabelSystemPage from './components/pages/AdminWhiteLabelSystemPage';
-import AdminGlobalAPIPage from './components/pages/AdminGlobalAPIPage';
-import AdminAIToolCreatorPage from './components/pages/AdminAIToolCreatorPage';
 import AdminCommandCenterPage from './components/pages/AdminCommandCenterPage';
 import AdminUsersPage from './components/pages/AdminUsersPage';
 import AdminWithdrawalsPageFixed from './components/pages/AdminWithdrawalsPageFixed';
 import ArchitectureDiagram from './components/architecture/ArchitectureDiagram';
 import InvestorPlan from './components/investors/InvestorPlan';
-import TermsIntegration from './components/legal/TermsIntegration';
-import AdminMarketingPage from './components/pages/AdminMarketingPage';
-import AdminSettingsPage from './components/pages/AdminSettingsPage';
-import AffiliatePage from './components/pages/AffiliatePage';
 import AffiliatePageFixed from './components/pages/AffiliatePageFixed';
 import AdminAffiliatesPage from './components/pages/AdminAffiliatesPage';
 import ClientLayout from './components/layout/ClientLayout';
 import AdminLayout from './components/layout/AdminLayout';
 import AdminMaintenancePage from './components/pages/AdminMaintenancePage';
-import ViralizaAutopilotPage from './components/pages/ViralizaAutopilotPage';
 import EbookGeneratorPage from './components/pages/EbookGeneratorPage';
-import AIFunnelBuilderPage from './components/pages/AIFunnelBuilderPage';
 import AIFunnelBuilderPageComplete from './components/pages/AIFunnelBuilderPageComplete';
 import AIVideoGeneratorPage from './components/pages/AIVideoGeneratorPage';
 import AdvertisePage from './components/pages/AdvertisePage';
-import { getSystemVersion } from './services/dbService';
 import UserGrowthEnginePage from './components/pages/UserGrowthEnginePage';
 import ResetPasswordPage from './components/pages/ResetPasswordPage';
 import DashboardPage from './components/pages/DashboardPage';
 import RevenueProjectionPage from './components/pages/RevenueProjectionPage';
 import GlobalPromotionPage from './components/pages/GlobalPromotionPage';
 import ViralMarketingPage from './components/pages/ViralMarketingPage';
-import AdminToolsPricingPage from './components/pages/AdminToolsPricingPage';
-import TaskMonitoringPage from './components/pages/TaskMonitoringPage';
 import AdminTaskMonitoringPage from './components/pages/AdminTaskMonitoringPage';
 import PaymentSuccessPageUltraRobust from './components/pages/PaymentSuccessPageUltraRobust';
 import GoogleOAuthCallbackPage from './components/pages/GoogleOAuthCallbackPage';
-import StripeReturnHandler from './services/stripeReturnHandler';
-import EmergencyPaymentFix from './services/emergencyPaymentFix';
 import SocialMediaToolsPage from './components/pages/SocialMediaToolsPage';
 import ViralProductAnalyzerPage from './components/pages/ViralProductAnalyzerPage';
 import AdminSocialToolsPage from './components/pages/AdminSocialToolsPage';
 import VideoEditorPage from './components/pages/VideoEditorPage';
-import AnimationGeneratorPage from './components/pages/AnimationGeneratorPage';
 import PrivacyPolicyPage from './components/pages/PrivacyPolicyPage';
 import TermsOfUsePage from './components/pages/TermsOfUsePage';
 import SupportPage from './components/pages/SupportPage';
-import APIDocsPage from './components/pages/APIDocsPage';
 import AdminMusicGeneratorPage from './components/pages/AdminMusicGeneratorPage';
 import AdvertisingPlansPage from './components/pages/AdvertisingPlansPage';
 import AdvertisingSuccessPage from './components/pages/AdvertisingSuccessPage';
 import TargetingAreasPage from './components/pages/TargetingAreasPage';
 import PricingPage from './components/pages/PricingPage';
-import SupabaseMonitorPage from './components/pages/SupabaseMonitorPage';
 import QRCodeGeneratorPage from './components/pages/QRCodeGeneratorPage';
+import { getSystemVersion } from './services/dbService';
+import StripeReturnHandler from './services/stripeReturnHandler';
+import EmergencyPaymentFix from './services/emergencyPaymentFix';
+import AdminFranchiseSystemPage from './components/pages/AdminFranchiseSystemPage';
+import AdminWhiteLabelSystemPage from './components/pages/AdminWhiteLabelSystemPage';
+import AdminGlobalAPIPage from './components/pages/AdminGlobalAPIPage';
+import AdminAIToolCreatorPage from './components/pages/AdminAIToolCreatorPage';
+import AdminMarketplacePage from './components/pages/AdminMarketplacePage';
+import SupabaseMonitorPage from './components/pages/SupabaseMonitorPage';
+import APIDocsPage from './components/pages/APIDocsPage';
+import globalAutoSave from './services/globalAutoSave';
 
 const UpdateModal: React.FC = () => {
     const [hasUpdate, setHasUpdate] = useState(false);
@@ -152,8 +140,7 @@ const AppRoutes: React.FC = () => {
                 element={user?.type === 'client' ? <ClientLayout /> : <Navigate to="/" />}
             >
                 <Route index element={<DashboardPage />} />
-                <Route path="ultra-tools" element={<UserDashboardUltra />} />
-                <Route path="social" element={<SocialAccountsPage />} />
+                                <Route path="social" element={<SocialAccountsPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="billing" element={<BillingPage />} />
                 <Route path="affiliate" element={<AffiliatePageFixed />} />
@@ -176,27 +163,21 @@ const AppRoutes: React.FC = () => {
                 element={user?.type === 'admin' ? <AdminLayout /> : <Navigate to="/" />}
             >
                 <Route index element={<AdminDashboardPage />} />
-                <Route path="ultra-imperio" element={<AdminDashboardUltra />} />
                 <Route path="financial" element={<AdminFinancialPageReal />} />
                 <Route path="autonomous-promotion" element={<AutonomousPromotionPage />} />
                 <Route path="payments" element={<AdminPaymentsPage />} />
                 <Route path="pix-approvals" element={<AdminPixApprovalsPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
                 <Route path="withdrawals" element={<AdminWithdrawalsPageFixed />} />
-                <Route path="marketing" element={<AdminMarketingPage />} />
                 <Route path="affiliates" element={<AdminAffiliatesPage />} />
                 <Route path="ads" element={<AdminAdsPage />} />
                 <Route path="trusted-companies" element={<AdminTrustedCompaniesPage />} />
                 <Route path="growth-engine" element={<AdminGrowthEngineConfigPage />} />
-                <Route path="settings" element={<AdminSettingsPage />} />
                 <Route path="maintenance" element={<AdminMaintenancePage />} />
-                <Route path="tools-pricing" element={<AdminToolsPricingPage />} />
-                <Route path="autopilot" element={<ViralizaAutopilotPage />} />
                 <Route path="task-monitoring" element={<AdminTaskMonitoringPage />} />
                 <Route path="viral-marketing" element={<ViralMarketingPage />} />
                 <Route path="global-promotion" element={<GlobalPromotionPage />} />
                 <Route path="ai-video-generator" element={<AIVideoGeneratorPage />} />
-                <Route path="ai-funnel-builder" element={<AIFunnelBuilderPage />} />
                 <Route path="ebook-generator" element={<EbookGeneratorPage />} />
                 <Route path="advertise" element={<AdvertisePage />} />
                 <Route path="social-tools" element={<SocialMediaToolsPage />} />
@@ -235,8 +216,7 @@ const AppRoutes: React.FC = () => {
             
             {/* New Tools */}
             <Route path="/video-editor" element={<VideoEditorPage />} />
-            <Route path="/animation-generator" element={<AnimationGeneratorPage />} />
-            
+                        
             <Route path="*" element={<Navigate to="/" />} />
         </Routes>
     );
