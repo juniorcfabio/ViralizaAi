@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContextFixed';
+import { supabase } from '../../src/lib/supabase';
 
 interface WithdrawalRequest {
   id: string;

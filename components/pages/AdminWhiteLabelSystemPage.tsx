@@ -1,38 +1,57 @@
-// 🎨 PÁGINA ADMIN - SISTEMA WHITE-LABEL
+// 🎨 PÁGINA ADMIN - SISTEMA WHITE-LABEL - SUPABASE INTEGRATION
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { supabase } from '../../src/lib/supabase';
 
 const AdminWhiteLabelSystemPage: React.FC = () => {
   const [clients, setClients] = useState([]);
   const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(true);
 
-  // 📊 DADOS REAIS (não mockados)
-  const realStats = {
-    totalClients: 12,
-    activeClients: 9,
-    totalRevenue: 45000,
-    monthlyRevenue: 8500,
-    averageRevenue: 3750
-  };
-
-  const realClients = [
-    { id: 1, name: 'TechCorp Solutions', subdomain: 'techcorp', plan: 'Enterprise', revenue: 8500, status: 'Ativo' },
-    { id: 2, name: 'Marketing Pro', subdomain: 'marketingpro', plan: 'Professional', revenue: 4200, status: 'Ativo' },
-    { id: 3, name: 'Digital Agency', subdomain: 'digitalagency', plan: 'Business', revenue: 2800, status: 'Ativo' },
-    { id: 4, name: 'StartupX', subdomain: 'startupx', plan: 'Professional', revenue: 4200, status: 'Ativo' },
-    { id: 5, name: 'E-commerce Plus', subdomain: 'ecommerceplus', plan: 'Enterprise', revenue: 8500, status: 'Ativo' },
-    { id: 6, name: 'Consultoria ABC', subdomain: 'consultoriaabc', plan: 'Business', revenue: 2800, status: 'Pausado' }
-  ];
-
   useEffect(() => {
-    // Simular carregamento de dados reais
-    setTimeout(() => {
-      setStats(realStats);
-      setClients(realClients);
-      setLoading(false);
-    }, 1500);
+    loadWhiteLabelData();
   }, []);
+
+  const loadWhiteLabelData = async () => {
+    try {
+      // Carregar clientes white-label do Supabase
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('whitelabel_clients')
+        .select(`
+          *,
+          franchises(
+            franchisee_name,
+            package_type
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (clientsError) {
+        console.error('Erro ao carregar clientes:', clientsError);
+      }
+
+      // Calcular estatísticas reais
+      const totalClients = clientsData?.length || 0;
+      const activeClients = clientsData?.filter(c => c.status === 'active').length || 0;
+      const totalRevenue = clientsData?.reduce((sum, c) => sum + (c.monthly_fee || 0), 0) || 0;
+      const monthlyRevenue = totalRevenue;
+      const averageRevenue = totalClients > 0 ? totalRevenue / totalClients : 0;
+
+      setStats({
+        totalClients,
+        activeClients,
+        totalRevenue,
+        monthlyRevenue,
+        averageRevenue
+      });
+
+      setClients(clientsData || []);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreateClient = () => {
     alert('🚀 Funcionalidade: Criar novo cliente White-Label\n\nEsta funcionalidade permitirá:\n- Configurar subdomínio personalizado\n- Definir branding e cores\n- Configurar plano e preços\n- Ativar funcionalidades específicas');

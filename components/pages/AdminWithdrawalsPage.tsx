@@ -1,58 +1,64 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContextFixed';
+import { supabase } from '../../src/lib/supabase';
 
 interface WithdrawalRequest {
   id: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
+  affiliate_id: string;
   amount: number;
-  bankData: {
-    bank: string;
-    agency: string;
-    account: string;
-    accountType: string;
-    cpf: string;
-  };
   status: 'pending' | 'processing' | 'paid' | 'rejected';
-  requestDate: Date;
-  processedDate?: Date;
-  rejectionReason?: string;
+  payment_method: string;
+  payment_details: any;
+  requested_at: string;
+  processed_at?: string;
+  processed_by?: string;
+  notes?: string;
+  affiliate_name?: string;
+  affiliate_email?: string;
 }
 
 const AdminWithdrawalsPage: React.FC = () => {
-  const { users } = useAuth();
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'processing' | 'paid' | 'rejected'>('all');
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Carregar solicitações de saque do localStorage
-    const loadWithdrawals = () => {
-      const allWithdrawals: WithdrawalRequest[] = [];
-      
-      users.forEach(user => {
-        const userWithdrawals = JSON.parse(localStorage.getItem(`withdrawals_${user.id}`) || '[]');
-        userWithdrawals.forEach((withdrawal: any) => {
-          allWithdrawals.push({
-            ...withdrawal,
-            userId: user.id,
-            userName: user.name,
-            userEmail: user.email,
-            requestDate: new Date(withdrawal.requestDate),
-            processedDate: withdrawal.processedDate ? new Date(withdrawal.processedDate) : undefined
-          });
-        });
-      });
-
-      // Ordenar por data de solicitação (mais recentes primeiro)
-      allWithdrawals.sort((a, b) => b.requestDate.getTime() - a.requestDate.getTime());
-      setWithdrawals(allWithdrawals);
-    };
-
     loadWithdrawals();
-  }, [users]);
+  }, []);
+
+  const loadWithdrawals = async () => {
+    try {
+      // Carregar solicitações de saque do Supabase
+      const { data: withdrawalsData, error } = await supabase
+        .from('affiliate_withdrawals')
+        .select(`
+          *,
+          user_profiles(
+            name,
+            email
+          )
+        `)
+        .order('requested_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao carregar saques:', error);
+      }
+
+      // Enriquecer dados com informações do usuário
+      const enrichedWithdrawals = (withdrawalsData || []).map(withdrawal => ({
+        ...withdrawal,
+        affiliate_name: withdrawal.user_profiles?.name || 'N/A',
+        affiliate_email: withdrawal.user_profiles?.email || 'N/A'
+      }));
+
+      setWithdrawals(enrichedWithdrawals);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredWithdrawals = withdrawals.filter(withdrawal => {
     if (filter === 'all') return true;
