@@ -10,6 +10,7 @@ interface PendingPayment {
   created_at: string;
   user_email: string;
   user_name: string;
+  payment_type?: 'subscription' | 'tool';
 }
 
 // Mapeamento de plano → ferramentas (igual ao accessControlService)
@@ -69,14 +70,33 @@ const AdminPixApprovalsPage: React.FC = () => {
   const loadPendingPayments = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Buscar pagamentos de planos pendentes
+      const { data: subs, error: subsError } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('status', 'pending_payment')
         .eq('payment_provider', 'pix')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (subsError) throw subsError;
+
+      // Buscar pagamentos de ferramentas avulsas pendentes
+      const { data: tools, error: toolsError } = await supabase
+        .from('purchases')
+        .select('*')
+        .eq('status', 'pending')
+        .eq('payment_provider', 'pix')
+        .order('created_at', { ascending: false });
+
+      if (toolsError) throw toolsError;
+
+      // Combinar ambos os tipos de pagamento
+      const allPayments = [
+        ...((subs || []).map(s => ({ ...s, payment_type: 'subscription' }))),
+        ...((tools || []).map(t => ({ ...t, payment_type: 'tool', plan_type: t.tool_name || 'Ferramenta Avulsa' })))
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      const data = allPayments;
 
       // Buscar info dos usuarios em user_profiles (NÃO usar admin API)
       const enriched = await Promise.all(
@@ -136,44 +156,87 @@ const AdminPixApprovalsPage: React.FC = () => {
   const handleApprove = async (payment: PendingPayment) => {
     setProcessing(payment.id);
     try {
-      const planKey = getPlanKey(payment.plan_type);
-      const tools = PLAN_TOOLS[planKey] || PLAN_TOOLS['mensal'];
-      const validUntil = calculateExpiry(planKey);
-      const now = new Date().toISOString();
+      if (payment.payment_type === 'tool') {
+        // Aprovar ferramenta avulsa
+        console.log(`Aprovando PIX ferramenta: user=${payment.user_id}, tool=${payment.plan_type}`);
 
-      console.log(`Aprovando PIX: user=${payment.user_id}, plan=${planKey}, tools=${tools.length}`);
-
-      // Atualizar purchases (best-effort, não bloqueia)
-      try {
+        // Atualizar purchase para paid
         await supabase
           .from('purchases')
-          .update({ status: 'completed' })
-          .eq('payment_id', payment.payment_id);
-      } catch { /* silencioso */ }
+          .update({ 
+            status: 'paid',
+            confirmed_at: new Date().toISOString()
+          })
+          .eq('id', payment.id);
 
-      // CHAMAR API SERVER-SIDE para ativar plano COMPLETO
-      // (atualiza subscription, user_profiles, user_access, E auth.users metadata via SERVICE_ROLE_KEY)
-      const activateRes = await fetch('/api/activate-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: payment.user_id,
-          planType: planKey,
-          amount: payment.amount,
-          paymentMethod: 'pix',
-          paymentId: payment.payment_id,
-          subscriptionId: payment.id
-        })
-      });
-      const activateData = await activateRes.json();
-      if (!activateData.success) {
-        console.error('Erro ao ativar plano via API:', activateData);
-        throw new Error(activateData.error || 'Falha na ativação do plano');
+        // Liberar acesso à ferramenta
+        await supabase
+          .from('user_access')
+          .upsert({
+            user_id: payment.user_id,
+            tool_name: payment.plan_type,
+            access_type: 'purchase',
+            source_id: payment.id,
+            valid_until: null,
+            is_active: true,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id,tool_name' });
+
+        // Atualizar auth.users metadata
+        const { data: authUser } = await supabase.auth.admin.getUserById(payment.user_id);
+        const currentTools = authUser?.user?.user_metadata?.purchased_tools || [];
+        
+        if (!currentTools.includes(payment.plan_type)) {
+          await supabase.auth.admin.updateUserById(payment.user_id, {
+            user_metadata: {
+              ...authUser?.user?.user_metadata,
+              purchased_tools: [...currentTools, payment.plan_type]
+            }
+          });
+        }
+
+        console.log(`Ferramenta ${payment.plan_type} ativada para ${payment.user_id}`);
+        showNotification(`Pagamento aprovado! Ferramenta ${payment.plan_type} liberada para ${payment.user_name}.`);
+      } else {
+        // Aprovar assinatura de plano
+        const planKey = getPlanKey(payment.plan_type);
+        const tools = PLAN_TOOLS[planKey] || PLAN_TOOLS['mensal'];
+        const validUntil = calculateExpiry(planKey);
+        const now = new Date().toISOString();
+
+        console.log(`Aprovando PIX: user=${payment.user_id}, plan=${planKey}, tools=${tools.length}`);
+
+        // Atualizar purchases (best-effort, não bloqueia)
+        try {
+          await supabase
+            .from('purchases')
+            .update({ status: 'completed' })
+            .eq('payment_id', payment.payment_id);
+        } catch { /* silencioso */ }
+
+        // CHAMAR API SERVER-SIDE para ativar plano COMPLETO
+        const activateRes = await fetch('/api/activate-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: payment.user_id,
+            planType: planKey,
+            amount: payment.amount,
+            paymentMethod: 'pix',
+            paymentId: payment.payment_id,
+            subscriptionId: payment.id
+          })
+        });
+        const activateData = await activateRes.json();
+        if (!activateData.success) {
+          console.error('Erro ao ativar plano via API:', activateData);
+          throw new Error(activateData.error || 'Falha na ativação do plano');
+        }
+        console.log('API activate-plan respondeu:', activateData);
+
+        console.log(`Plano ${planKey} ativado: ${tools.length} ferramentas liberadas ate ${validUntil}`);
+        showNotification(`Pagamento aprovado! Plano ${planKey.toUpperCase()} ativado para ${payment.user_name} com ${tools.length} ferramentas.`);
       }
-      console.log('API activate-plan respondeu:', activateData);
-
-      console.log(`Plano ${planKey} ativado: ${tools.length} ferramentas liberadas ate ${validUntil}`);
-      showNotification(`Pagamento aprovado! Plano ${planKey.toUpperCase()} ativado para ${payment.user_name} com ${tools.length} ferramentas.`);
       loadPendingPayments();
     } catch (err) {
       console.error('Erro ao aprovar:', err);
@@ -184,19 +247,32 @@ const AdminPixApprovalsPage: React.FC = () => {
   };
 
   const handleReject = async (payment: PendingPayment) => {
-    if (!confirm(`Rejeitar pagamento PIX de ${payment.user_name}?\nPlano: ${payment.plan_type}\nValor: R$ ${payment.amount?.toFixed(2)}`)) return;
+    const paymentType = payment.payment_type === 'tool' ? 'Ferramenta' : 'Plano';
+    if (!confirm(`Rejeitar pagamento PIX de ${payment.user_name}?\n${paymentType}: ${payment.plan_type}\nValor: R$ ${payment.amount?.toFixed(2)}`)) return;
 
     setProcessing(payment.id);
     try {
-      await supabase
-        .from('subscriptions')
-        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-        .eq('id', payment.id);
+      if (payment.payment_type === 'tool') {
+        // Rejeitar ferramenta avulsa
+        await supabase
+          .from('purchases')
+          .update({ 
+            status: 'rejected',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', payment.id);
+      } else {
+        // Rejeitar assinatura
+        await supabase
+          .from('subscriptions')
+          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+          .eq('id', payment.id);
 
-      await supabase
-        .from('purchases')
-        .update({ status: 'rejected' })
-        .eq('payment_id', payment.payment_id);
+        await supabase
+          .from('purchases')
+          .update({ status: 'rejected' })
+          .eq('payment_id', payment.payment_id);
+      }
 
       showNotification(`Pagamento de ${payment.user_name} rejeitado.`);
       loadPendingPayments();
@@ -278,11 +354,18 @@ const AdminPixApprovalsPage: React.FC = () => {
                       <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full">
                         Pendente
                       </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        payment.payment_type === 'tool' 
+                          ? 'bg-purple-500/20 text-purple-300' 
+                          : 'bg-blue-500/20 text-blue-300'
+                      }`}>
+                        {payment.payment_type === 'tool' ? '🔧 Ferramenta' : '📦 Assinatura'}
+                      </span>
                     </div>
                     <p className="text-sm text-gray-dark">{payment.user_email}</p>
                     <div className="flex flex-wrap gap-4 mt-2 text-sm">
                       <span className="text-accent font-semibold">
-                        {getPlanLabel(payment.plan_type)}
+                        {payment.payment_type === 'tool' ? payment.plan_type : getPlanLabel(payment.plan_type)}
                       </span>
                       <span className="text-green-400 font-bold">
                         R$ {payment.amount?.toFixed(2)}
@@ -294,9 +377,11 @@ const AdminPixApprovalsPage: React.FC = () => {
                     <p className="text-xs text-gray-dark mt-1">
                       ID: {payment.payment_id}
                     </p>
-                    <p className="text-xs text-blue-400 mt-1">
-                      Ferramentas: {(PLAN_TOOLS[getPlanKey(payment.plan_type)] || []).length} incluidas
-                    </p>
+                    {payment.payment_type === 'subscription' && (
+                      <p className="text-xs text-blue-400 mt-1">
+                        Ferramentas: {(PLAN_TOOLS[getPlanKey(payment.plan_type)] || []).length} incluidas
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex gap-3">

@@ -1024,7 +1024,8 @@ export default async function handler(req, res) {
           'ALTER TABLE pricing_config ADD COLUMN IF NOT EXISTS gpt4turbo_tokens BIGINT DEFAULT 0',
           'ALTER TABLE pricing_config ADD COLUMN IF NOT EXISTS gpt35_tokens BIGINT DEFAULT 0',
           'ALTER TABLE pricing_config ADD COLUMN IF NOT EXISTS dalle3_images INTEGER DEFAULT 0',
-          'ALTER TABLE pricing_config ADD COLUMN IF NOT EXISTS whisper_minutes INTEGER DEFAULT 0'
+          'ALTER TABLE pricing_config ADD COLUMN IF NOT EXISTS whisper_minutes INTEGER DEFAULT 0',
+          'ALTER TABLE tool_pricing ADD COLUMN IF NOT EXISTS credits_included BIGINT DEFAULT 0'
         ];
         for (var aci = 0; aci < alterCols.length; aci++) {
           try {
@@ -1047,33 +1048,37 @@ export default async function handler(req, res) {
         }
         // 3. Upsert tool prices (add-ons + standalone tools)
         var toolPriceUpdates = [
-          { name: 'GPT-4o 1M tokens', price: 67.50 },
-          { name: 'GPT-4 Turbo 1M tokens', price: 135.00 },
-          { name: 'GPT-3.5 Turbo 1M tokens', price: 6.75 },
-          { name: 'DALL·E 3 100 imagens', price: 54.00 },
-          { name: 'DALL·E 2 100 imagens', price: 27.00 },
-          { name: 'Whisper 100 minutos', price: 8.10 },
-          { name: 'TTS-1 1M caracteres', price: 202.50 },
-          { name: 'TTS-1 HD 1M caracteres', price: 405.00 },
-          { name: 'Gerador de Scripts IA', price: 29.90 },
-          { name: 'Criador de Thumbnails', price: 19.90 },
-          { name: 'Analisador de Trends', price: 39.90 },
-          { name: 'Otimizador de SEO', price: 24.90 },
-          { name: 'Gerador de Hashtags', price: 14.90 },
-          { name: 'Criador de Logos', price: 49.90 },
-          { name: 'Agendamento Multiplataforma', price: 39.90 },
-          { name: 'IA de Copywriting', price: 34.90 },
-          { name: 'Tradutor Automático', price: 29.90 },
-          { name: 'Gerador de QR Code', price: 19.90 },
-          { name: 'Editor de Vídeo Pro', price: 97.00 },
-          { name: 'Gerador de Ebooks Premium', price: 49.90 },
-          { name: 'Gerador de Animações', price: 67.00 },
-          { name: 'IA Video Generator 8K', price: 79.90 },
-          { name: 'AI Funil Builder', price: 89.90 }
+          { name: 'GPT-4o 1M tokens', price: 67.50, credits_included: 1000000 },
+          { name: 'GPT-4 Turbo 1M tokens', price: 135.00, credits_included: 1000000 },
+          { name: 'GPT-3.5 Turbo 1M tokens', price: 6.75, credits_included: 1000000 },
+          { name: 'DALL·E 3 100 imagens', price: 54.00, credits_included: 100 },
+          { name: 'DALL·E 2 100 imagens', price: 27.00, credits_included: 100 },
+          { name: 'Whisper 100 minutos', price: 8.10, credits_included: 100 },
+          { name: 'TTS-1 1M caracteres', price: 202.50, credits_included: 1000000 },
+          { name: 'TTS-1 HD 1M caracteres', price: 405.00, credits_included: 1000000 },
+          { name: 'Gerador de Scripts IA', price: 29.90, credits_included: 500000 },
+          { name: 'Criador de Thumbnails', price: 19.90, credits_included: 50 },
+          { name: 'Analisador de Trends', price: 39.90, credits_included: 750000 },
+          { name: 'Otimizador de SEO', price: 24.90, credits_included: 400000 },
+          { name: 'Gerador de Hashtags', price: 14.90, credits_included: 200000 },
+          { name: 'Criador de Logos', price: 49.90, credits_included: 100 },
+          { name: 'Agendamento Multiplataforma', price: 39.90, credits_included: 600000 },
+          { name: 'IA de Copywriting', price: 34.90, credits_included: 500000 },
+          { name: 'Tradutor Automático', price: 29.90, credits_included: 400000 },
+          { name: 'Gerador de QR Code', price: 19.90, credits_included: 50 },
+          { name: 'Editor de Vídeo Pro', price: 97.00, credits_included: 1200 },
+          { name: 'Gerador de Ebooks Premium', price: 49.90, credits_included: 1000000 },
+          { name: 'Gerador de Animações', price: 67.00, credits_included: 200 },
+          { name: 'IA Video Generator 8K', price: 79.90, credits_included: 1500 },
+          { name: 'AI Funil Builder', price: 89.90, credits_included: 800000 }
         ];
         for (var tpi = 0; tpi < toolPriceUpdates.length; tpi++) {
           try {
-            var { error: tpErr } = await supabase.from('tool_pricing').update({ price: toolPriceUpdates[tpi].price, updated_at: new Date().toISOString() }).eq('name', toolPriceUpdates[tpi].name);
+            var { error: tpErr } = await supabase.from('tool_pricing').update({ 
+              price: toolPriceUpdates[tpi].price, 
+              credits_included: toolPriceUpdates[tpi].credits_included,
+              updated_at: new Date().toISOString() 
+            }).eq('name', toolPriceUpdates[tpi].name);
             syncResults.push({ tool: toolPriceUpdates[tpi].name, status: tpErr ? 'error' : 'ok', error: tpErr?.message });
           } catch(e) { syncResults.push({ tool: toolPriceUpdates[tpi].name, status: 'error', error: e.message }); }
         }
