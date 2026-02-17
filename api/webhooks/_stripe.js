@@ -307,6 +307,49 @@ async function activateAdvertising(userId, advertisingData, paymentId, amount) {
   console.log(`✅ Anúncio ativado: ${planName} (${planDays} dias)`);
 }
 
+// ==================== ATIVAÇÃO DE COMPRA DE CRÉDITOS ====================
+async function activateCreditPurchase(userId, creditsAmount, priceBrl, paymentId) {
+  console.log(`💰 Ativando ${creditsAmount} créditos REAIS no Supabase: ${userId}`);
+
+  // 1. Get or create user_credits row
+  const { data: existCred } = await supabase
+    .from('user_credits')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  const newBalance = (existCred?.balance || 0) + creditsAmount;
+
+  await supabase.from('user_credits').upsert({
+    user_id: userId,
+    balance: newBalance,
+    total_purchased: (existCred?.total_purchased || 0) + creditsAmount,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id' });
+
+  // 2. Log transaction
+  await supabase.from('credit_transactions').insert({
+    user_id: userId,
+    type: 'purchase',
+    amount: creditsAmount,
+    price_brl: priceBrl,
+    tool_id: 'credits',
+    payment_method: 'stripe',
+    payment_id: paymentId,
+    status: 'completed',
+    created_at: new Date().toISOString()
+  });
+
+  // 3. Activity log
+  await supabase.from('activity_logs').insert({
+    user_id: userId,
+    action: 'credits_purchased_webhook',
+    details: { credits: creditsAmount, price_brl: priceBrl, payment_id: paymentId, new_balance: newBalance }
+  });
+
+  console.log(`✅ ${creditsAmount} créditos ativados. Novo saldo: ${newBalance}`);
+}
+
 // ==================== CANCELAMENTO ====================
 async function deactivateSubscription(userId, stripeSubId) {
   console.log(`🚫 Desativando assinatura REAL no Supabase: ${userId}`);
@@ -408,7 +451,13 @@ export default async function handler(req, res) {
       const productType = session.metadata?.productType;
       console.log('💳 Checkout completado:', { userId, planType, toolName, productType, amount, email: session.customer_email });
 
-      if (userId && productType === 'advertising') {
+      if (userId && productType === 'credits') {
+        // Compra de créditos extras via Stripe - liberar automaticamente
+        const creditsAmount = parseInt(session.metadata?.creditsAmount) || 0;
+        const priceBrl = parseFloat(session.metadata?.priceBrl) || amount;
+        console.log(`💰 Liberando ${creditsAmount} créditos para ${userId} (R$ ${priceBrl})`);
+        await activateCreditPurchase(userId, creditsAmount, priceBrl, session.payment_intent || session.id);
+      } else if (userId && productType === 'advertising') {
         // Pagamento de anúncio
         await activateAdvertising(userId, session.metadata, session.payment_intent || session.id, amount);
       } else if (userId && planType) {

@@ -95,6 +95,98 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Campos obrigatórios: tool, prompt' });
     }
 
+    // ==================== VERIFICAÇÃO DE CRÉDITOS/LIMITES ====================
+    const aiUserId = params.userId;
+    let userHasAccess = true;
+    let useCredits = false;
+
+    if (aiUserId && aiUserId !== 'anonymous' && tool !== 'sora-status' && tool !== 'sora-download') {
+      try {
+        // 1. Check if user has active subscription
+        const { data: activeSub } = await supabase
+          .from('subscriptions')
+          .select('plan_type, end_date, status')
+          .eq('user_id', aiUserId)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        // 2. Check user credits
+        const { data: userCredits } = await supabase
+          .from('user_credits')
+          .select('balance, daily_limit, daily_usage, last_daily_reset')
+          .eq('user_id', aiUserId)
+          .maybeSingle();
+
+        // 3. Check monthly usage count
+        const monthStart = new Date(new Date().setDate(1)).toISOString();
+        const { count: monthlyUsage } = await supabase
+          .from('usage_log')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', aiUserId)
+          .gte('created_at', monthStart);
+
+        const hasActivePlan = activeSub && activeSub.status === 'active' && new Date(activeSub.end_date) > new Date();
+        const creditBalance = userCredits?.balance || 0;
+        const dailyLimit = userCredits?.daily_limit || 20;
+        const dailyUsage = userCredits?.daily_usage || 0;
+
+        // Reset daily usage if new day
+        if (userCredits?.last_daily_reset) {
+          const lastReset = new Date(userCredits.last_daily_reset);
+          const now = new Date();
+          if (lastReset.toDateString() !== now.toDateString()) {
+            await supabase.from('user_credits').update({
+              daily_usage: 0,
+              last_daily_reset: now.toISOString()
+            }).eq('user_id', aiUserId);
+          }
+        }
+
+        if (hasActivePlan) {
+          // Plan active: check daily limit
+          if (dailyUsage >= dailyLimit) {
+            // Daily limit reached - can use credits if available
+            if (creditBalance > 0) {
+              useCredits = true;
+            } else {
+              return res.status(403).json({
+                error: 'Limite diário atingido',
+                message: `Você atingiu o limite diário de ${dailyLimit} usos do seu plano. Compre créditos extras para continuar ou aguarde o próximo dia.`,
+                daily_limit: dailyLimit,
+                daily_usage: dailyUsage,
+                credits_balance: creditBalance,
+                blocked: true
+              });
+            }
+          }
+        } else {
+          // No active plan - must have credits
+          if (creditBalance <= 0) {
+            // Check if user has purchased this tool individually
+            const { data: toolAccess } = await supabase
+              .from('user_access')
+              .select('is_active')
+              .eq('user_id', aiUserId)
+              .eq('is_active', true)
+              .limit(1);
+
+            if (!toolAccess || toolAccess.length === 0) {
+              return res.status(403).json({
+                error: 'Sem créditos disponíveis',
+                message: 'Seus créditos acabaram e você não tem um plano ativo. Assine um plano ou compre créditos extras para continuar usando as ferramentas.',
+                credits_balance: 0,
+                blocked: true
+              });
+            }
+            // Has tool access but no credits - allow but track
+          }
+          useCredits = true;
+        }
+      } catch (accessErr) {
+        console.warn('⚠️ Erro ao verificar créditos (permitindo uso):', accessErr.message);
+      }
+    }
+
     // ==================== TTS (Text-to-Speech) via OpenAI ====================
     if (tool === 'tts') {
       const voice = params.voice || 'nova'; // alloy, echo, fable, onyx, nova, shimmer
@@ -387,19 +479,65 @@ export default async function handler(req, res) {
 
     console.log(`✅ AI [${routing.department}] ${tool}: provider=${actualProvider}, model=${actualModel}, tokens=${result.tokensUsed}`);
 
-    // Log de uso no Supabase
+    // ==================== LOG DE USO + DEDUÇÃO DE CRÉDITOS ====================
+    const tokensUsed = result.tokensUsed || 0;
     try {
+      // 1. Log na usage_log (dados reais de consumo)
+      await supabase.from('usage_log').insert({
+        user_id: aiUserId || params.userId || 'anonymous',
+        tool_id: tool,
+        tool_name: tool,
+        tokens_used: tokensUsed,
+        images_generated: 0,
+        audio_minutes: 0,
+        openai_model: actualModel,
+        cost_usd: 0,
+        cost_brl: 0,
+        created_at: new Date().toISOString()
+      });
+
+      // 2. Incrementar daily_usage para controle de limite diário
+      if (aiUserId && aiUserId !== 'anonymous') {
+        await supabase.rpc('increment_daily_usage', { p_user_id: aiUserId }).catch(async () => {
+          // Fallback se RPC não existir: update direto
+          const { data: uc } = await supabase.from('user_credits').select('daily_usage').eq('user_id', aiUserId).maybeSingle();
+          if (uc) {
+            await supabase.from('user_credits').update({
+              daily_usage: (uc.daily_usage || 0) + 1,
+              updated_at: new Date().toISOString()
+            }).eq('user_id', aiUserId);
+          }
+        });
+
+        // 3. Deduzir créditos se necessário
+        if (useCredits) {
+          const { data: credRow } = await supabase.from('user_credits').select('balance').eq('user_id', aiUserId).maybeSingle();
+          if (credRow) {
+            const newBal = Math.max(0, (credRow.balance || 0) - 1);
+            await supabase.from('user_credits').update({
+              balance: newBal,
+              updated_at: new Date().toISOString()
+            }).eq('user_id', aiUserId);
+            console.log(`💳 Crédito deduzido: ${aiUserId} → saldo: ${newBal}`);
+          }
+        }
+      }
+
+      // 4. Activity log
       await supabase.from('activity_logs').insert({
-        user_id: params.userId || 'anonymous',
+        user_id: aiUserId || params.userId || 'anonymous',
         action: `ai_${routing.department}_${tool}`,
         details: JSON.stringify({
           tool, provider: actualProvider, model: actualModel,
           department: routing.department,
-          tokens_used: result.tokensUsed || 0,
+          tokens_used: tokensUsed,
+          credits_deducted: useCredits ? 1 : 0,
           prompt_preview: prompt.substring(0, 100)
         })
       });
-    } catch (_) {}
+    } catch (logErr) {
+      console.warn('⚠️ Erro ao logar uso (não bloqueante):', logErr.message);
+    }
 
     return res.status(200).json({
       success: true,
@@ -407,7 +545,7 @@ export default async function handler(req, res) {
       provider: actualProvider,
       model: actualModel,
       department: routing.department,
-      tokens_used: result.tokensUsed || 0
+      tokens_used: tokensUsed
     });
 
   } catch (error) {

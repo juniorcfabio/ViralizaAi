@@ -1254,13 +1254,14 @@ const UserDashboard = () => {
         />
       )}
 
-      {/* Modal Comprar Créditos */}
+      {/* Modal Comprar Créditos - Pagamento Real via Stripe ou PIX */}
       {showBuyCreditsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
             <h2 className="text-xl font-bold text-gray-900 mb-4">💳 Comprar Créditos Extras</h2>
             <p className="text-sm text-gray-600 mb-4">
               Créditos extras permitem usar ferramentas além do limite do seu plano.
+              Créditos são liberados somente após confirmação do pagamento.
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">Quantidade de Créditos</label>
@@ -1283,39 +1284,90 @@ const UserDashboard = () => {
                 <span className="font-bold text-gray-900">{buyCreditsAmount}</span>
               </div>
               <div className="flex justify-between text-sm mt-1">
-                <span className="text-gray-600">Valor estimado:</span>
+                <span className="text-gray-600">Valor:</span>
                 <span className="font-bold text-green-600">R$ {(buyCreditsAmount * 0.50).toFixed(2).replace('.', ',')}</span>
               </div>
-              <p className="text-xs text-gray-400 mt-2">Preço por crédito configurado pelo admin</p>
+              <p className="text-xs text-gray-400 mt-2">R$ 0,50 por crédito (configurável pelo admin)</p>
             </div>
-            <div className="flex gap-3">
+
+            <p className="text-sm font-semibold text-gray-700 mb-2">Escolha a forma de pagamento:</p>
+            <div className="flex flex-col gap-3">
+              {/* STRIPE - Checkout automático */}
               <button onClick={async () => {
                 try {
+                  const priceBrl = buyCreditsAmount * 0.50;
+                  const res = await fetch('/api/create-checkout-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      line_items: [{
+                        price_data: {
+                          currency: 'brl',
+                          product_data: { name: `${buyCreditsAmount} Créditos Extras - ViralizaAI` },
+                          unit_amount: Math.round(priceBrl * 100)
+                        },
+                        quantity: 1
+                      }],
+                      mode: 'payment',
+                      success_url: window.location.origin + '/dashboard/ultra-tools?credits_purchased=true',
+                      cancel_url: window.location.origin + '/dashboard/ultra-tools?credits_cancelled=true',
+                      customer_email: authUser?.email,
+                      metadata: {
+                        productType: 'credits',
+                        userId: authUser?.id,
+                        creditsAmount: String(buyCreditsAmount),
+                        priceBrl: String(priceBrl)
+                      }
+                    })
+                  });
+                  const data = await res.json();
+                  if (data.success && data.url) {
+                    window.location.href = data.url;
+                  } else {
+                    alert('❌ Erro ao criar sessão de pagamento: ' + (data.error || 'Tente novamente'));
+                  }
+                } catch (e) {
+                  alert('❌ Erro ao conectar com Stripe: ' + e.message);
+                }
+              }} className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">
+                💳 Pagar com Cartão (Stripe)
+                <span className="text-xs opacity-75">Liberação automática</span>
+              </button>
+
+              {/* PIX - Admin aprova */}
+              <button onClick={async () => {
+                try {
+                  const priceBrl = buyCreditsAmount * 0.50;
                   const res = await fetch('/api/user/credits', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                       userId: authUser?.id,
+                      email: authUser?.email,
                       amount: buyCreditsAmount,
-                      price_brl: buyCreditsAmount * 0.50,
+                      price_brl: priceBrl,
                       payment_method: 'pix',
-                      tool_id: 'general'
+                      tool_id: 'credits',
+                      status: 'pending_pix'
                     })
                   });
                   const data = await res.json();
                   if (data.success) {
-                    setUserCredits(prev => ({ ...prev, balance: data.balance }));
                     setShowBuyCreditsModal(false);
-                    alert(`✅ ${buyCreditsAmount} créditos adicionados! Novo saldo: ${data.balance}`);
+                    alert(`✅ Pedido de ${buyCreditsAmount} créditos registrado!\n\nValor: R$ ${priceBrl.toFixed(2)}\n\nFaça o pagamento via PIX e aguarde a aprovação do administrador.\nSeus créditos serão liberados após a confirmação.`);
+                  } else {
+                    alert('❌ Erro: ' + (data.error || 'Tente novamente'));
                   }
                 } catch (e) {
-                  alert('❌ Erro ao comprar créditos: ' + e.message);
+                  alert('❌ Erro ao registrar pedido: ' + e.message);
                 }
-              }} className="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors">
-                💳 Comprar
+              }} className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2">
+                🏦 Pagar com PIX
+                <span className="text-xs opacity-75">Aprovação pelo admin</span>
               </button>
+
               <button onClick={() => setShowBuyCreditsModal(false)}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
+                className="w-full bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
                 Cancelar
               </button>
             </div>

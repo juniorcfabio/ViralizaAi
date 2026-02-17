@@ -669,6 +669,35 @@ export default async function handler(req, res) {
       case 'user/credits': {
         var credUserId = req.query.userId || req.body?.userId;
         if (!credUserId) return res.status(400).json({ error: 'userId required' });
+
+        // PUT = Admin approve pending PIX credit purchase
+        if (req.method === 'PUT') {
+          try {
+            var approveBody = req.body || {};
+            var txId = approveBody.transaction_id;
+            if (!txId) return res.status(400).json({ error: 'transaction_id required' });
+            // Get pending transaction
+            var { data: pendingTx } = await supabase.from('credit_transactions').select('*').eq('id', txId).eq('status', 'pending_pix').maybeSingle();
+            if (!pendingTx) return res.status(404).json({ error: 'Transação pendente não encontrada' });
+            // Approve: add credits to user balance
+            var approveUserId = pendingTx.user_id;
+            var approveAmount = pendingTx.amount || 0;
+            var { data: existCredApprove } = await supabase.from('user_credits').select('*').eq('user_id', approveUserId).maybeSingle();
+            var newBalApprove = (existCredApprove?.balance || 0) + approveAmount;
+            await supabase.from('user_credits').upsert({
+              user_id: approveUserId,
+              balance: newBalApprove,
+              total_purchased: (existCredApprove?.total_purchased || 0) + approveAmount,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+            // Update transaction status
+            await supabase.from('credit_transactions').update({ status: 'completed', approved_at: new Date().toISOString() }).eq('id', txId);
+            return res.status(200).json({ success: true, balance: newBalApprove, message: `${approveAmount} créditos liberados` });
+          } catch (e) {
+            return res.status(500).json({ error: e.message });
+          }
+        }
+
         if (req.method === 'POST') {
           // Purchase extra credits
           try {
@@ -676,7 +705,24 @@ export default async function handler(req, res) {
             var credAmount = parseFloat(credBody.amount) || 0;
             var credToolId = credBody.tool_id || 'general';
             var credPayMethod = credBody.payment_method || 'stripe';
-            // Get or create user_credits row
+            var credStatus = credBody.status || 'completed';
+
+            // PIX: create PENDING transaction, do NOT add credits yet
+            if (credStatus === 'pending_pix' || credPayMethod === 'pix') {
+              await supabase.from('credit_transactions').insert({
+                user_id: credUserId,
+                type: 'purchase',
+                amount: credAmount,
+                price_brl: parseFloat(credBody.price_brl) || 0,
+                tool_id: credToolId,
+                payment_method: 'pix',
+                status: 'pending_pix',
+                created_at: new Date().toISOString()
+              });
+              return res.status(200).json({ success: true, message: 'Pedido PIX registrado. Aguardando aprovação do admin.', pending: true });
+            }
+
+            // Stripe/completed: add credits immediately (called by webhook)
             var { data: existCred } = await supabase.from('user_credits').select('*').eq('user_id', credUserId).maybeSingle();
             var newBalance = (existCred?.balance || 0) + credAmount;
             await supabase.from('user_credits').upsert({
@@ -704,14 +750,17 @@ export default async function handler(req, res) {
         // GET credits balance
         try {
           var { data: userCred } = await supabase.from('user_credits').select('*').eq('user_id', credUserId).maybeSingle();
-          var { data: userUsage } = await supabase.from('usage_log').select('tool_id, tokens_used, images_generated, audio_minutes').eq('user_id', credUserId).gte('created_at', new Date(new Date().setDate(1)).toISOString());
+          var { data: userUsage } = await supabase.from('usage_log').select('tool_id, tool_name, tokens_used, images_generated, audio_minutes').eq('user_id', credUserId).gte('created_at', new Date(new Date().setDate(1)).toISOString());
+          // Also get pending PIX transactions
+          var { data: pendingTxs } = await supabase.from('credit_transactions').select('*').eq('user_id', credUserId).eq('status', 'pending_pix').order('created_at', { ascending: false });
           return res.status(200).json({
             success: true,
             credits: userCred || { balance: 0, total_purchased: 0 },
-            usage_this_month: userUsage || []
+            usage_this_month: userUsage || [],
+            pending_purchases: pendingTxs || []
           });
         } catch (e) {
-          return res.status(200).json({ success: true, credits: { balance: 0, total_purchased: 0 }, usage_this_month: [] });
+          return res.status(200).json({ success: true, credits: { balance: 0, total_purchased: 0 }, usage_this_month: [], pending_purchases: [] });
         }
       }
       case 'user/usage': {
