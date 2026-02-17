@@ -77,7 +77,7 @@ async function getAllUsers() {
         videos: 3,
         ebooks: 1
       },
-      totalSpent: 149.90,
+      totalSpent: 159.90,
       createdAt: "2026-01-01T00:00:00Z",
       lastLoginAt: "2026-01-30T10:30:00Z",
       subscriptionId: "sub_stripe_123",
@@ -106,7 +106,7 @@ async function getAllUsers() {
       userId: "premium_user",
       email: "premium@empresa.com",
       name: "Maria Premium",
-      plan: "premium",
+      plan: "anual",
       planStatus: "active",
       planExpiresAt: "2027-01-01T00:00:00Z",
       dailyUsage: 250,
@@ -115,7 +115,7 @@ async function getAllUsers() {
         videos: 50,
         ebooks: 20
       },
-      totalSpent: 499.90,
+      totalSpent: 399.90,
       createdAt: "2025-12-01T00:00:00Z",
       lastLoginAt: "2026-01-30T16:45:00Z",
       subscriptionId: "sub_stripe_premium",

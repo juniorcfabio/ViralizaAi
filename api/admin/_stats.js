@@ -180,8 +180,9 @@ async function getRevenueStats() {
     // POR PLANO
     revenueByPlan: {
       mensal: 359.40,   // 6 usuários × 59.90
-      gold: 899.40,     // 6 usuários × 149.90
-      premium: 1499.70, // 3 usuários × 499.90
+      trimestral: 959.40,  // 6 usuários × 159.90
+      semestral: 779.70,   // 3 usuários × 259.90
+      anual: 1199.70,      // 3 usuários × 399.90
       free: 0
     },
     

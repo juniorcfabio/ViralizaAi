@@ -1015,6 +1015,70 @@ export default async function handler(req, res) {
         }
         return res.status(200).json({ success: true, message: 'Credit system tables initialized', results: initResults });
       }
+      case 'database/sync-pricing': {
+        // Sync all subscription plan prices + credits + tool prices to Supabase
+        var syncResults = [];
+        // 1. Add credit columns to pricing_config if not exist
+        var alterCols = [
+          'ALTER TABLE pricing_config ADD COLUMN IF NOT EXISTS gpt4o_tokens BIGINT DEFAULT 0',
+          'ALTER TABLE pricing_config ADD COLUMN IF NOT EXISTS gpt4turbo_tokens BIGINT DEFAULT 0',
+          'ALTER TABLE pricing_config ADD COLUMN IF NOT EXISTS gpt35_tokens BIGINT DEFAULT 0',
+          'ALTER TABLE pricing_config ADD COLUMN IF NOT EXISTS dalle3_images INTEGER DEFAULT 0',
+          'ALTER TABLE pricing_config ADD COLUMN IF NOT EXISTS whisper_minutes INTEGER DEFAULT 0'
+        ];
+        for (var aci = 0; aci < alterCols.length; aci++) {
+          try {
+            await supabase.rpc('exec_sql', { sql: alterCols[aci] });
+            syncResults.push({ step: 'alter_col', status: 'ok' });
+          } catch(e) { syncResults.push({ step: 'alter_col', status: 'fallback', error: e.message }); }
+        }
+        // 2. Upsert subscription plans with prices + credits
+        var subPlans = [
+          { plan_id: 'mensal', name: 'Mensal', price: 59.90, original_price: 99.90, category: 'subscription', period: 'mês', discount: 40, highlight: false, gpt4o_tokens: 887000, gpt4turbo_tokens: 444000, gpt35_tokens: 8800000, dalle3_images: 111, whisper_minutes: 740, description: 'Plano mensal com acesso completo', features: JSON.stringify(['6 Ferramentas de IA','Gerador de Scripts IA','Criador de Thumbnails','Analisador de Trends','Otimizador de SEO','Gerador de Hashtags','Criador de Logos']) },
+          { plan_id: 'trimestral', name: 'Trimestral', price: 159.90, original_price: 299.70, category: 'subscription', period: 'trimestre', discount: 47, highlight: true, gpt4o_tokens: 2370000, gpt4turbo_tokens: 1180000, gpt35_tokens: 23700000, dalle3_images: 296, whisper_minutes: 1975, description: 'Plano trimestral com desconto', features: JSON.stringify(['Tudo do Mensal +','Agendamento Multiplataforma','IA de Copywriting','Tradutor Automático','9 Ferramentas no total']) },
+          { plan_id: 'semestral', name: 'Semestral', price: 259.90, original_price: 599.40, category: 'subscription', period: 'semestre', discount: 57, highlight: false, gpt4o_tokens: 3850000, gpt4turbo_tokens: 1920000, gpt35_tokens: 38500000, dalle3_images: 481, whisper_minutes: 3210, description: 'Plano semestral com maior desconto', features: JSON.stringify(['Tudo do Trimestral +','Gerador de QR Code','Editor de Vídeo Pro','Gerador de Ebooks Premium','12 Ferramentas no total']) },
+          { plan_id: 'anual', name: 'Anual', price: 399.90, original_price: 1198.80, category: 'subscription', period: 'ano', discount: 67, highlight: false, gpt4o_tokens: 5990000, gpt4turbo_tokens: 2960000, gpt35_tokens: 59900000, dalle3_images: 747, whisper_minutes: 4930, description: 'Plano anual com máximo desconto', features: JSON.stringify(['Tudo do Semestral +','Gerador de Animações','IA Video Generator 8K','AI Funil Builder','15 Ferramentas no total']) }
+        ];
+        for (var spi = 0; spi < subPlans.length; spi++) {
+          try {
+            var { error: spErr } = await supabase.from('pricing_config').upsert({ ...subPlans[spi], is_active: true, updated_at: new Date().toISOString() }, { onConflict: 'plan_id' });
+            syncResults.push({ plan: subPlans[spi].plan_id, status: spErr ? 'error' : 'ok', error: spErr?.message });
+          } catch(e) { syncResults.push({ plan: subPlans[spi].plan_id, status: 'error', error: e.message }); }
+        }
+        // 3. Upsert tool prices (add-ons + standalone tools)
+        var toolPriceUpdates = [
+          { name: 'GPT-4o 1M tokens', price: 67.50 },
+          { name: 'GPT-4 Turbo 1M tokens', price: 135.00 },
+          { name: 'GPT-3.5 Turbo 1M tokens', price: 6.75 },
+          { name: 'DALL·E 3 100 imagens', price: 54.00 },
+          { name: 'DALL·E 2 100 imagens', price: 27.00 },
+          { name: 'Whisper 100 minutos', price: 8.10 },
+          { name: 'TTS-1 1M caracteres', price: 202.50 },
+          { name: 'TTS-1 HD 1M caracteres', price: 405.00 },
+          { name: 'Gerador de Scripts IA', price: 29.90 },
+          { name: 'Criador de Thumbnails', price: 19.90 },
+          { name: 'Analisador de Trends', price: 39.90 },
+          { name: 'Otimizador de SEO', price: 24.90 },
+          { name: 'Gerador de Hashtags', price: 14.90 },
+          { name: 'Criador de Logos', price: 49.90 },
+          { name: 'Agendamento Multiplataforma', price: 39.90 },
+          { name: 'IA de Copywriting', price: 34.90 },
+          { name: 'Tradutor Automático', price: 29.90 },
+          { name: 'Gerador de QR Code', price: 19.90 },
+          { name: 'Editor de Vídeo Pro', price: 97.00 },
+          { name: 'Gerador de Ebooks Premium', price: 49.90 },
+          { name: 'Gerador de Animações', price: 67.00 },
+          { name: 'IA Video Generator 8K', price: 79.90 },
+          { name: 'AI Funil Builder', price: 89.90 }
+        ];
+        for (var tpi = 0; tpi < toolPriceUpdates.length; tpi++) {
+          try {
+            var { error: tpErr } = await supabase.from('tool_pricing').update({ price: toolPriceUpdates[tpi].price, updated_at: new Date().toISOString() }).eq('name', toolPriceUpdates[tpi].name);
+            syncResults.push({ tool: toolPriceUpdates[tpi].name, status: tpErr ? 'error' : 'ok', error: tpErr?.message });
+          } catch(e) { syncResults.push({ tool: toolPriceUpdates[tpi].name, status: 'error', error: e.message }); }
+        }
+        return res.status(200).json({ success: true, message: 'Pricing synced to Supabase', results: syncResults });
+      }
       case 'admin/tool-pricing-extended': {
         // Extended tool pricing with OpenAI cost info
         try {
@@ -1134,8 +1198,8 @@ export default async function handler(req, res) {
       case 'pricing/dynamic':
         return res.status(200).json({
           success: true, pricing: {
-            mensal: { price: 29.90, discount: 0 }, trimestral: { price: 79.90, discount: 11 },
-            semestral: { price: 149.90, discount: 17 }, anual: { price: 249.90, discount: 30 }
+            mensal: { price: 59.90, discount: 0 }, trimestral: { price: 159.90, discount: 11 },
+            semestral: { price: 259.90, discount: 28 }, anual: { price: 399.90, discount: 45 }
           }
         });
       case 'v1/docs':

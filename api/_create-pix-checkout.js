@@ -38,9 +38,9 @@ export default async function handler(req, res) {
     // Definir valores fixos por plano (antifraude)
     const planPrices = {
       'mensal': 59.90,
-      'trimestral': 149.90,
-      'semestral': 279.90,
-      'anual': 499.90,
+      'trimestral': 159.90,
+      'semestral': 259.90,
+      'anual': 399.90,
       'ebook': 29.90,
       'video': 19.90,
       'funnel': 39.90,

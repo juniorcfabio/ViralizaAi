@@ -193,17 +193,23 @@ async function getPlanRevenueBreakdown() {
       avgRevenue: 59.90,
       percentage: 12.6
     },
-    gold: {
-      revenue: 11992.00,
+    trimestral: {
+      revenue: 12792.00,
       subscribers: 80,
-      avgRevenue: 149.90,
-      percentage: 42.1
+      avgRevenue: 159.90,
+      percentage: 32.1
     },
-    premium: {
-      revenue: 12985.10,
-      subscribers: 26,
-      avgRevenue: 499.90,
-      percentage: 45.6
+    semestral: {
+      revenue: 7797.00,
+      subscribers: 30,
+      avgRevenue: 259.90,
+      percentage: 19.6
+    },
+    anual: {
+      revenue: 11997.00,
+      subscribers: 30,
+      avgRevenue: 399.90,
+      percentage: 30.1
     }
   };
 }
