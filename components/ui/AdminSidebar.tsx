@@ -258,6 +258,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ onClose }) => {
                             <span className="text-lg">🏷️</span>
                             <span className="font-medium">Gerenciar Preços</span>
                         </NavLink>
+                        <NavLink to="/admin/openai-costs" className={navLinkClasses} onClick={handleNavClick}>
+                            <span className="text-lg">🧠</span>
+                            <span className="font-medium">Custos OpenAI</span>
+                        </NavLink>
                         <NavLink to="/admin/withdrawals" className={navLinkClasses} onClick={handleNavClick}>
                             <span className="text-lg">🏦</span>
                             <span className="font-medium">Gerenciar Saques</span>

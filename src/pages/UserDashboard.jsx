@@ -1047,59 +1047,103 @@ const UserDashboard = () => {
     </div>
   );
 
-  // 📊 ABA ESTATÍSTICAS
+  // 📊 ABA ESTATÍSTICAS - DADOS REAIS DO SUPABASE
+  const totalTokensUsed = usageThisMonth.reduce((s, u) => s + (u.tokens_used || 0), 0);
+  const totalImagesGenerated = usageThisMonth.reduce((s, u) => s + (u.images_generated || 0), 0);
+  const totalAudioMinutes = usageThisMonth.reduce((s, u) => s + (u.audio_minutes || 0), 0);
+
+  // Agrupar uso por ferramenta
+  const toolUsageMap = {};
+  usageThisMonth.forEach(u => {
+    const key = u.tool_name || u.tool_id || 'Desconhecido';
+    if (!toolUsageMap[key]) toolUsageMap[key] = { ferramenta: key, usos: 0, tokens: 0 };
+    toolUsageMap[key].usos += 1;
+    toolUsageMap[key].tokens += (u.tokens_used || 0);
+  });
+  const toolUsageData = Object.values(toolUsageMap).sort((a, b) => b.usos - a.usos).slice(0, 8);
+
   const StatsTab = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">📊 Suas Estatísticas</h2>
 
-      {/* RESUMO MENSAL */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard title="Conteúdos Criados" value="89" subtitle="+12 esta semana" color="#4F46E5" icon="📝" />
-        <StatCard title="Visualizações Geradas" value="45.6K" subtitle="+8.2K esta semana" color="#10B981" icon="👀" />
-        <StatCard title="Engajamento Médio" value="12.4%" subtitle="+2.1% vs mês anterior" color="#F59E0B" icon="❤️" />
+      {/* RESUMO MENSAL - DADOS REAIS */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <StatCard title="Usos Este Mês" value={usageThisMonth.length} subtitle="chamadas à IA" color="#4F46E5" icon="📝" />
+        <StatCard title="Tokens Consumidos" value={totalTokensUsed.toLocaleString()} subtitle="tokens de IA" color="#10B981" icon="�" />
+        <StatCard title="Imagens Geradas" value={totalImagesGenerated} subtitle="via DALL·E" color="#F59E0B" icon="🖼️" />
+        <StatCard title="Áudio Processado" value={`${totalAudioMinutes.toFixed(1)} min`} subtitle="via Whisper/TTS" color="#8B5CF6" icon="🎙️" />
       </div>
 
-      {/* GRÁFICO DE USO DAS FERRAMENTAS */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold mb-4">🛠️ Uso das Ferramentas</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={[
-            { ferramenta: 'Scripts IA', usos: 45 },
-            { ferramenta: 'Thumbnails', usos: 32 },
-            { ferramenta: 'SEO', usos: 28 },
-            { ferramenta: 'Hashtags', usos: 23 }
-          ]}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="ferramenta" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="usos" fill="#4F46E5" />
-          </BarChart>
-        </ResponsiveContainer>
+      {/* CRÉDITOS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-2">� Saldo de Créditos</h3>
+          <p className="text-4xl font-bold text-blue-600">{(userCredits.balance || 0).toLocaleString()}</p>
+          <p className="text-sm text-gray-500 mt-1">Total comprado: {(userCredits.total_purchased || 0).toLocaleString()}</p>
+          <button onClick={() => setShowBuyCreditsModal(true)}
+            className="mt-3 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold text-sm transition-colors">
+            + Comprar Créditos
+          </button>
+        </div>
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-2">📊 Resumo do Mês</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm"><span className="text-gray-600">Ferramentas usadas:</span><span className="font-bold">{Object.keys(toolUsageMap).length}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-gray-600">Total de chamadas:</span><span className="font-bold">{usageThisMonth.length}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-gray-600">Tokens consumidos:</span><span className="font-bold">{totalTokensUsed.toLocaleString()}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-gray-600">Imagens geradas:</span><span className="font-bold">{totalImagesGenerated}</span></div>
+          </div>
+        </div>
       </div>
 
-      {/* PERFORMANCE DO CONTEÚDO */}
+      {/* GRÁFICO DE USO DAS FERRAMENTAS - DADOS REAIS */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold mb-4">📈 Performance do Conteúdo</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={[
-            { dia: 'Seg', views: 1200, likes: 89 },
-            { dia: 'Ter', views: 1800, likes: 134 },
-            { dia: 'Qua', views: 2400, likes: 178 },
-            { dia: 'Qui', views: 1900, likes: 145 },
-            { dia: 'Sex', views: 3200, likes: 234 },
-            { dia: 'Sab', views: 2800, likes: 198 },
-            { dia: 'Dom', views: 2100, likes: 156 }
-          ]}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="dia" />
-            <YAxis />
-            <Tooltip />
-            <Line type="monotone" dataKey="views" stroke="#4F46E5" name="Visualizações" />
-            <Line type="monotone" dataKey="likes" stroke="#10B981" name="Curtidas" />
-          </LineChart>
-        </ResponsiveContainer>
+        <h3 className="text-lg font-semibold mb-4">🛠️ Uso das Ferramentas (Este Mês)</h3>
+        {toolUsageData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={toolUsageData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="ferramenta" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="usos" fill="#4F46E5" name="Usos" />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+            <p className="text-4xl mb-2">📊</p>
+            <p className="text-lg font-medium">Nenhum uso registrado este mês</p>
+            <p className="text-sm">Use as ferramentas e seus dados aparecerão aqui</p>
+          </div>
+        )}
       </div>
+
+      {/* TABELA DE USO DETALHADO */}
+      {toolUsageData.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-4">� Detalhamento por Ferramenta</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left py-2 px-3 font-semibold text-gray-700">Ferramenta</th>
+                  <th className="text-right py-2 px-3 font-semibold text-gray-700">Usos</th>
+                  <th className="text-right py-2 px-3 font-semibold text-gray-700">Tokens</th>
+                </tr>
+              </thead>
+              <tbody>
+                {toolUsageData.map((t, i) => (
+                  <tr key={i} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-3 text-gray-900">{t.ferramenta}</td>
+                    <td className="py-2 px-3 text-right font-medium text-blue-600">{t.usos}</td>
+                    <td className="py-2 px-3 text-right text-gray-600">{t.tokens.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 

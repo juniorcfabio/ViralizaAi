@@ -191,6 +191,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="settings" element={<AdminSettingsPage />} />
                 <Route path="maintenance" element={<AdminMaintenancePage />} />
                 <Route path="tools-pricing" element={<AdminToolsPricingPage />} />
+                <Route path="openai-costs" element={<AdminToolsPricingPage />} />
                 <Route path="autopilot" element={<ViralizaAutopilotPage />} />
                 <Route path="task-monitoring" element={<AdminTaskMonitoringPage />} />
                 <Route path="viral-marketing" element={<ViralMarketingPage />} />
