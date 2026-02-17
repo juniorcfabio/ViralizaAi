@@ -352,7 +352,7 @@ const UserDashboard = () => {
           var res=await fetch('${window.location.origin}/api/ai-image',{
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({prompt:prompt,style:'thumbnail',size:'1024x1024',quality:'standard'})
+            body:JSON.stringify({prompt:prompt,style:'thumbnail',size:'1024x1024',quality:'standard',userId:'${user?.id || ''}'})
           });
           var d=await res.json();
           if(d.success&&d.imageUrl){
@@ -537,7 +537,8 @@ const UserDashboard = () => {
               prompt:prompt,
               style:document.getElementById('imgStyle').value,
               size:'1024x1024',
-              quality:'standard'
+              quality:'standard',
+              userId:'${user?.id || ''}'
             })
           });
           var d=await res.json();

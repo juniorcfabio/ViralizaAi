@@ -96,11 +96,19 @@ export default async function handler(req, res) {
     }
 
     // ==================== VERIFICAÇÃO DE CRÉDITOS/LIMITES ====================
-    const aiUserId = params.userId;
-    let userHasAccess = true;
+    const aiUserId = params.userId || req.body.userId;
     let useCredits = false;
 
-    if (aiUserId && aiUserId !== 'anonymous' && tool !== 'sora-status' && tool !== 'sora-download') {
+    if (tool !== 'sora-status' && tool !== 'sora-download') {
+      // Sem userId = sem acesso (não pode usar ferramentas sem autenticação)
+      if (!aiUserId || aiUserId === 'anonymous') {
+        return res.status(403).json({
+          error: 'Autenticação necessária',
+          message: 'Faça login para usar as ferramentas de IA.',
+          blocked: true
+        });
+      }
+
       try {
         // 1. Check if user has active subscription
         const { data: activeSub } = await supabase
@@ -110,28 +118,32 @@ export default async function handler(req, res) {
           .eq('status', 'active')
           .maybeSingle();
 
-        // 2. Check user credits
-        const { data: userCredits } = await supabase
+        // 2. Check user credits (create row if missing)
+        let { data: userCredits } = await supabase
           .from('user_credits')
           .select('balance, daily_limit, daily_usage, last_daily_reset')
           .eq('user_id', aiUserId)
           .maybeSingle();
 
-        // 3. Check monthly usage count
-        const monthStart = new Date(new Date().setDate(1)).toISOString();
-        const { count: monthlyUsage } = await supabase
-          .from('usage_log')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', aiUserId)
-          .gte('created_at', monthStart);
+        if (!userCredits) {
+          // Criar registro de créditos com saldo 0 para novo usuário
+          await supabase.from('user_credits').upsert({
+            user_id: aiUserId,
+            balance: 0,
+            daily_limit: 20,
+            daily_usage: 0,
+            last_daily_reset: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+          userCredits = { balance: 0, daily_limit: 20, daily_usage: 0, last_daily_reset: new Date().toISOString() };
+        }
 
         const hasActivePlan = activeSub && activeSub.status === 'active' && new Date(activeSub.end_date) > new Date();
-        const creditBalance = userCredits?.balance || 0;
-        const dailyLimit = userCredits?.daily_limit || 20;
-        const dailyUsage = userCredits?.daily_usage || 0;
+        const creditBalance = userCredits.balance || 0;
+        const dailyLimit = userCredits.daily_limit || 20;
+        let dailyUsage = userCredits.daily_usage || 0;
 
         // Reset daily usage if new day
-        if (userCredits?.last_daily_reset) {
+        if (userCredits.last_daily_reset) {
           const lastReset = new Date(userCredits.last_daily_reset);
           const now = new Date();
           if (lastReset.toDateString() !== now.toDateString()) {
@@ -139,19 +151,22 @@ export default async function handler(req, res) {
               daily_usage: 0,
               last_daily_reset: now.toISOString()
             }).eq('user_id', aiUserId);
+            dailyUsage = 0; // Reset local var too
           }
         }
 
+        console.log(`🔐 Créditos check: user=${aiUserId}, plan=${hasActivePlan ? activeSub.plan_type : 'none'}, credits=${creditBalance}, daily=${dailyUsage}/${dailyLimit}`);
+
         if (hasActivePlan) {
-          // Plan active: check daily limit
+          // Plano ativo: verificar limite diário
           if (dailyUsage >= dailyLimit) {
-            // Daily limit reached - can use credits if available
+            // Limite atingido - precisa de créditos extras
             if (creditBalance > 0) {
               useCredits = true;
             } else {
               return res.status(403).json({
                 error: 'Limite diário atingido',
-                message: `Você atingiu o limite diário de ${dailyLimit} usos do seu plano. Compre créditos extras para continuar ou aguarde o próximo dia.`,
+                message: `Você atingiu o limite diário de ${dailyLimit} usos do seu plano e não tem créditos extras. Compre créditos para continuar ou aguarde o próximo dia.`,
                 daily_limit: dailyLimit,
                 daily_usage: dailyUsage,
                 credits_balance: creditBalance,
@@ -159,31 +174,26 @@ export default async function handler(req, res) {
               });
             }
           }
+          // Dentro do limite diário → permitir uso do plano
         } else {
-          // No active plan - must have credits
+          // Sem plano ativo - PRECISA ter créditos
           if (creditBalance <= 0) {
-            // Check if user has purchased this tool individually
-            const { data: toolAccess } = await supabase
-              .from('user_access')
-              .select('is_active')
-              .eq('user_id', aiUserId)
-              .eq('is_active', true)
-              .limit(1);
-
-            if (!toolAccess || toolAccess.length === 0) {
-              return res.status(403).json({
-                error: 'Sem créditos disponíveis',
-                message: 'Seus créditos acabaram e você não tem um plano ativo. Assine um plano ou compre créditos extras para continuar usando as ferramentas.',
-                credits_balance: 0,
-                blocked: true
-              });
-            }
-            // Has tool access but no credits - allow but track
+            return res.status(403).json({
+              error: 'Sem créditos disponíveis',
+              message: 'Você não tem um plano ativo e seus créditos estão zerados. Assine um plano ou compre créditos extras para usar as ferramentas.',
+              credits_balance: 0,
+              blocked: true
+            });
           }
           useCredits = true;
         }
       } catch (accessErr) {
-        console.warn('⚠️ Erro ao verificar créditos (permitindo uso):', accessErr.message);
+        console.error('❌ Erro ao verificar créditos:', accessErr.message);
+        return res.status(500).json({
+          error: 'Erro ao verificar créditos',
+          message: 'Não foi possível verificar seu saldo. Tente novamente.',
+          blocked: true
+        });
       }
     }
 

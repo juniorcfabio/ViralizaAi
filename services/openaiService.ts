@@ -15,8 +15,24 @@ class OpenAIService {
     this.apiUrl = `${window.location.origin}/api/ai-generate`;
   }
 
+  private async getUserId(): Promise<string | null> {
+    try {
+      const { supabase } = await import('../src/lib/supabase');
+      const { data } = await supabase.auth.getSession();
+      return data?.session?.user?.id || null;
+    } catch {
+      return null;
+    }
+  }
+
   async generate(tool: string, prompt: string, params: Record<string, any> = {}, retryCount = 0): Promise<string> {
     try {
+      // Injetar userId automaticamente para verificação de créditos/limites
+      if (!params.userId) {
+        const uid = await this.getUserId();
+        if (uid) params.userId = uid;
+      }
+
       const response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -44,6 +60,10 @@ class OpenAIService {
         
         if (response.status === 429) {
           throw new Error('Limite de requisições atingido. Aguarde alguns segundos e tente novamente.');
+        }
+
+        if (response.status === 403 && err?.blocked) {
+          throw new Error(err.message || 'Seus créditos acabaram. Compre créditos extras para continuar usando as ferramentas.');
         }
         
         throw new Error(err.details || err.error || `HTTP ${response.status}`);
@@ -209,6 +229,9 @@ Forneça:
   ): Promise<{ imageUrl: string; revisedPrompt: string }> {
     const prompt = `Logo for "${businessName}", a ${businessType} business. Style: ${style}. Colors: ${colors}. Modern, professional, memorable.`;
 
+    // Injetar userId para verificação de créditos
+    const uid = await this.getUserId();
+
     const response = await fetch(`${window.location.origin}/api/ai-image`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -216,7 +239,8 @@ Forneça:
         prompt,
         style: imageStyle,
         size: '1024x1024',
-        quality: 'standard'
+        quality: 'standard',
+        userId: uid || undefined
       })
     });
 
@@ -239,6 +263,10 @@ Forneça:
       }
       
       console.error(`❌ DALL-E error:`, err);
+
+      if (response.status === 403 && err?.blocked) {
+        throw new Error(err.message || 'Seus créditos acabaram. Compre créditos extras para continuar.');
+      }
       
       // Mensagem mais amigável para rate limit
       if (response.status === 429) {
