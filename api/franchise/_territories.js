@@ -1,5 +1,10 @@
-// 🌍 API PARA OBTER TERRITÓRIOS DISPONÍVEIS
-import { franchiseSystem } from '../../lib/franchiseSystem.js';
+// 🌍 API PARA OBTER TERRITÓRIOS DISPONÍVEIS - SUPABASE INTEGRATION
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -7,19 +12,37 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 🌍 OBTER TERRITÓRIOS DISPONÍVEIS
-    const territories = franchiseSystem.getAvailableTerritories();
-    
-    // 📊 OBTER ESTATÍSTICAS
-    const stats = franchiseSystem.getFranchiseStats();
+    // 🌍 OBTER TERRITÓRIOS DO SUPABASE
+    const { data: territories, error: territoriesError } = await supabase
+      .from('franchise_territories')
+      .select('*')
+      .order('name');
+
+    if (territoriesError) {
+      console.error('Erro ao buscar territórios:', territoriesError);
+      return res.status(500).json({ error: 'Erro ao buscar territórios' });
+    }
+
+    // 📊 OBTER ESTATÍSTICAS REAIS
+    const { data: franchises, error: franchisesError } = await supabase
+      .from('franchises')
+      .select('status');
+
+    if (franchisesError) {
+      console.error('Erro ao buscar franquias:', franchisesError);
+    }
+
+    const totalFranchises = franchises?.length || 0;
+    const activeFranchises = franchises?.filter(f => f.status === 'active').length || 0;
+    const availableTerritories = territories?.filter(t => t.status === 'available').length || 0;
 
     res.status(200).json({
       success: true,
-      territories,
+      territories: territories || [],
       stats: {
-        availableTerritories: territories.length,
-        totalFranchises: stats.totalFranchises,
-        activeFranchises: stats.activeFranchises
+        availableTerritories,
+        totalFranchises,
+        activeFranchises
       },
       packages: {
         starter: {
