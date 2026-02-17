@@ -14,6 +14,10 @@ const UserDashboard = () => {
   const [selectedTool, setSelectedTool] = useState(null);
   const [userAccess, setUserAccess] = useState([]);
   const [toolPricesFromApi, setToolPricesFromApi] = useState(null);
+  const [userCredits, setUserCredits] = useState({ balance: 0, total_purchased: 0 });
+  const [usageThisMonth, setUsageThisMonth] = useState([]);
+  const [showBuyCreditsModal, setShowBuyCreditsModal] = useState(false);
+  const [buyCreditsAmount, setBuyCreditsAmount] = useState(10);
 
   // 📊 MAPEAMENTO DE PLANOS → FERRAMENTAS
   const PLAN_TIERS = { mensal: 1, trimestral: 2, semestral: 3, anual: 4 };
@@ -40,8 +44,8 @@ const UserDashboard = () => {
     plano_ativo: getUserPlanTier() > 0 || authUser?.type === 'admin',
     affiliate_code: authUser?.affiliateCode || 'REF' + (authUser?.id || '').substring(0, 6).toUpperCase(),
     tools_purchased: userAccess.length,
-    credits_remaining: 450,
-    usage_this_month: 67
+    credits_remaining: userCredits.balance || 0,
+    usage_this_month: usageThisMonth.length || 0
   };
 
   useEffect(() => {
@@ -59,6 +63,19 @@ const UserDashboard = () => {
       
       setLoading(false);
     }, 1000);
+
+    // Fetch real credits from API
+    if (authUser?.id) {
+      fetch(`/api/user/credits?userId=${authUser.id}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            setUserCredits(data.credits || { balance: 0, total_purchased: 0 });
+            setUsageThisMonth(data.usage_this_month || []);
+          }
+        })
+        .catch(() => {});
+    }
   }, [authUser]);
 
   // 🛠️ FUNÇÕES PARA USAR E COMPRAR FERRAMENTAS
@@ -770,6 +787,42 @@ const UserDashboard = () => {
         />
       </div>
 
+      {/* CRÉDITOS E USO */}
+      <div className="bg-white rounded-xl shadow-md p-6 border border-blue-100">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900">💳 Créditos & Uso</h3>
+          <button 
+            onClick={() => setShowBuyCreditsModal(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold text-sm transition-colors"
+          >
+            + Comprar Créditos
+          </button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-blue-50 rounded-lg p-4">
+            <p className="text-sm text-gray-500">Saldo de Créditos</p>
+            <p className="text-3xl font-bold text-blue-600">{(userCredits.balance || 0).toLocaleString()}</p>
+            <p className="text-xs text-gray-400 mt-1">Total comprado: {(userCredits.total_purchased || 0).toLocaleString()}</p>
+          </div>
+          <div className="bg-purple-50 rounded-lg p-4">
+            <p className="text-sm text-gray-500">Uso Este Mês</p>
+            <p className="text-3xl font-bold text-purple-600">{usageThisMonth.length}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {usageThisMonth.reduce((s, u) => s + (u.tokens_used || 0), 0).toLocaleString()} tokens consumidos
+            </p>
+          </div>
+          <div className="bg-orange-50 rounded-lg p-4">
+            <p className="text-sm text-gray-500">Imagens Geradas</p>
+            <p className="text-3xl font-bold text-orange-600">
+              {usageThisMonth.reduce((s, u) => s + (u.images_generated || 0), 0)}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              {usageThisMonth.reduce((s, u) => s + (u.audio_minutes || 0), 0).toFixed(1)} min de áudio
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* BANNER PARA QUEM NÃO TEM PLANO */}
       {userTier === 0 && (
         <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl p-6 text-white">
@@ -1155,6 +1208,75 @@ const UserDashboard = () => {
             window.location.reload();
           }}
         />
+      )}
+
+      {/* Modal Comprar Créditos */}
+      {showBuyCreditsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">💳 Comprar Créditos Extras</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Créditos extras permitem usar ferramentas além do limite do seu plano.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Quantidade de Créditos</label>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {[10, 50, 100].map(amt => (
+                  <button key={amt} onClick={() => setBuyCreditsAmount(amt)}
+                    className={`py-2 rounded-lg font-bold text-sm border-2 transition-colors ${
+                      buyCreditsAmount === amt ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-blue-300'
+                    }`}>
+                    {amt} créditos
+                  </button>
+                ))}
+              </div>
+              <input type="number" min="1" value={buyCreditsAmount} onChange={e => setBuyCreditsAmount(parseInt(e.target.value) || 1)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900" />
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Créditos:</span>
+                <span className="font-bold text-gray-900">{buyCreditsAmount}</span>
+              </div>
+              <div className="flex justify-between text-sm mt-1">
+                <span className="text-gray-600">Valor estimado:</span>
+                <span className="font-bold text-green-600">R$ {(buyCreditsAmount * 0.50).toFixed(2).replace('.', ',')}</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">Preço por crédito configurado pelo admin</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={async () => {
+                try {
+                  const res = await fetch('/api/user/credits', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      userId: authUser?.id,
+                      amount: buyCreditsAmount,
+                      price_brl: buyCreditsAmount * 0.50,
+                      payment_method: 'pix',
+                      tool_id: 'general'
+                    })
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    setUserCredits(prev => ({ ...prev, balance: data.balance }));
+                    setShowBuyCreditsModal(false);
+                    alert(`✅ ${buyCreditsAmount} créditos adicionados! Novo saldo: ${data.balance}`);
+                  }
+                } catch (e) {
+                  alert('❌ Erro ao comprar créditos: ' + e.message);
+                }
+              }} className="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors">
+                💳 Comprar
+              </button>
+              <button onClick={() => setShowBuyCreditsModal(false)}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

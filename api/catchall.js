@@ -597,6 +597,415 @@ export default async function handler(req, res) {
           return res.status(200).json({ success: true, tools: [] });
         }
       }
+      // ============================================================
+      // OPENAI COSTS + CREDITS + USAGE SYSTEM
+      // ============================================================
+      case 'admin/openai-costs': {
+        if (req.method === 'POST') {
+          try {
+            var costBody = req.body || {};
+            if (!costBody.costs || !Array.isArray(costBody.costs)) {
+              return res.status(400).json({ error: 'costs array required' });
+            }
+            for (var ci = 0; ci < costBody.costs.length; ci++) {
+              var c = costBody.costs[ci];
+              await supabase.from('openai_unit_costs').upsert({
+                id: c.id || undefined,
+                model_key: c.model_key,
+                model_name: c.model_name,
+                charge_type: c.charge_type,
+                cost_input_usd: parseFloat(c.cost_input_usd) || 0,
+                cost_output_usd: parseFloat(c.cost_output_usd) || 0,
+                notes: c.notes || '',
+                last_updated: new Date().toISOString()
+              }, { onConflict: 'model_key' });
+            }
+            return res.status(200).json({ success: true, message: 'OpenAI costs saved', count: costBody.costs.length });
+          } catch (e) {
+            console.error('Erro ao salvar openai costs:', e);
+            return res.status(500).json({ error: e.message });
+          }
+        }
+        // GET
+        try {
+          var { data: costRows, error: costErr } = await supabase.from('openai_unit_costs').select('*').order('id', { ascending: true });
+          if (costErr) {
+            // Table may not exist yet - return defaults
+            return res.status(200).json({ success: true, costs: [], needsInit: true });
+          }
+          return res.status(200).json({ success: true, costs: costRows || [] });
+        } catch (e) {
+          return res.status(200).json({ success: true, costs: [], needsInit: true });
+        }
+      }
+      case 'admin/platform-config': {
+        if (req.method === 'POST') {
+          try {
+            var pcBody = req.body || {};
+            var configItems = [];
+            if (pcBody.usd_brl_rate !== undefined) configItems.push({ key: 'usd_brl_rate', value: JSON.stringify(pcBody.usd_brl_rate), updated_at: new Date().toISOString() });
+            if (pcBody.default_margin_percent !== undefined) configItems.push({ key: 'default_margin_percent', value: JSON.stringify(pcBody.default_margin_percent), updated_at: new Date().toISOString() });
+            if (pcBody.credit_markup_percent !== undefined) configItems.push({ key: 'credit_markup_percent', value: JSON.stringify(pcBody.credit_markup_percent), updated_at: new Date().toISOString() });
+            if (configItems.length > 0) {
+              await supabase.from('system_settings').upsert(configItems, { onConflict: 'key' });
+            }
+            return res.status(200).json({ success: true, message: 'Platform config saved' });
+          } catch (e) {
+            return res.status(500).json({ error: e.message });
+          }
+        }
+        // GET
+        try {
+          var { data: pcRows } = await supabase.from('system_settings').select('key, value').in('key', ['usd_brl_rate', 'default_margin_percent', 'credit_markup_percent']);
+          var pcResult = { usd_brl_rate: 5.40, default_margin_percent: 300, credit_markup_percent: 300 };
+          (pcRows || []).forEach(function(r) {
+            try { pcResult[r.key] = JSON.parse(r.value); } catch(e) { pcResult[r.key] = r.value; }
+          });
+          return res.status(200).json({ success: true, config: pcResult });
+        } catch (e) {
+          return res.status(200).json({ success: true, config: { usd_brl_rate: 5.40, default_margin_percent: 300, credit_markup_percent: 300 } });
+        }
+      }
+      case 'user/credits': {
+        var credUserId = req.query.userId || req.body?.userId;
+        if (!credUserId) return res.status(400).json({ error: 'userId required' });
+        if (req.method === 'POST') {
+          // Purchase extra credits
+          try {
+            var credBody = req.body || {};
+            var credAmount = parseFloat(credBody.amount) || 0;
+            var credToolId = credBody.tool_id || 'general';
+            var credPayMethod = credBody.payment_method || 'stripe';
+            // Get or create user_credits row
+            var { data: existCred } = await supabase.from('user_credits').select('*').eq('user_id', credUserId).maybeSingle();
+            var newBalance = (existCred?.balance || 0) + credAmount;
+            await supabase.from('user_credits').upsert({
+              user_id: credUserId,
+              balance: newBalance,
+              total_purchased: (existCred?.total_purchased || 0) + credAmount,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+            // Log transaction
+            await supabase.from('credit_transactions').insert({
+              user_id: credUserId,
+              type: 'purchase',
+              amount: credAmount,
+              price_brl: parseFloat(credBody.price_brl) || 0,
+              tool_id: credToolId,
+              payment_method: credPayMethod,
+              status: 'completed',
+              created_at: new Date().toISOString()
+            });
+            return res.status(200).json({ success: true, balance: newBalance });
+          } catch (e) {
+            return res.status(500).json({ error: e.message });
+          }
+        }
+        // GET credits balance
+        try {
+          var { data: userCred } = await supabase.from('user_credits').select('*').eq('user_id', credUserId).maybeSingle();
+          var { data: userUsage } = await supabase.from('usage_log').select('tool_id, tokens_used, images_generated, audio_minutes').eq('user_id', credUserId).gte('created_at', new Date(new Date().setDate(1)).toISOString());
+          return res.status(200).json({
+            success: true,
+            credits: userCred || { balance: 0, total_purchased: 0 },
+            usage_this_month: userUsage || []
+          });
+        } catch (e) {
+          return res.status(200).json({ success: true, credits: { balance: 0, total_purchased: 0 }, usage_this_month: [] });
+        }
+      }
+      case 'user/usage': {
+        if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
+        try {
+          var usageBody = req.body || {};
+          var usageUserId = usageBody.userId;
+          if (!usageUserId) return res.status(400).json({ error: 'userId required' });
+          // Log usage
+          await supabase.from('usage_log').insert({
+            user_id: usageUserId,
+            tool_id: usageBody.tool_id,
+            tool_name: usageBody.tool_name || '',
+            tokens_used: parseInt(usageBody.tokens_used) || 0,
+            images_generated: parseInt(usageBody.images_generated) || 0,
+            audio_minutes: parseFloat(usageBody.audio_minutes) || 0,
+            openai_model: usageBody.openai_model || 'gpt-4o',
+            cost_usd: parseFloat(usageBody.cost_usd) || 0,
+            cost_brl: parseFloat(usageBody.cost_brl) || 0,
+            created_at: new Date().toISOString()
+          });
+          // Deduct from credits if not on plan
+          if (usageBody.deduct_credits) {
+            var deductAmt = parseFloat(usageBody.credits_to_deduct) || 1;
+            var { data: uc } = await supabase.from('user_credits').select('balance').eq('user_id', usageUserId).maybeSingle();
+            if (uc) {
+              await supabase.from('user_credits').update({
+                balance: Math.max(0, (uc.balance || 0) - deductAmt),
+                updated_at: new Date().toISOString()
+              }).eq('user_id', usageUserId);
+            }
+          }
+          return res.status(200).json({ success: true, message: 'Usage logged' });
+        } catch (e) {
+          return res.status(500).json({ error: e.message });
+        }
+      }
+      case 'user/check-limit': {
+        var limitUserId = req.query.userId;
+        var limitToolId = req.query.toolId;
+        if (!limitUserId) return res.status(400).json({ error: 'userId required' });
+        try {
+          // Get user plan
+          var { data: limitSub } = await supabase.from('subscriptions').select('plan_type, status').eq('user_id', limitUserId).eq('status', 'active').order('created_at', { ascending: false }).limit(1).maybeSingle();
+          var userPlanKey = limitSub ? getPlanKey(limitSub.plan_type) : null;
+          // Get tool limits
+          var { data: limitTool } = await supabase.from('tool_pricing').select('*').eq('tool_id', limitToolId).maybeSingle();
+          // Get usage this month
+          var monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+          var { data: monthUsage } = await supabase.from('usage_log').select('tokens_used, images_generated, audio_minutes').eq('user_id', limitUserId).eq('tool_id', limitToolId).gte('created_at', monthStart);
+          var totalTokens = (monthUsage || []).reduce(function(s, u) { return s + (u.tokens_used || 0); }, 0);
+          var totalImages = (monthUsage || []).reduce(function(s, u) { return s + (u.images_generated || 0); }, 0);
+          var totalAudio = (monthUsage || []).reduce(function(s, u) { return s + (u.audio_minutes || 0); }, 0);
+          var usageLimit = (limitTool?.usage_limit_plan) || 50000;
+          var limitReached = totalTokens >= usageLimit;
+          // Check credits
+          var { data: limitCred } = await supabase.from('user_credits').select('balance').eq('user_id', limitUserId).maybeSingle();
+          return res.status(200).json({
+            success: true,
+            has_plan: !!userPlanKey,
+            plan: userPlanKey,
+            tool_id: limitToolId,
+            usage: { tokens: totalTokens, images: totalImages, audio_minutes: totalAudio },
+            limit: usageLimit,
+            limit_reached: limitReached,
+            credits_balance: limitCred?.balance || 0,
+            can_use: !limitReached || (limitCred?.balance || 0) > 0
+          });
+        } catch (e) {
+          return res.status(200).json({ success: true, can_use: true, limit_reached: false, credits_balance: 0 });
+        }
+      }
+      case 'admin/financial-report': {
+        // Financial dashboard: revenue vs OpenAI cost vs margin
+        try {
+          var reportPeriod = req.query.period || 'month';
+          var reportStart;
+          var now = new Date();
+          if (reportPeriod === 'week') reportStart = new Date(now.getTime() - 7 * 86400000).toISOString();
+          else if (reportPeriod === 'month') reportStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+          else if (reportPeriod === 'year') reportStart = new Date(now.getFullYear(), 0, 1).toISOString();
+          else reportStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+          // Usage costs
+          var { data: usageLogs } = await supabase.from('usage_log').select('tool_id, tool_name, tokens_used, images_generated, audio_minutes, cost_usd, cost_brl, openai_model').gte('created_at', reportStart);
+          // Revenue from credit purchases
+          var { data: creditTxns } = await supabase.from('credit_transactions').select('amount, price_brl, tool_id, type').gte('created_at', reportStart);
+          // Revenue from subscriptions
+          var { data: subRevenue } = await supabase.from('subscriptions').select('plan_type, amount, status').gte('created_at', reportStart).eq('status', 'active');
+          // Platform config for rate
+          var { data: rateRow } = await supabase.from('system_settings').select('value').eq('key', 'usd_brl_rate').maybeSingle();
+          var rate = 5.40;
+          try { rate = JSON.parse(rateRow?.value) || 5.40; } catch(e) {}
+          var totalCostUsd = (usageLogs || []).reduce(function(s, u) { return s + (u.cost_usd || 0); }, 0);
+          var totalCostBrl = totalCostUsd * rate;
+          var totalCreditRevenue = (creditTxns || []).filter(function(t) { return t.type === 'purchase'; }).reduce(function(s, t) { return s + (t.price_brl || 0); }, 0);
+          var totalSubRevenue = (subRevenue || []).reduce(function(s, t) { return s + (parseFloat(t.amount) || 0); }, 0);
+          var totalRevenue = totalCreditRevenue + totalSubRevenue;
+          var margin = totalRevenue - totalCostBrl;
+          var marginPercent = totalRevenue > 0 ? ((margin / totalRevenue) * 100).toFixed(1) : 0;
+          // Per-tool breakdown
+          var toolBreakdown = {};
+          (usageLogs || []).forEach(function(u) {
+            var key = u.tool_name || u.tool_id || 'unknown';
+            if (!toolBreakdown[key]) toolBreakdown[key] = { tool: key, cost_usd: 0, tokens: 0, images: 0, audio: 0, uses: 0 };
+            toolBreakdown[key].cost_usd += (u.cost_usd || 0);
+            toolBreakdown[key].tokens += (u.tokens_used || 0);
+            toolBreakdown[key].images += (u.images_generated || 0);
+            toolBreakdown[key].audio += (u.audio_minutes || 0);
+            toolBreakdown[key].uses += 1;
+          });
+          return res.status(200).json({
+            success: true,
+            period: reportPeriod,
+            usd_brl_rate: rate,
+            total_cost_usd: totalCostUsd,
+            total_cost_brl: totalCostBrl,
+            total_credit_revenue: totalCreditRevenue,
+            total_sub_revenue: totalSubRevenue,
+            total_revenue: totalRevenue,
+            margin_brl: margin,
+            margin_percent: marginPercent,
+            tool_breakdown: Object.values(toolBreakdown),
+            usage_count: (usageLogs || []).length,
+            credit_transactions: (creditTxns || []).length
+          });
+        } catch (e) {
+          console.error('Financial report error:', e);
+          return res.status(200).json({ success: true, total_revenue: 0, total_cost_brl: 0, margin_brl: 0 });
+        }
+      }
+      case 'database/init-credits': {
+        // Initialize all credit/costs tables
+        var initResults = [];
+        var sqlStatements = [
+          `CREATE TABLE IF NOT EXISTS openai_unit_costs (
+            id serial primary key,
+            model_key text unique not null,
+            model_name text not null,
+            charge_type text not null default 'tokens',
+            cost_input_usd numeric default 0,
+            cost_output_usd numeric default 0,
+            notes text default '',
+            last_updated timestamptz default now()
+          )`,
+          `CREATE TABLE IF NOT EXISTS user_credits (
+            user_id text primary key,
+            balance numeric default 0,
+            total_purchased numeric default 0,
+            updated_at timestamptz default now()
+          )`,
+          `CREATE TABLE IF NOT EXISTS credit_transactions (
+            id serial primary key,
+            user_id text not null,
+            type text not null default 'purchase',
+            amount numeric default 0,
+            price_brl numeric default 0,
+            tool_id text,
+            payment_method text default 'pix',
+            status text default 'pending',
+            created_at timestamptz default now()
+          )`,
+          `CREATE TABLE IF NOT EXISTS usage_log (
+            id serial primary key,
+            user_id text not null,
+            tool_id text,
+            tool_name text,
+            tokens_used integer default 0,
+            images_generated integer default 0,
+            audio_minutes numeric default 0,
+            openai_model text default 'gpt-4o',
+            cost_usd numeric default 0,
+            cost_brl numeric default 0,
+            created_at timestamptz default now()
+          )`,
+          `ALTER TABLE tool_pricing ADD COLUMN IF NOT EXISTS openai_model_key text default 'gpt-4o'`,
+          `ALTER TABLE tool_pricing ADD COLUMN IF NOT EXISTS avg_tokens_per_use integer default 2000`,
+          `ALTER TABLE tool_pricing ADD COLUMN IF NOT EXISTS margin_percent numeric default 300`,
+          `ALTER TABLE tool_pricing ADD COLUMN IF NOT EXISTS usage_limit_plan integer default 50000`,
+          `ALTER TABLE tool_pricing ADD COLUMN IF NOT EXISTS credit_price_brl numeric default 0`
+        ];
+        for (var si = 0; si < sqlStatements.length; si++) {
+          try {
+            var { error: sqlErr } = await supabase.rpc('exec_sql', { sql: sqlStatements[si] });
+            initResults.push({ sql: sqlStatements[si].substring(0, 60), status: sqlErr ? 'rpc_error' : 'ok', error: sqlErr?.message });
+          } catch (sqlE) {
+            initResults.push({ sql: sqlStatements[si].substring(0, 60), status: 'error', error: sqlE.message });
+          }
+        }
+        // Seed default OpenAI costs
+        var defaultCosts = [
+          { model_key: 'gpt-4o', model_name: 'GPT-4o', charge_type: '1000 tokens', cost_input_usd: 0.005, cost_output_usd: 0.015, notes: 'Modelo principal' },
+          { model_key: 'gpt-4-turbo', model_name: 'GPT-4 Turbo', charge_type: '1000 tokens', cost_input_usd: 0.01, cost_output_usd: 0.03, notes: 'Alta performance' },
+          { model_key: 'gpt-3.5-turbo', model_name: 'GPT-3.5 Turbo', charge_type: '1000 tokens', cost_input_usd: 0.0005, cost_output_usd: 0.0015, notes: 'Econômico' },
+          { model_key: 'dall-e-3', model_name: 'DALL·E 3', charge_type: 'por imagem', cost_input_usd: 0.04, cost_output_usd: 0, notes: 'Geração de imagens' },
+          { model_key: 'dall-e-2', model_name: 'DALL·E 2', charge_type: 'por imagem', cost_input_usd: 0.02, cost_output_usd: 0, notes: 'Imagens econômicas' },
+          { model_key: 'whisper-1', model_name: 'Whisper', charge_type: 'por minuto', cost_input_usd: 0.006, cost_output_usd: 0, notes: 'Speech-to-text' },
+          { model_key: 'tts-1', model_name: 'TTS-1', charge_type: 'por 1M caracteres', cost_input_usd: 15.0, cost_output_usd: 0, notes: 'Text-to-speech' },
+          { model_key: 'tts-1-hd', model_name: 'TTS-1 HD', charge_type: 'por 1M caracteres', cost_input_usd: 30.0, cost_output_usd: 0, notes: 'Text-to-speech HD' }
+        ];
+        for (var di = 0; di < defaultCosts.length; di++) {
+          try {
+            await supabase.from('openai_unit_costs').upsert({
+              ...defaultCosts[di],
+              last_updated: new Date().toISOString()
+            }, { onConflict: 'model_key' });
+            initResults.push({ seed: defaultCosts[di].model_key, status: 'ok' });
+          } catch (seedE) {
+            initResults.push({ seed: defaultCosts[di].model_key, status: 'error', error: seedE.message });
+          }
+        }
+        // Seed platform config defaults
+        var defaultConfigs = [
+          { key: 'usd_brl_rate', value: JSON.stringify(5.40) },
+          { key: 'default_margin_percent', value: JSON.stringify(300) },
+          { key: 'credit_markup_percent', value: JSON.stringify(300) }
+        ];
+        for (var dci = 0; dci < defaultConfigs.length; dci++) {
+          try {
+            await supabase.from('system_settings').upsert({
+              ...defaultConfigs[dci],
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'key' });
+          } catch(e) {}
+        }
+        // Update tool_pricing with OpenAI model mappings
+        var toolModelMap = [
+          { tool_id: '1', openai_model_key: 'gpt-4o', avg_tokens_per_use: 3000, usage_limit_plan: 50000 },
+          { tool_id: '2', openai_model_key: 'dall-e-3', avg_tokens_per_use: 1, usage_limit_plan: 100 },
+          { tool_id: '3', openai_model_key: 'gpt-4o', avg_tokens_per_use: 2000, usage_limit_plan: 40000 },
+          { tool_id: '4', openai_model_key: 'gpt-4o', avg_tokens_per_use: 2500, usage_limit_plan: 40000 },
+          { tool_id: '5', openai_model_key: 'gpt-3.5-turbo', avg_tokens_per_use: 1000, usage_limit_plan: 60000 },
+          { tool_id: '6', openai_model_key: 'dall-e-3', avg_tokens_per_use: 1, usage_limit_plan: 80 },
+          { tool_id: '7', openai_model_key: 'gpt-3.5-turbo', avg_tokens_per_use: 500, usage_limit_plan: 50000 },
+          { tool_id: '8', openai_model_key: 'gpt-4o', avg_tokens_per_use: 4000, usage_limit_plan: 60000 },
+          { tool_id: '9', openai_model_key: 'gpt-4o', avg_tokens_per_use: 3000, usage_limit_plan: 50000 },
+          { tool_id: '10', openai_model_key: 'gpt-3.5-turbo', avg_tokens_per_use: 500, usage_limit_plan: 40000 },
+          { tool_id: '11', openai_model_key: 'gpt-4o', avg_tokens_per_use: 5000, usage_limit_plan: 80000 },
+          { tool_id: '12', openai_model_key: 'gpt-4o', avg_tokens_per_use: 8000, usage_limit_plan: 100000 },
+          { tool_id: '13', openai_model_key: 'dall-e-3', avg_tokens_per_use: 2, usage_limit_plan: 60 },
+          { tool_id: '14', openai_model_key: 'gpt-4o', avg_tokens_per_use: 6000, usage_limit_plan: 80000 },
+          { tool_id: '15', openai_model_key: 'gpt-4o', avg_tokens_per_use: 5000, usage_limit_plan: 60000 }
+        ];
+        for (var tmi = 0; tmi < toolModelMap.length; tmi++) {
+          try {
+            await supabase.from('tool_pricing').update({
+              openai_model_key: toolModelMap[tmi].openai_model_key,
+              avg_tokens_per_use: toolModelMap[tmi].avg_tokens_per_use,
+              usage_limit_plan: toolModelMap[tmi].usage_limit_plan,
+              margin_percent: 300
+            }).eq('tool_id', toolModelMap[tmi].tool_id);
+          } catch(e) {}
+        }
+        return res.status(200).json({ success: true, message: 'Credit system tables initialized', results: initResults });
+      }
+      case 'admin/tool-pricing-extended': {
+        // Extended tool pricing with OpenAI cost info
+        try {
+          var { data: extTools } = await supabase.from('tool_pricing').select('*').order('tool_id', { ascending: true });
+          var { data: extCosts } = await supabase.from('openai_unit_costs').select('*');
+          var { data: rateR } = await supabase.from('system_settings').select('value').eq('key', 'usd_brl_rate').maybeSingle();
+          var extRate = 5.40;
+          try { extRate = JSON.parse(rateR?.value) || 5.40; } catch(e) {}
+          var enrichedTools = (extTools || []).map(function(tool) {
+            var model = (extCosts || []).find(function(c) { return c.model_key === tool.openai_model_key; });
+            var costPerUse = 0;
+            if (model) {
+              if (model.charge_type.includes('token')) {
+                costPerUse = ((tool.avg_tokens_per_use || 2000) / 1000) * ((model.cost_input_usd || 0) + (model.cost_output_usd || 0));
+              } else if (model.charge_type.includes('imagem') || model.charge_type.includes('image')) {
+                costPerUse = (tool.avg_tokens_per_use || 1) * (model.cost_input_usd || 0);
+              } else if (model.charge_type.includes('minuto') || model.charge_type.includes('minute')) {
+                costPerUse = (tool.avg_tokens_per_use || 1) * (model.cost_input_usd || 0);
+              }
+            }
+            var costPerUseBrl = costPerUse * extRate;
+            var toolPrice = parseFloat(tool.price) || 0;
+            var actualMargin = toolPrice > 0 ? (((toolPrice - costPerUseBrl) / toolPrice) * 100).toFixed(1) : 0;
+            return {
+              ...tool,
+              openai_model: model || null,
+              cost_per_use_usd: costPerUse,
+              cost_per_use_brl: costPerUseBrl,
+              actual_margin_percent: actualMargin,
+              suggested_min_price: (costPerUseBrl * ((tool.margin_percent || 300) / 100)).toFixed(2)
+            };
+          });
+          return res.status(200).json({ success: true, tools: enrichedTools, usd_brl_rate: extRate });
+        } catch (e) {
+          return res.status(200).json({ success: true, tools: [], usd_brl_rate: 5.40 });
+        }
+      }
+      // ============================================================
+      // END OPENAI COSTS + CREDITS + USAGE SYSTEM
+      // ============================================================
       case 'admin/marketing/load': {
         try {
           var { data: mktData } = await supabase.from('system_settings').select('key, value').in('key', ['viraliza_campaigns', 'viraliza_coupons', 'viraliza_posts']);
