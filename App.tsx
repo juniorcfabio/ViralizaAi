@@ -11,6 +11,7 @@ import AutonomousPromotionPage from './components/pages/AutonomousPromotionPage'
 import { AuthProvider, useAuth } from './contexts/AuthContextFixed';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import DebugPage from './DebugPage';
 import autoIntegration from './config/autoIntegrationConfig';
 import globalAutoSave from './services/globalAutoSave'; // 🔥 SISTEMA GLOBAL DE AUTO-SAVE
 import AdminFinancialPageReal from './components/pages/AdminFinancialPageReal';
@@ -144,6 +145,7 @@ const AppRoutes: React.FC = () => {
     return (
         <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/debug" element={<DebugPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* Client Routes */}
