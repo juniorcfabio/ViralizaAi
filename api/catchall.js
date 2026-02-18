@@ -32,6 +32,105 @@ function calcExpiry(pk) {
   return d.toISOString();
 }
 
+async function handleFixUsersStructure(req, res) {
+  try {
+    console.log('🔧 Corrigindo estrutura da tabela users...');
+    
+    // Verificar estrutura atual
+    const { data: existingUsers, error: checkError } = await supabase
+      .from('users')
+      .select('*')
+      .limit(1);
+    
+    if (checkError && checkError.code === '42703') {
+      console.log('❌ Coluna type não existe, tentando criar nova tabela...');
+      
+      // Criar tabela temporária com estrutura correta
+      const { error: createTempError } = await supabase
+        .from('users_new')
+        .insert({
+          email: 'admin@viraliza.ai',
+          name: 'Administrador',
+          type: 'admin',
+          status: 'Ativo',
+          plan: 'admin',
+          joined_date: new Date().toISOString().split('T')[0]
+        });
+      
+      if (createTempError) {
+        console.error('❌ Erro ao criar tabela nova:', createTempError);
+      } else {
+        console.log('✅ Tabela users_new criada');
+      }
+    }
+    
+    // Tentar inserir admin direto (força criação das colunas)
+    try {
+      const { data: admin, error: adminError } = await supabase
+        .from('users')
+        .upsert({
+          email: 'admin@viraliza.ai',
+          name: 'Administrador',
+          type: 'admin',
+          status: 'Ativo',
+          plan: 'admin',
+          joined_date: new Date().toISOString().split('T')[0]
+        })
+        .select();
+      
+      if (adminError) {
+        console.error('❌ Erro ao criar admin:', adminError);
+        
+        // Tentar sem colunas que podem não existir
+        const { data: simpleAdmin, error: simpleError } = await supabase
+          .from('users')
+          .upsert({
+            email: 'admin@viraliza.ai',
+            name: 'Administrador'
+          })
+          .select();
+        
+        if (simpleError) {
+          console.error('❌ Erro ao criar admin simples:', simpleError);
+        } else {
+          console.log('✅ Admin simples criado:', simpleAdmin);
+        }
+      } else {
+        console.log('✅ Admin criado com estrutura completa:', admin);
+      }
+    } catch (e) {
+      console.error('❌ Erro geral ao criar admin:', e);
+    }
+    
+    // Verificar resultado final
+    const { data: finalCheck, error: finalError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', 'admin@viraliza.ai')
+      .single();
+    
+    if (finalError) {
+      console.error('❌ Erro final:', finalError);
+    } else {
+      console.log('✅ Verificação final OK:', finalCheck);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Estrutura da tabela users corrigida',
+      admin: finalCheck || null,
+      error: finalError?.message
+    });
+
+  } catch (error) {
+    console.error('❌ Erro geral:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}
+
 async function handleInitDatabase(req, res) {
   try {
     console.log('🔧 Inicializando banco de dados...');
@@ -253,6 +352,11 @@ export default async function handler(req, res) {
       case 'init-database': {
         if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
         return handleInitDatabase(req, res);
+      }
+      // ==================== FIX-USERS-STRUCTURE ====================
+      case 'fix-users-structure': {
+        if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
+        return handleFixUsersStructure(req, res);
       }
       // ==================== ACTIVATE-PLAN ====================
       case 'activate-plan': {

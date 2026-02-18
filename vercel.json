@@ -36,6 +36,7 @@
     { "source": "/api/whitelabel/:path*", "destination": "/api/catchall?route=whitelabel/:path*" },
     { "source": "/api/database/:path*", "destination": "/api/catchall?route=database/:path*" },
     { "source": "/api/init-database", "destination": "/api/catchall?route=init-database" },
+    { "source": "/api/fix-users-structure", "destination": "/api/catchall?route=fix-users-structure" },
     { "source": "/api/whatsapp-webhook", "destination": "/api/whatsapp-webhook" },
     { "source": "/api/whatsapp-send", "destination": "/api/whatsapp-send" },
     { "source": "/api/webhook/:path*", "destination": "/api/catchall?route=webhook/:path*" },
