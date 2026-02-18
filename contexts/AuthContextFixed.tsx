@@ -46,50 +46,52 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Função para inicializar banco de dados se necessário
 const initializeDatabaseIfNeeded = async () => {
   try {
-    // Verificar se as tabelas essenciais existem
-    const { data: usersCheck, error: usersError } = await supabase
-      .from('users')
-      .select('count')
-      .single();
-    
-    if (usersError && usersError.code === 'PGRST116') {
-      console.log('🔧 Tabela users não encontrada, criando...');
-      
-      // Criar tabela users com usuário admin
-      const { data: adminUser, error: createError } = await supabase
-        .from('users')
-        .insert({
-          email: 'admin@viraliza.ai',
-          name: 'Administrador',
-          type: 'admin',
-          status: 'Ativo',
-          plan: 'admin'
-        })
-        .select();
-      
-      if (createError) {
-        console.error('❌ Erro ao criar tabela users:', createError);
-      } else {
-        console.log('✅ Tabela users criada com admin:', adminUser);
-      }
-    }
-    
-    // Verificar user_profiles
-    const { error: profilesError } = await supabase
+    // Criar usuário admin via auth se não existir
+    const { data: adminCheck, error: adminError } = await supabase
       .from('user_profiles')
-      .select('count')
+      .select('*')
+      .eq('email', 'admin@viraliza.ai')
       .single();
     
-    if (profilesError && profilesError.code === 'PGRST116') {
-      console.log('🔧 Criando tabela user_profiles...');
-      await supabase
-        .from('user_profiles')
-        .insert({
-          user_id: '00000000-0000-0000-0000-000000000000',
-          name: 'Temp',
-          email: 'temp@temp.com',
-          plan: 'mensal'
-        });
+    if (adminError && adminError.code === 'PGRST116') {
+      console.log('🔧 Criando perfil admin...');
+      
+      // Criar usuário admin via auth
+      const { data: authAdmin, error: createAuthError } = await supabase.auth.signUp({
+        email: 'admin@viraliza.ai',
+        password: 'J137546fc@',
+        options: {
+          data: {
+            name: 'Administrador',
+            type: 'admin',
+            status: 'Ativo',
+            plan: 'admin'
+          }
+        }
+      });
+      
+      if (createAuthError) {
+        console.error('❌ Erro ao criar auth admin:', createAuthError);
+      } else {
+        console.log('✅ Auth admin criado:', authAdmin);
+        
+        // Criar perfil
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: authAdmin.user?.id || 'admin-id',
+            name: 'Administrador',
+            email: 'admin@viraliza.ai',
+            plan: 'admin',
+            plan_status: 'active'
+          });
+        
+        if (profileError) {
+          console.error('❌ Erro ao criar perfil:', profileError);
+        } else {
+          console.log('✅ Perfil admin criado');
+        }
+      }
     }
     
     // Verificar user_access
@@ -103,7 +105,7 @@ const initializeDatabaseIfNeeded = async () => {
       await supabase
         .from('user_access')
         .insert({
-          user_id: '00000000-0000-0000-0000-000000000000',
+          user_id: 'admin-id',
           tool_name: 'temp',
           has_access: false
         });
@@ -168,22 +170,49 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // CORREÇÃO: Verificar qual tipo de sessão carregar baseado na URL atual
         const isAdminRoute = window.location.pathname.startsWith('/admin');
         
-        // 1. VERIFICAR SESSÃO ADMIN NO LOCALSTORAGE (admin não usa Supabase Auth)
-        if (isAdminRoute) {
-          try {
-            const savedAdmin = localStorage.getItem('viraliza_admin_session_isolated');
-            if (savedAdmin) {
-              const adminData = JSON.parse(savedAdmin);
-              if (adminData?.type === 'admin') {
-                console.log('✅ Sessão admin restaurada (isolada)');
-                setUser(adminData);
-                setIsAuthenticated(true);
-                setIsLoading(false);
-                return;
-              }
+        // 1. VERIFICAR SESSÃO ADMIN (usa Supabase Auth)
+        const session = await getSession();
+        if (session?.user) {
+          console.log('✅ Sessão encontrada:', session.user.email);
+          
+          // Verificar se é admin pelo metadata
+          const meta = session.user.user_metadata || {};
+          const isAdmin = meta.type === 'admin' || session.user.email === 'admin@viraliza.ai';
+          
+          if (isAdmin) {
+            console.log('✅ Admin autenticado via Supabase');
+            
+            // Buscar perfil completo
+            let profileData = null;
+            try {
+              const { data: profile } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .single();
+              
+              profileData = profile;
+            } catch (e) {
+              console.warn('⚠️ Perfil não encontrado, usando metadata');
             }
-          } catch (e) {
-            console.warn('⚠️ Erro ao restaurar sessão admin:', e);
+            
+            const adminUser: User = {
+              id: session.user.id,
+              email: session.user.email || '',
+              name: meta.name || 'Administrador',
+              type: 'admin',
+              status: 'Ativo',
+              plan: meta.plan || 'admin',
+              joinedDate: session.user.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+              socialAccounts: [],
+              paymentMethods: [],
+              billingHistory: []
+            };
+            
+            setUser(adminUser);
+            setIsAuthenticated(true);
+            setIsLoading(false);
+            return;
           }
         }
 
@@ -413,33 +442,96 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       console.log('🔄 Iniciando login:', { email, password: '***' });
 
-      // Admin login hardcoded
+      // Admin login via Supabase Auth
       const cleanCpf = String(email).replace(/\D/g, '');
       if (cleanCpf === '01484270657' && password === 'J137546fc@') {
         console.log('🚨 Admin login detectado');
         
-        const adminUser: User = {
-          id: 'admin_fixed',
-          name: 'Administrador ViralizaAI',
-          email: 'admin@viralizaai.com',
-          cpf: '01484270657',
-          type: 'admin',
-          status: 'Ativo',
-          joinedDate: new Date().toISOString().split('T')[0],
-          socialAccounts: [],
-          paymentMethods: [],
-          billingHistory: []
-        };
+        // Usar Supabase Auth para admin
+        try {
+          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email: 'admin@viraliza.ai',
+            password: 'J137546fc@'
+          });
+          
+          if (authError) {
+            // Se usuário não existe, criar primeiro
+            if (authError.message.includes('Invalid login credentials')) {
+              console.log('🔧 Criando usuário admin...');
+              const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                email: 'admin@viraliza.ai',
+                password: 'J137546fc@',
+                options: {
+                  data: {
+                    name: 'Administrador ViralizaAI',
+                    type: 'admin',
+                    status: 'Ativo',
+                    plan: 'admin'
+                  }
+                }
+              });
+              
+              if (signUpError) {
+                console.error('❌ Erro ao criar admin:', signUpError);
+                return { error: 'Erro ao criar usuário admin' };
+              }
+              
+              // Tentar login novamente
+              const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+                email: 'admin@viraliza.ai',
+                password: 'J137546fc@'
+              });
+              
+              if (loginError) {
+                return { error: 'Erro ao fazer login admin' };
+              }
+              
+              authData.user = loginData.user;
+            } else {
+              return { error: authError.message };
+            }
+          }
+          
+          if (authData.user) {
+            const meta = authData.user.user_metadata || {};
+            const adminUser: User = {
+              id: authData.user.id,
+              name: meta.name || 'Administrador ViralizaAI',
+              email: authData.user.email || 'admin@viraliza.ai',
+              type: 'admin',
+              status: 'Ativo',
+              plan: meta.plan || 'admin',
+              joinedDate: authData.user.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+              socialAccounts: [],
+              paymentMethods: [],
+              billingHistory: []
+            };
 
-        setUser(adminUser);
-        setIsAuthenticated(true);
-        // Persistir sessão admin no localStorage ISOLADO para não conflitar com usuário
-        localStorage.setItem('viraliza_admin_session_isolated', JSON.stringify(adminUser));
-        // SYNC COM SUPABASE/POSTGRESQL
-        autoSupabase.saveUser(adminUser);
-        autoSupabase.logActivity(adminUser.id, 'admin_login', { cpf: cleanCpf });
-        console.log('✅ Admin logado com sucesso (sessão isolada)');
-        return adminUser;
+            setUser(adminUser);
+            setIsAuthenticated(true);
+            
+            // Criar perfil se não existir
+            try {
+              await supabase
+                .from('user_profiles')
+                .upsert({
+                  user_id: authData.user.id,
+                  name: adminUser.name,
+                  email: adminUser.email,
+                  plan: 'admin',
+                  plan_status: 'active'
+                });
+            } catch (e) {
+              console.warn('⚠️ Erro ao criar perfil admin:', e);
+            }
+            
+            console.log('✅ Admin logado via Supabase Auth');
+            return adminUser;
+          }
+        } catch (e) {
+          console.error('❌ Erro no login admin:', e);
+          return { error: 'Erro no login admin' };
+        }
       }
 
       const authData = await loginUser(email, password);
